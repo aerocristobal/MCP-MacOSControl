@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "macos-control": {
+      "command": "/path/to/mcp-macos-control",
+      "env": {
+        "MCP_MACOS_CONTROL_SCREENSHOT_DIR": "/Users/yourusername/Screenshots"
+      }
+    }
+  }
+}
