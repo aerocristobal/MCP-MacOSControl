@@ -1,10 +1,22 @@
 # MCP macOS Control
 
-A native macOS MCP (Model Context Protocol) server built in Swift that provides comprehensive computer control capabilities including mouse automation, keyboard input, screen capture, OCR text extraction, and window management.
+A native macOS MCP (Model Context Protocol) server built in Swift that provides comprehensive computer control capabilities including mouse automation, keyboard input, screen capture, OCR text extraction, window management, **continuous capture with ScreenCaptureKit**, and **advanced Vision framework analysis**.
+
+## 🆕 Latest Update
+
+**NEW**: Added **11 powerful tools** for continuous screen capture and Vision framework integration:
+- ✨ **Continuous Capture**: Monitor displays, windows, or apps in real-time with ScreenCaptureKit
+- 🧠 **Image Classification**: Identify objects and scenes using Vision framework
+- 👁️ **Object Detection**: Detect animals and objects with bounding boxes
+- 📐 **Rectangle Detection**: Find UI elements, documents, and screens
+- 🎯 **Saliency Detection**: Identify attention-grabbing regions
+- 👤 **Face Detection**: Locate faces with orientation data
+
+See [NEW_FEATURES.md](NEW_FEATURES.md) for complete details on the 11 new tools.
 
 ## Features
 
-MCP macOS Control provides **15 powerful tools** for programmatic control of your Mac:
+MCP macOS Control provides **26 powerful tools** for programmatic control of your Mac:
 
 ### Mouse Control (6 tools)
 - **click_screen** - Click at specific (x, y) coordinates
@@ -38,6 +50,21 @@ MCP macOS Control provides **15 powerful tools** for programmatic control of you
 
 ### Utility (1 tool)
 - **wait_milliseconds** - Pause execution for specified duration
+
+### Continuous Capture (6 tools)
+- **start_continuous_capture** - Start real-time capture of displays, windows, or applications
+- **stop_continuous_capture** - Stop active capture session
+- **get_capture_frame** - Get latest captured frame as PNG
+- **list_capturable_displays** - List all available displays
+- **list_capturable_windows** - List all capturable windows (ScreenCaptureKit)
+- **list_capturable_applications** - List all running applications
+
+### Vision Framework Analysis (5 tools)
+- **classify_image** - Classify objects/scenes in images
+- **detect_objects** - Detect objects with bounding boxes
+- **detect_rectangles** - Find rectangular shapes (UI elements, documents)
+- **detect_saliency** - Identify attention-grabbing regions
+- **detect_faces** - Detect faces with orientation data
 
 ## Requirements
 
