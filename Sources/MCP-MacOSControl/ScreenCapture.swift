@@ -6,6 +6,21 @@ import ScreenCaptureKit
 @available(macOS 13.0, *)
 class ScreenCapture {
 
+    /// Check if screen recording permission is granted
+    static func checkScreenRecordingPermission() -> Bool {
+        // Try to capture a 1x1 pixel to test permissions
+        let testRect = CGRect(x: 0, y: 0, width: 1, height: 1)
+        if let _ = CGWindowListCreateImage(
+            testRect,
+            .optionOnScreenOnly,
+            kCGNullWindowID,
+            .nominalResolution
+        ) {
+            return true
+        }
+        return false
+    }
+
     /// Take a screenshot of the entire screen or a specific window
     static func takeScreenshot(
         titlePattern: String? = nil,
@@ -13,6 +28,15 @@ class ScreenCapture {
         threshold: Int = 60,
         saveToDownloads: Bool = false
     ) async throws -> (imageData: Data, metadata: [String: Any]) {
+
+        // Check permissions first
+        guard checkScreenRecordingPermission() else {
+            throw NSError(
+                domain: "ScreenCapture",
+                code: 100,
+                userInfo: [NSLocalizedDescriptionKey: "Screen Recording permission not granted. Please enable Screen Recording permission in System Settings > Privacy & Security > Screen Recording for the application running this MCP server."]
+            )
+        }
 
         var image: NSImage?
         var windowInfo: [String: Any] = [:]
@@ -61,7 +85,11 @@ class ScreenCapture {
     /// Capture the full screen
     private static func captureFullScreen() throws -> NSImage? {
         guard let screenBounds = NSScreen.main?.frame else {
-            throw NSError(domain: "ScreenCapture", code: 3, userInfo: [NSLocalizedDescriptionKey: "Failed to get screen bounds"])
+            throw NSError(
+                domain: "ScreenCapture",
+                code: 3,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to get screen bounds. No main screen detected."]
+            )
         }
 
         guard let cgImage = CGWindowListCreateImage(
@@ -70,7 +98,11 @@ class ScreenCapture {
             kCGNullWindowID,
             [.bestResolution, .boundsIgnoreFraming]
         ) else {
-            throw NSError(domain: "ScreenCapture", code: 4, userInfo: [NSLocalizedDescriptionKey: "Failed to capture screen image"])
+            throw NSError(
+                domain: "ScreenCapture",
+                code: 4,
+                userInfo: [NSLocalizedDescriptionKey: "Failed to capture screen image. This usually indicates missing Screen Recording permission or the screen is locked. Screen bounds: \(screenBounds)"]
+            )
         }
 
         let image = NSImage(cgImage: cgImage, size: screenBounds.size)

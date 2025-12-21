@@ -5,6 +5,7 @@ import MCP
 @main
 struct MacOSControlServer {
     static var captureManager: ContinuousCaptureManager?
+    static var realtimeAnalyzer: RealtimeAnalyzer?
 
     static func main() async throws {
         // Create MCP server with capabilities
@@ -80,6 +81,58 @@ struct MacOSControlServer {
 
     static func getToolDefinitions() -> [Tool] {
         return [
+            // High-Level Real-Time Analysis Tools (PRIMARY)
+            Tool(
+                name: "analyze_screen_now",
+                description: "Quickly capture and analyze the current screen with computer vision (recommended over take_screenshot)",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "capture_type": ["type": "string", "description": "Type: display, window, or application", "default": "display"],
+                        "target_identifier": ["type": "string", "description": "Display ID, window title, or app identifier (optional)"],
+                        "include_classification": ["type": "boolean", "description": "Include object/scene classification", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection", "default": false],
+                        "include_rectangles": ["type": "boolean", "description": "Include UI element detection", "default": false],
+                        "include_faces": ["type": "boolean", "description": "Include face detection", "default": false],
+                        "include_text": ["type": "boolean", "description": "Include OCR text extraction", "default": false],
+                        "include_saliency": ["type": "boolean", "description": "Include attention region detection", "default": false]
+                    ]
+                )
+            ),
+            Tool(
+                name: "start_screen_monitoring",
+                description: "Start continuous screen monitoring with real-time computer vision analysis",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "capture_type": ["type": "string", "description": "Type: display, window, or application", "default": "display"],
+                        "target_identifier": ["type": "string", "description": "Display ID, window title, or app identifier (optional)"],
+                        "frame_rate": ["type": "integer", "description": "Analysis rate in FPS (1-30)", "default": 10],
+                        "include_classification": ["type": "boolean", "description": "Include object/scene classification", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection", "default": false],
+                        "include_rectangles": ["type": "boolean", "description": "Include UI element detection", "default": false],
+                        "include_faces": ["type": "boolean", "description": "Include face detection", "default": false],
+                        "include_text": ["type": "boolean", "description": "Include OCR text extraction", "default": false]
+                    ]
+                )
+            ),
+            Tool(
+                name: "get_monitoring_results",
+                description: "Get the latest analysis results from active screen monitoring",
+                inputSchema: jsonSchema(type: "object")
+            ),
+            Tool(
+                name: "stop_screen_monitoring",
+                description: "Stop the active screen monitoring session",
+                inputSchema: jsonSchema(type: "object")
+            ),
+            Tool(
+                name: "check_permissions",
+                description: "Check system permissions required for MCP server functionality",
+                inputSchema: jsonSchema(type: "object")
+            ),
+
+            // Mouse Control Tools
             Tool(
                 name: "click_screen",
                 description: "Click at the specified screen coordinates",
@@ -350,6 +403,175 @@ struct MacOSControlServer {
         let args = params.arguments ?? [:]
 
         switch params.name {
+        // High-Level Real-Time Analysis Tools
+        case "analyze_screen_now":
+            let captureTypeStr = args["capture_type"]?.stringValue ?? "display"
+            let captureType: ContinuousCaptureManager.CaptureType
+            switch captureTypeStr.lowercased() {
+            case "display":
+                captureType = .display
+            case "window":
+                captureType = .window
+            case "application", "app":
+                captureType = .application
+            default:
+                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+            }
+
+            let targetIdentifier = args["target_identifier"]?.stringValue
+
+            // Build analysis types array based on included options
+            var analysisTypes: [RealtimeAnalyzer.AnalysisType] = []
+            if args["include_classification"]?.boolValue ?? true {
+                analysisTypes.append(.classification(topK: 5))
+            }
+            if args["include_objects"]?.boolValue ?? false {
+                analysisTypes.append(.objectDetection(minConfidence: 0.5))
+            }
+            if args["include_rectangles"]?.boolValue ?? false {
+                analysisTypes.append(.rectangles(minConfidence: 0.5))
+            }
+            if args["include_faces"]?.boolValue ?? false {
+                analysisTypes.append(.faces)
+            }
+            if args["include_text"]?.boolValue ?? false {
+                analysisTypes.append(.ocr)
+            }
+            if args["include_saliency"]?.boolValue ?? false {
+                analysisTypes.append(.saliency)
+            }
+
+            do {
+                let results = try await RealtimeAnalyzer.quickAnalyze(
+                    captureType: captureType,
+                    targetIdentifier: targetIdentifier,
+                    analysisTypes: analysisTypes
+                )
+
+                let jsonData = try JSONSerialization.data(withJSONObject: results)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(content: [.text("Screen analysis completed:\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "start_screen_monitoring":
+            let captureTypeStr = args["capture_type"]?.stringValue ?? "display"
+            let captureType: ContinuousCaptureManager.CaptureType
+            switch captureTypeStr.lowercased() {
+            case "display":
+                captureType = .display
+            case "window":
+                captureType = .window
+            case "application", "app":
+                captureType = .application
+            default:
+                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+            }
+
+            let targetIdentifier = args["target_identifier"]?.stringValue
+            let frameRate = args["frame_rate"]?.intValue ?? 10
+
+            // Build analysis types array
+            var analysisTypes: [RealtimeAnalyzer.AnalysisType] = []
+            if args["include_classification"]?.boolValue ?? true {
+                analysisTypes.append(.classification(topK: 5))
+            }
+            if args["include_objects"]?.boolValue ?? false {
+                analysisTypes.append(.objectDetection(minConfidence: 0.5))
+            }
+            if args["include_rectangles"]?.boolValue ?? false {
+                analysisTypes.append(.rectangles(minConfidence: 0.5))
+            }
+            if args["include_faces"]?.boolValue ?? false {
+                analysisTypes.append(.faces)
+            }
+            if args["include_text"]?.boolValue ?? false {
+                analysisTypes.append(.ocr)
+            }
+
+            do {
+                if realtimeAnalyzer == nil {
+                    realtimeAnalyzer = RealtimeAnalyzer()
+                }
+
+                try await realtimeAnalyzer!.startRealtimeAnalysis(
+                    captureType: captureType,
+                    targetIdentifier: targetIdentifier,
+                    frameRate: frameRate,
+                    analysisTypes: analysisTypes
+                )
+
+                return .init(content: [.text("Started screen monitoring (type: \(captureTypeStr), fps: \(frameRate))")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "get_monitoring_results":
+            if let analyzer = realtimeAnalyzer {
+                let results = analyzer.getLatestAnalysis()
+                if results.isEmpty {
+                    return .init(content: [.text("No analysis results available yet")], isError: false)
+                }
+
+                do {
+                    let jsonData = try JSONSerialization.data(withJSONObject: results)
+                    let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                    return .init(content: [.text("Latest monitoring results:\n\(jsonString)")], isError: false)
+                } catch {
+                    return .init(content: [.text("Error serializing results: \(error.localizedDescription)")], isError: true)
+                }
+            } else {
+                return .init(content: [.text("No active monitoring session. Use start_screen_monitoring first.")], isError: true)
+            }
+
+        case "stop_screen_monitoring":
+            do {
+                if let analyzer = realtimeAnalyzer {
+                    try await analyzer.stopRealtimeAnalysis()
+                    realtimeAnalyzer = nil
+                    return .init(content: [.text("Stopped screen monitoring")], isError: false)
+                } else {
+                    return .init(content: [.text("No active monitoring session")], isError: false)
+                }
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "check_permissions":
+            var permissionStatus: [String: Any] = [:]
+
+            // Check Screen Recording permission
+            let screenRecordingGranted = ScreenCapture.checkScreenRecordingPermission()
+            permissionStatus["screen_recording"] = [
+                "granted": screenRecordingGranted,
+                "required_for": ["take_screenshot", "take_screenshot_with_ocr", "analyze_screen_now", "start_screen_monitoring", "continuous capture tools"],
+                "instructions": screenRecordingGranted ? "Permission granted" : "Go to System Settings > Privacy & Security > Screen Recording and enable permission for the app running this MCP server (e.g., Claude Desktop)"
+            ]
+
+            // Check Accessibility permission (for mouse/keyboard control)
+            let accessibilityGranted = AXIsProcessTrusted()
+            permissionStatus["accessibility"] = [
+                "granted": accessibilityGranted,
+                "required_for": ["click_screen", "move_mouse", "type_text", "press_keys", "drag_mouse", "all mouse and keyboard control tools"],
+                "instructions": accessibilityGranted ? "Permission granted" : "Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server (e.g., Claude Desktop)"
+            ]
+
+            // Overall status
+            let allGranted = screenRecordingGranted && accessibilityGranted
+            permissionStatus["overall_status"] = allGranted ? "All permissions granted" : "Some permissions missing - see details above"
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: permissionStatus)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(
+                    content: [.text("Permission Status:\n\(jsonString)")],
+                    isError: !allGranted
+                )
+            } catch {
+                return .init(content: [.text("Error checking permissions: \(error.localizedDescription)")], isError: true)
+            }
+
         case "click_screen":
             guard let x = args["x"]?.intValue,
                   let y = args["y"]?.intValue else {
