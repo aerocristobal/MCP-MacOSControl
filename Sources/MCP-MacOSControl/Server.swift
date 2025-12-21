@@ -35,6 +35,44 @@ struct MacOSControlServer {
         }
     }
 
+    // MARK: - JSON Schema Helper
+
+    static func jsonSchema(
+        type: String,
+        properties: [String: [String: Any]] = [:],
+        required: [String] = []
+    ) -> Value {
+        var schema: [String: Value] = [
+            "type": .string(type)
+        ]
+
+        if !properties.isEmpty {
+            var props: [String: Value] = [:]
+            for (key, value) in properties {
+                var propDict: [String: Value] = [:]
+                for (k, v) in value {
+                    if let str = v as? String {
+                        propDict[k] = .string(str)
+                    } else if let num = v as? Int {
+                        propDict[k] = .int(num)
+                    } else if let num = v as? Double {
+                        propDict[k] = .double(num)
+                    } else if let bool = v as? Bool {
+                        propDict[k] = .bool(bool)
+                    }
+                }
+                props[key] = .object(propDict)
+            }
+            schema["properties"] = .object(props)
+        }
+
+        if !required.isEmpty {
+            schema["required"] = .array(required.map { .string($0) })
+        }
+
+        return .object(schema)
+    }
+
     // MARK: - Tool Definitions
 
     static func getToolDefinitions() -> [Tool] {
@@ -42,97 +80,165 @@ struct MacOSControlServer {
             Tool(
                 name: "click_screen",
                 description: "Click at the specified screen coordinates",
-                inputSchema: .object(["x": .int(0), "y": .int(0)])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "x": ["type": "integer", "description": "X coordinate"],
+                        "y": ["type": "integer", "description": "Y coordinate"]
+                    ],
+                    required: ["x", "y"]
+                )
             ),
             Tool(
                 name: "get_screen_size",
                 description: "Get the current screen resolution",
-                inputSchema: .object([:])
+                inputSchema: jsonSchema(type: "object")
             ),
             Tool(
                 name: "type_text",
                 description: "Type the specified text at the current cursor position",
-                inputSchema: .object(["text": .string("")])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "text": ["type": "string", "description": "Text to type"]
+                    ],
+                    required: ["text"]
+                )
             ),
             Tool(
                 name: "move_mouse",
                 description: "Move the mouse to the specified screen coordinates",
-                inputSchema: .object(["x": .int(0), "y": .int(0)])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "x": ["type": "integer", "description": "X coordinate"],
+                        "y": ["type": "integer", "description": "Y coordinate"]
+                    ],
+                    required: ["x", "y"]
+                )
             ),
             Tool(
                 name: "mouse_down",
                 description: "Hold down a mouse button ('left', 'right', 'middle')",
-                inputSchema: .object(["button": .string("left")])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "button": ["type": "string", "description": "Mouse button (left, right, middle)", "default": "left"]
+                    ]
+                )
             ),
             Tool(
                 name: "mouse_up",
                 description: "Release a mouse button ('left', 'right', 'middle')",
-                inputSchema: .object(["button": .string("left")])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "button": ["type": "string", "description": "Mouse button (left, right, middle)", "default": "left"]
+                    ]
+                )
             ),
             Tool(
                 name: "drag_mouse",
                 description: "Drag the mouse from one position to another",
-                inputSchema: .object([
-                    "from_x": .int(0),
-                    "from_y": .int(0),
-                    "to_x": .int(0),
-                    "to_y": .int(0),
-                    "duration": .double(0.5)
-                ])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "from_x": ["type": "integer", "description": "Start X coordinate"],
+                        "from_y": ["type": "integer", "description": "Start Y coordinate"],
+                        "to_x": ["type": "integer", "description": "End X coordinate"],
+                        "to_y": ["type": "integer", "description": "End Y coordinate"],
+                        "duration": ["type": "number", "description": "Duration in seconds", "default": 0.5]
+                    ],
+                    required: ["from_x", "from_y", "to_x", "to_y"]
+                )
             ),
             Tool(
                 name: "key_down",
                 description: "Hold down a specific keyboard key until released",
-                inputSchema: .object(["key": .string("")])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "key": ["type": "string", "description": "Key to hold down"]
+                    ],
+                    required: ["key"]
+                )
             ),
             Tool(
                 name: "key_up",
                 description: "Release a specific keyboard key",
-                inputSchema: .object(["key": .string("")])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "key": ["type": "string", "description": "Key to release"]
+                    ],
+                    required: ["key"]
+                )
             ),
             Tool(
                 name: "press_keys",
                 description: "Press single keys, sequences, or combinations like [['cmd', 'c']]",
-                inputSchema: .object(["keys": .array([])])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "keys": ["type": "array", "description": "Array of keys or key combinations to press"]
+                    ],
+                    required: ["keys"]
+                )
             ),
             Tool(
                 name: "take_screenshot",
                 description: "Get screenshot of entire screen or specific window",
-                inputSchema: .object([
-                    "title_pattern": .string(""),
-                    "use_regex": .bool(false),
-                    "threshold": .int(60),
-                    "save_to_downloads": .bool(false)
-                ])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "title_pattern": ["type": "string", "description": "Window title pattern (optional)"],
+                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60],
+                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to downloads folder", "default": false]
+                    ]
+                )
             ),
             Tool(
                 name: "take_screenshot_with_ocr",
                 description: "Take screenshot and extract text with OCR, returns list of [coordinates, text, confidence]",
-                inputSchema: .object([
-                    "title_pattern": .string(""),
-                    "use_regex": .bool(false),
-                    "threshold": .int(60),
-                    "save_to_downloads": .bool(false)
-                ])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "title_pattern": ["type": "string", "description": "Window title pattern (optional)"],
+                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60],
+                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to downloads folder", "default": false]
+                    ]
+                )
             ),
             Tool(
                 name: "list_windows",
                 description: "List all open windows on the system",
-                inputSchema: .object([:])
+                inputSchema: jsonSchema(type: "object")
             ),
             Tool(
                 name: "activate_window",
                 description: "Activate a window (bring it to the foreground) by matching its title",
-                inputSchema: .object([
-                    "title_pattern": .string(""),
-                    "use_regex": .bool(false),
-                    "threshold": .int(60)
-                ])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "title_pattern": ["type": "string", "description": "Window title pattern"],
+                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60]
+                    ],
+                    required: ["title_pattern"]
+                )
             ),
             Tool(
                 name: "wait_milliseconds",
                 description: "Wait for a specified number of milliseconds",
-                inputSchema: .object(["milliseconds": .int(0)])
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "milliseconds": ["type": "integer", "description": "Milliseconds to wait"]
+                    ],
+                    required: ["milliseconds"]
+                )
             )
         ]
     }
