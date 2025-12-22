@@ -3,15 +3,19 @@ import CoreML
 import NaturalLanguage
 
 @available(macOS 13.0, *)
-class CoreMLManager {
+actor CoreMLManager {
 
     // MARK: - Model Management
 
+    // Thread-safe model storage using actor isolation
     private static var loadedModels: [String: MLModel] = [:]
     private static var modelMetadata: [String: [String: Any]] = [:]
 
+    // Shared instance for thread-safe access
+    static let shared = CoreMLManager()
+
     /// List available CoreML models in a directory
-    static func listAvailableModels(directory: String? = nil) throws -> [[String: Any]] {
+    func listAvailableModels(directory: String? = nil) throws -> [[String: Any]] {
         let searchPath: String
         if let dir = directory {
             searchPath = dir
@@ -38,7 +42,7 @@ class CoreMLManager {
                     "name": modelName,
                     "path": fullPath,
                     "type": item.hasSuffix(".mlmodelc") ? "compiled" : "package",
-                    "loaded": loadedModels[modelName] != nil
+                    "loaded": Self.loadedModels[modelName] != nil
                 ])
             }
         }
@@ -47,7 +51,7 @@ class CoreMLManager {
     }
 
     /// Load a CoreML model from file path
-    static func loadModel(name: String, path: String) throws -> String {
+    func loadModel(name: String, path: String) throws -> String {
         let url = URL(fileURLWithPath: path)
 
         // Compile if needed
@@ -64,8 +68,8 @@ class CoreMLManager {
 
         let model = try MLModel(contentsOf: compiledURL, configuration: configuration)
 
-        // Store the model
-        loadedModels[name] = model
+        // Store the model (thread-safe via actor isolation)
+        Self.loadedModels[name] = model
 
         // Extract metadata
         let description = model.modelDescription
@@ -88,24 +92,24 @@ class CoreMLManager {
             metadata["version"] = version
         }
 
-        modelMetadata[name] = metadata
+        Self.modelMetadata[name] = metadata
 
         return "Model '\(name)' loaded successfully"
     }
 
     /// Unload a model from memory
-    static func unloadModel(name: String) throws {
-        guard loadedModels[name] != nil else {
+    func unloadModel(name: String) throws {
+        guard Self.loadedModels[name] != nil else {
             throw NSError(domain: "CoreMLManager", code: 1, userInfo: [NSLocalizedDescriptionKey: "Model '\(name)' not loaded"])
         }
 
-        loadedModels.removeValue(forKey: name)
-        modelMetadata.removeValue(forKey: name)
+        Self.loadedModels.removeValue(forKey: name)
+        Self.modelMetadata.removeValue(forKey: name)
     }
 
     /// Get model metadata
-    static func getModelMetadata(name: String) throws -> [String: Any] {
-        guard let metadata = modelMetadata[name] else {
+    func getModelMetadata(name: String) throws -> [String: Any] {
+        guard let metadata = Self.modelMetadata[name] else {
             throw NSError(domain: "CoreMLManager", code: 2, userInfo: [NSLocalizedDescriptionKey: "Model '\(name)' not loaded"])
         }
         return metadata
@@ -114,14 +118,14 @@ class CoreMLManager {
     // MARK: - Text Generation (for LLM models)
 
     /// Generate text using a loaded CoreML LLM model
-    static func generateText(
+    func generateText(
         modelName: String,
         prompt: String,
         maxTokens: Int = 256,
         temperature: Double = 0.7,
         topK: Int = 50
     ) async throws -> String {
-        guard let model = loadedModels[modelName] else {
+        guard let model = Self.loadedModels[modelName] else {
             throw NSError(domain: "CoreMLManager", code: 3, userInfo: [NSLocalizedDescriptionKey: "Model '\(modelName)' not loaded. Use load_coreml_model first."])
         }
 
@@ -135,7 +139,7 @@ class CoreMLManager {
     }
 
     /// Generate text and analyze screen content together
-    static func analyzeWithLLM(
+    func analyzeWithLLM(
         modelName: String,
         screenContent: [String: Any],
         instruction: String,
@@ -178,7 +182,7 @@ class CoreMLManager {
 
     // MARK: - Helper Methods
 
-    private static func prepareLLMInput(prompt: String, model: MLModel) throws -> MLFeatureProvider {
+    private func prepareLLMInput(prompt: String, model: MLModel) throws -> MLFeatureProvider {
         let description = model.modelDescription
 
         // Find the text input feature
@@ -196,7 +200,7 @@ class CoreMLManager {
         return inputFeatures
     }
 
-    private static func extractTextFromPrediction(prediction: MLFeatureProvider, maxTokens: Int) throws -> String {
+    private func extractTextFromPrediction(prediction: MLFeatureProvider, maxTokens: Int) throws -> String {
         // Try to find text output
         if let outputName = prediction.featureNames.first,
            let value = prediction.featureValue(for: outputName) {

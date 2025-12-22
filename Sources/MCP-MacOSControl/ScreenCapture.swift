@@ -140,6 +140,11 @@ class ScreenCapture {
                 if score >= threshold && score > bestScore {
                     bestScore = score
                     matchedWindow = window
+
+                    // Early exit optimization: if perfect match found, no need to continue
+                    if score == 100 {
+                        break
+                    }
                 }
             }
         }

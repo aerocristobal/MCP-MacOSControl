@@ -45,10 +45,10 @@ class MouseControl {
     }
 
     /// Drag the mouse from one position to another
-    static func dragMouse(fromX: Int, fromY: Int, toX: Int, toY: Int, duration: Double = 0.5) throws {
+    static func dragMouse(fromX: Int, fromY: Int, toX: Int, toY: Int, duration: Double = 0.5) async throws {
         // Move to start position
         try moveMouse(x: fromX, y: fromY)
-        Thread.sleep(forTimeInterval: 0.05)
+        try await Task.sleep(nanoseconds: UInt64(0.05 * 1_000_000_000))
 
         // Press mouse down
         let startPoint = CGPoint(x: fromX, y: fromY)
@@ -59,7 +59,7 @@ class MouseControl {
         let steps = max(Int(duration * 60), 10) // 60 steps per second
         let deltaX = Double(toX - fromX) / Double(steps)
         let deltaY = Double(toY - fromY) / Double(steps)
-        let sleepTime = duration / Double(steps)
+        let sleepNanos = UInt64((duration / Double(steps)) * 1_000_000_000)
 
         // Perform drag
         for i in 1...steps {
@@ -70,7 +70,7 @@ class MouseControl {
             let dragEvent = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: currentPoint, mouseButton: .left)
             dragEvent?.post(tap: .cghidEventTap)
 
-            Thread.sleep(forTimeInterval: sleepTime)
+            try await Task.sleep(nanoseconds: sleepNanos)
         }
 
         // Release mouse

@@ -2,6 +2,7 @@ import Foundation
 import ScreenCaptureKit
 import AppKit
 import CoreMedia
+import CoreImage
 
 @available(macOS 13.0, *)
 class ContinuousCaptureManager: NSObject {
@@ -16,6 +17,9 @@ class ContinuousCaptureManager: NSObject {
     private var captureType: CaptureType = .display
     private var targetIdentifier: String?
     private var frameRate: Int = 30
+
+    // Singleton CIContext for efficient frame processing
+    private static let sharedCIContext = CIContext(options: [.useSoftwareRenderer: false])
 
     enum CaptureType {
         case display
@@ -180,9 +184,9 @@ class ContinuousCaptureManager: NSObject {
             }
 
             let ciImage = CIImage(cvImageBuffer: imageBuffer)
-            let context = CIContext()
 
-            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
+            // Use shared CIContext to avoid recreation overhead
+            guard let cgImage = ContinuousCaptureManager.sharedCIContext.createCGImage(ciImage, from: ciImage.extent) else {
                 return
             }
 
