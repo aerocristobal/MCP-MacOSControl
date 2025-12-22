@@ -5,7 +5,7 @@ import Carbon
 class KeyboardControl {
 
     /// Type the specified text at the current cursor position
-    static func typeText(text: String) throws {
+    static func typeText(text: String) async throws {
         let source = CGEventSource(stateID: .hidSystemState)
 
         for char in text {
@@ -23,14 +23,14 @@ class KeyboardControl {
                     keyUp.post(tap: .cghidEventTap)
 
                     // Small delay between characters for more natural typing
-                    usleep(10000) // 10ms
+                    try await Task.sleep(nanoseconds: 10_000_000) // 10ms
                 }
             }
         }
     }
 
     /// Press a single key or a combination of keys
-    static func pressKeys(keys: [Any]) throws {
+    static func pressKeys(keys: [Any]) async throws {
         if keys.count == 1, let key = keys[0] as? String {
             // Single key press
             try pressSingleKey(key: key)
@@ -42,13 +42,13 @@ class KeyboardControl {
                 } else {
                     try pressKeyCombination(keys: combination)
                 }
-                Thread.sleep(forTimeInterval: 0.05)
+                try await Task.sleep(nanoseconds: 50_000_000) // 0.05s
             }
         } else if let keyArray = keys as? [String] {
             // Handle simple array of keys to be pressed in sequence
             for key in keyArray {
                 try pressSingleKey(key: key)
-                Thread.sleep(forTimeInterval: 0.05)
+                try await Task.sleep(nanoseconds: 50_000_000) // 0.05s
             }
         }
     }

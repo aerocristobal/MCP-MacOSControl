@@ -676,7 +676,7 @@ struct MacOSControlServer {
         case "list_coreml_models":
             let directory = args["directory"]?.stringValue
             do {
-                let models = try CoreMLManager.listAvailableModels(directory: directory)
+                let models = try await CoreMLManager.shared.listAvailableModels(directory: directory)
                 let jsonData = try JSONSerialization.data(withJSONObject: models)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Available CoreML models (\(models.count)):\n\(jsonString)")], isError: false)
@@ -691,7 +691,7 @@ struct MacOSControlServer {
             }
 
             do {
-                let message = try CoreMLManager.loadModel(name: name, path: path)
+                let message = try await CoreMLManager.shared.loadModel(name: name, path: path)
                 return .init(content: [.text(message)], isError: false)
             } catch {
                 return .init(content: [.text("Error loading model: \(error.localizedDescription)")], isError: true)
@@ -703,7 +703,7 @@ struct MacOSControlServer {
             }
 
             do {
-                try CoreMLManager.unloadModel(name: name)
+                try await CoreMLManager.shared.unloadModel(name: name)
                 return .init(content: [.text("Model '\(name)' unloaded successfully")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
@@ -715,7 +715,7 @@ struct MacOSControlServer {
             }
 
             do {
-                let metadata = try CoreMLManager.getModelMetadata(name: name)
+                let metadata = try await CoreMLManager.shared.getModelMetadata(name: name)
                 let jsonData = try JSONSerialization.data(withJSONObject: metadata)
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Model '\(name)' info:\n\(jsonString)")], isError: false)
@@ -733,7 +733,7 @@ struct MacOSControlServer {
             let temperature = args["temperature"]?.doubleValue ?? 0.7
 
             do {
-                let response = try await CoreMLManager.generateText(
+                let response = try await CoreMLManager.shared.generateText(
                     modelName: modelName,
                     prompt: prompt,
                     maxTokens: maxTokens,
@@ -791,7 +791,7 @@ struct MacOSControlServer {
                 )
 
                 // Process with LLM
-                let llmResult = try await CoreMLManager.analyzeWithLLM(
+                let llmResult = try await CoreMLManager.shared.analyzeWithLLM(
                     modelName: modelName,
                     screenContent: screenContent,
                     instruction: instruction,
@@ -909,7 +909,7 @@ struct MacOSControlServer {
                 return .init(content: [.text("Invalid parameters: text required")], isError: true)
             }
             do {
-                try KeyboardControl.typeText(text: text)
+                try await KeyboardControl.typeText(text: text)
                 return .init(content: [.text("Typed: \(text)")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
@@ -954,7 +954,7 @@ struct MacOSControlServer {
             }
             let duration = args["duration"]?.doubleValue ?? 0.5
             do {
-                try MouseControl.dragMouse(fromX: fromX, fromY: fromY, toX: toX, toY: toY, duration: duration)
+                try await MouseControl.dragMouse(fromX: fromX, fromY: fromY, toX: toX, toY: toY, duration: duration)
                 return .init(content: [.text("Dragged from (\(fromX), \(fromY)) to (\(toX), \(toY))")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
@@ -996,7 +996,7 @@ struct MacOSControlServer {
                 return value
             }
             do {
-                try KeyboardControl.pressKeys(keys: keys)
+                try await KeyboardControl.pressKeys(keys: keys)
                 return .init(content: [.text("Pressed keys")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)

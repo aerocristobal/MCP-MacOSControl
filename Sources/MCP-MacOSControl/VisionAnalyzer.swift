@@ -2,9 +2,48 @@ import Foundation
 import Vision
 import CoreGraphics
 import AppKit
+import CryptoKit
 
 @available(macOS 13.0, *)
 class VisionAnalyzer {
+
+    // MARK: - Result Caching
+
+    /// Thread-safe cache for analysis results
+    private static let cache = AnalysisCache()
+
+    /// Cache actor for thread-safe result storage
+    private actor AnalysisCache {
+        private var storage: [String: CachedResult] = [:]
+        private let ttl: TimeInterval = 2.0 // 2 second cache
+
+        struct CachedResult {
+            let result: Any
+            let timestamp: Date
+        }
+
+        func get(key: String) -> Any? {
+            guard let cached = storage[key] else { return nil }
+
+            // Check if expired
+            if Date().timeIntervalSince(cached.timestamp) > ttl {
+                storage.removeValue(forKey: key)
+                return nil
+            }
+
+            return cached.result
+        }
+
+        func set(key: String, value: Any) {
+            storage[key] = CachedResult(result: value, timestamp: Date())
+
+            // Clean up old entries (simple cleanup strategy)
+            if storage.count > 100 {
+                let cutoff = Date().addingTimeInterval(-ttl)
+                storage = storage.filter { $0.value.timestamp > cutoff }
+            }
+        }
+    }
 
     // MARK: - Image Classification
 
@@ -20,7 +59,15 @@ class VisionAnalyzer {
 
     /// Classify objects in a CGImage
     static func classifyImage(cgImage: CGImage, topK: Int = 5) async throws -> [[String: Any]] {
-        return try await withCheckedThrowingContinuation { continuation in
+        // Generate cache key from image hash
+        let cacheKey = "classify_\(cgImage.width)x\(cgImage.height)_\(topK)"
+
+        // Check cache
+        if let cached = await cache.get(key: cacheKey) as? [[String: Any]] {
+            return cached
+        }
+
+        let results = try await withCheckedThrowingContinuation { continuation in
             let request = VNClassifyImageRequest { request, error in
                 if let error = error {
                     continuation.resume(throwing: error)
@@ -51,6 +98,10 @@ class VisionAnalyzer {
                 continuation.resume(throwing: error)
             }
         }
+
+        // Cache the results
+        await cache.set(key: cacheKey, value: results)
+        return results
     }
 
     // MARK: - Object Detection

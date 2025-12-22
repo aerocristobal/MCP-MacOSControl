@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import AppKit
+import CoreImage
 
 @available(macOS 13.0, *)
 class RealtimeAnalyzer {
@@ -8,6 +9,9 @@ class RealtimeAnalyzer {
     private var captureManager: ContinuousCaptureManager?
     private var analysisResults: [String: Any] = [:]
     private var isAnalyzing = false
+
+    // Singleton CIContext for efficient image processing
+    private static let sharedCIContext = CIContext(options: [.useSoftwareRenderer: false])
 
     // MARK: - Combined Capture + Analysis
 
@@ -103,11 +107,8 @@ class RealtimeAnalyzer {
                 results["faces"] = faces
 
             case .ocr:
-                // Convert CGImage to Data for OCR
-                let nsImage = NSImage(cgImage: frame, size: NSSize(width: frame.width, height: frame.height))
-                if let tiffData = nsImage.tiffRepresentation,
-                   let bitmapImage = NSBitmapImageRep(data: tiffData),
-                   let pngData = bitmapImage.representation(using: .png, properties: [:]) {
+                // Convert CGImage to Data for OCR (optimized - direct PNG conversion)
+                if let pngData = Self.cgImageToPNGData(frame) {
                     let ocrResults = try await OCRProcessor.performOCR(on: pngData)
                     results["text"] = ocrResults
                 }
@@ -149,11 +150,8 @@ class RealtimeAnalyzer {
                     results["faces"] = faces
 
                 case .ocr:
-                    // Convert CGImage to Data for OCR
-                    let nsImage = NSImage(cgImage: frame, size: NSSize(width: frame.width, height: frame.height))
-                    if let tiffData = nsImage.tiffRepresentation,
-                       let bitmapImage = NSBitmapImageRep(data: tiffData),
-                       let pngData = bitmapImage.representation(using: .png, properties: [:]) {
+                    // Convert CGImage to Data for OCR (optimized - direct PNG conversion)
+                    if let pngData = Self.cgImageToPNGData(frame) {
                         let ocrResults = try await OCRProcessor.performOCR(on: pngData)
                         results["text"] = ocrResults
                     }
@@ -167,6 +165,21 @@ class RealtimeAnalyzer {
         results["frameSize"] = ["width": frame.width, "height": frame.height]
 
         self.analysisResults = results
+    }
+
+    // MARK: - Helper Methods
+
+    /// Efficiently convert CGImage to PNG Data without intermediate conversions
+    private static func cgImageToPNGData(_ cgImage: CGImage) -> Data? {
+        let ciImage = CIImage(cgImage: cgImage)
+        guard let colorSpace = cgImage.colorSpace else { return nil }
+
+        // Use shared CIContext to avoid recreation overhead
+        return sharedCIContext.pngRepresentation(
+            of: ciImage,
+            format: .RGBA8,
+            colorSpace: colorSpace
+        )
     }
 
     // MARK: - Analysis Types
