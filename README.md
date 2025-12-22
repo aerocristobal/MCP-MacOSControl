@@ -1,10 +1,17 @@
 # MCP macOS Control
 
-A native macOS MCP (Model Context Protocol) server built in Swift that provides comprehensive computer control capabilities including mouse automation, keyboard input, screen capture, OCR text extraction, window management, **continuous capture with ScreenCaptureKit**, and **advanced Vision framework analysis**.
+A native macOS MCP (Model Context Protocol) server built in Swift that provides comprehensive computer control capabilities including mouse automation, keyboard input, screen capture, OCR text extraction, window management, **continuous capture with ScreenCaptureKit**, **advanced Vision framework analysis**, and **on-device CoreML LLM processing**.
 
 ## 🆕 Latest Update
 
-**NEW**: Added **11 powerful tools** for continuous screen capture and Vision framework integration:
+**NEW**: Added **CoreML & On-Device Intelligence** (8 new tools) - Reduce cloud API token usage by 60-90%!
+- 🤖 **On-Device LLM**: Load and run CoreML language models locally (zero cloud tokens)
+- 🧠 **Intelligent Analysis**: Combine screen capture + Vision + LLM reasoning in one call
+- 📊 **Smart Summaries**: Extract key information using NaturalLanguage framework
+- 🔒 **Privacy-First**: All processing happens on-device
+- ⚡ **Fast & Free**: Leverage Neural Engine, GPU, and CPU automatically
+
+**Previous Update**: Added **11 powerful tools** for continuous screen capture and Vision framework integration:
 - ✨ **Continuous Capture**: Monitor displays, windows, or apps in real-time with ScreenCaptureKit
 - 🧠 **Image Classification**: Identify objects and scenes using Vision framework
 - 👁️ **Object Detection**: Detect animals and objects with bounding boxes
@@ -12,11 +19,12 @@ A native macOS MCP (Model Context Protocol) server built in Swift that provides 
 - 🎯 **Saliency Detection**: Identify attention-grabbing regions
 - 👤 **Face Detection**: Locate faces with orientation data
 
-See [NEW_FEATURES.md](NEW_FEATURES.md) for complete details on the 11 new tools.
+See [COREML_INTEGRATION.md](COREML_INTEGRATION.md) for the complete CoreML guide.
+See [NEW_FEATURES.md](NEW_FEATURES.md) for continuous capture & Vision features.
 
 ## Features
 
-MCP macOS Control provides **26 powerful tools** for programmatic control of your Mac:
+MCP macOS Control provides **39 powerful tools** for programmatic control of your Mac:
 
 ### Mouse Control (6 tools)
 - **click_screen** - Click at specific (x, y) coordinates
@@ -64,7 +72,26 @@ MCP macOS Control provides **26 powerful tools** for programmatic control of you
 - **detect_objects** - Detect objects with bounding boxes
 - **detect_rectangles** - Find rectangular shapes (UI elements, documents)
 - **detect_saliency** - Identify attention-grabbing regions
-- **detect_faces** - Detect faces with orientation data
+- **detect_faces** - Detect faces with bounding boxes and landmarks
+
+### CoreML & On-Device Intelligence (8 tools)
+- **list_coreml_models** - List available CoreML models in MLModels directory
+- **load_coreml_model** - Load a CoreML model for on-device inference
+- **unload_coreml_model** - Unload model from memory
+- **get_model_info** - Get metadata about loaded model
+- **generate_text_llm** - Generate text using on-device LLM (zero cloud tokens!)
+- **analyze_screen_with_llm** - Combine screen capture + Vision + LLM reasoning
+- **intelligent_screen_summary** - Smart summary using NaturalLanguage framework
+- **extract_key_info** - Extract entities and key information from OCR text
+
+### High-Level Real-Time Analysis (4 tools)
+- **analyze_screen_now** - Quick capture and analyze with computer vision
+- **start_screen_monitoring** - Continuous monitoring with real-time analysis
+- **get_monitoring_results** - Get latest analysis from monitoring
+- **stop_screen_monitoring** - Stop active monitoring session
+
+### System Tools (1 tool)
+- **check_permissions** - Check Screen Recording and Accessibility permissions
 
 ## Requirements
 

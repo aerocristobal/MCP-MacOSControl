@@ -132,6 +132,106 @@ struct MacOSControlServer {
                 inputSchema: jsonSchema(type: "object")
             ),
 
+            // CoreML & On-Device Intelligence Tools
+            Tool(
+                name: "list_coreml_models",
+                description: "List available CoreML models in the MLModels directory",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "directory": ["type": "string", "description": "Custom directory path (optional, defaults to ~/Documents/MLModels)"]
+                    ]
+                )
+            ),
+            Tool(
+                name: "load_coreml_model",
+                description: "Load a CoreML model for on-device inference",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "name": ["type": "string", "description": "Model name identifier"],
+                        "path": ["type": "string", "description": "Full path to .mlmodelc or .mlpackage file"]
+                    ],
+                    required: ["name", "path"]
+                )
+            ),
+            Tool(
+                name: "unload_coreml_model",
+                description: "Unload a CoreML model from memory",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "name": ["type": "string", "description": "Model name to unload"]
+                    ],
+                    required: ["name"]
+                )
+            ),
+            Tool(
+                name: "get_model_info",
+                description: "Get metadata and information about a loaded CoreML model",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "name": ["type": "string", "description": "Model name"]
+                    ],
+                    required: ["name"]
+                )
+            ),
+            Tool(
+                name: "generate_text_llm",
+                description: "Generate text using a loaded CoreML LLM model (on-device, no tokens used)",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "model_name": ["type": "string", "description": "Name of loaded LLM model"],
+                        "prompt": ["type": "string", "description": "Text prompt for generation"],
+                        "max_tokens": ["type": "integer", "description": "Maximum tokens to generate", "default": 256],
+                        "temperature": ["type": "number", "description": "Sampling temperature (0.0-1.0)", "default": 0.7]
+                    ],
+                    required: ["model_name", "prompt"]
+                )
+            ),
+            Tool(
+                name: "analyze_screen_with_llm",
+                description: "Combine screen analysis with on-device LLM reasoning (reduces cloud token usage)",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "model_name": ["type": "string", "description": "Name of loaded LLM model"],
+                        "instruction": ["type": "string", "description": "What to analyze or extract from screen"],
+                        "capture_type": ["type": "string", "description": "Type: display, window, or application", "default": "display"],
+                        "target_identifier": ["type": "string", "description": "Display ID, window title, or app identifier (optional)"],
+                        "include_ocr": ["type": "boolean", "description": "Include OCR text", "default": true],
+                        "include_classification": ["type": "boolean", "description": "Include scene classification", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection", "default": false],
+                        "max_response_tokens": ["type": "integer", "description": "Max LLM response length", "default": 512]
+                    ],
+                    required: ["model_name", "instruction"]
+                )
+            ),
+            Tool(
+                name: "intelligent_screen_summary",
+                description: "Get an intelligent summary of screen content using NaturalLanguage framework (no model loading needed)",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "capture_type": ["type": "string", "description": "Type: display, window, or application", "default": "display"],
+                        "target_identifier": ["type": "string", "description": "Display ID, window title, or app identifier (optional)"]
+                    ]
+                )
+            ),
+            Tool(
+                name: "extract_key_info",
+                description: "Extract key information (entities, summary) from OCR text using NaturalLanguage framework",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "ocr_results": ["type": "array", "description": "OCR results array from take_screenshot_with_ocr"]
+                    ],
+                    required: ["ocr_results"]
+                )
+            ),
+
             // Mouse Control Tools
             Tool(
                 name: "click_screen",
@@ -570,6 +670,222 @@ struct MacOSControlServer {
                 )
             } catch {
                 return .init(content: [.text("Error checking permissions: \(error.localizedDescription)")], isError: true)
+            }
+
+        // CoreML & On-Device Intelligence Tools
+        case "list_coreml_models":
+            let directory = args["directory"]?.stringValue
+            do {
+                let models = try CoreMLManager.listAvailableModels(directory: directory)
+                let jsonData = try JSONSerialization.data(withJSONObject: models)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+                return .init(content: [.text("Available CoreML models (\(models.count)):\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "load_coreml_model":
+            guard let name = args["name"]?.stringValue,
+                  let path = args["path"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: name and path required")], isError: true)
+            }
+
+            do {
+                let message = try CoreMLManager.loadModel(name: name, path: path)
+                return .init(content: [.text(message)], isError: false)
+            } catch {
+                return .init(content: [.text("Error loading model: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "unload_coreml_model":
+            guard let name = args["name"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: name required")], isError: true)
+            }
+
+            do {
+                try CoreMLManager.unloadModel(name: name)
+                return .init(content: [.text("Model '\(name)' unloaded successfully")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "get_model_info":
+            guard let name = args["name"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: name required")], isError: true)
+            }
+
+            do {
+                let metadata = try CoreMLManager.getModelMetadata(name: name)
+                let jsonData = try JSONSerialization.data(withJSONObject: metadata)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(content: [.text("Model '\(name)' info:\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "generate_text_llm":
+            guard let modelName = args["model_name"]?.stringValue,
+                  let prompt = args["prompt"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: model_name and prompt required")], isError: true)
+            }
+
+            let maxTokens = args["max_tokens"]?.intValue ?? 256
+            let temperature = args["temperature"]?.doubleValue ?? 0.7
+
+            do {
+                let response = try await CoreMLManager.generateText(
+                    modelName: modelName,
+                    prompt: prompt,
+                    maxTokens: maxTokens,
+                    temperature: temperature
+                )
+                return .init(content: [.text("LLM Response:\n\(response)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "analyze_screen_with_llm":
+            guard let modelName = args["model_name"]?.stringValue,
+                  let instruction = args["instruction"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: model_name and instruction required")], isError: true)
+            }
+
+            let captureTypeStr = args["capture_type"]?.stringValue ?? "display"
+            let targetIdentifier = args["target_identifier"]?.stringValue
+            let includeOCR = args["include_ocr"]?.boolValue ?? true
+            let includeClassification = args["include_classification"]?.boolValue ?? true
+            let includeObjects = args["include_objects"]?.boolValue ?? false
+            let maxTokens = args["max_response_tokens"]?.intValue ?? 512
+
+            // Parse capture type
+            let captureType: ContinuousCaptureManager.CaptureType
+            switch captureTypeStr.lowercased() {
+            case "display":
+                captureType = .display
+            case "window":
+                captureType = .window
+            case "application", "app":
+                captureType = .application
+            default:
+                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+            }
+
+            do {
+                // Build analysis types
+                var analysisTypes: [RealtimeAnalyzer.AnalysisType] = []
+                if includeClassification {
+                    analysisTypes.append(.classification(topK: 5))
+                }
+                if includeObjects {
+                    analysisTypes.append(.objectDetection(minConfidence: 0.5))
+                }
+                if includeOCR {
+                    analysisTypes.append(.ocr)
+                }
+
+                // Capture and analyze screen
+                let screenContent = try await RealtimeAnalyzer.quickAnalyze(
+                    captureType: captureType,
+                    targetIdentifier: targetIdentifier,
+                    analysisTypes: analysisTypes
+                )
+
+                // Process with LLM
+                let llmResult = try await CoreMLManager.analyzeWithLLM(
+                    modelName: modelName,
+                    screenContent: screenContent,
+                    instruction: instruction,
+                    maxTokens: maxTokens
+                )
+
+                let jsonData = try JSONSerialization.data(withJSONObject: llmResult)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(content: [.text("Screen analysis with LLM:\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "intelligent_screen_summary":
+            let captureTypeStr = args["capture_type"]?.stringValue ?? "display"
+            let targetIdentifier = args["target_identifier"]?.stringValue
+
+            let captureType: ContinuousCaptureManager.CaptureType
+            switch captureTypeStr.lowercased() {
+            case "display":
+                captureType = .display
+            case "window":
+                captureType = .window
+            case "application", "app":
+                captureType = .application
+            default:
+                return .init(content: [.text("Invalid capture_type")], isError: true)
+            }
+
+            do {
+                // Capture and analyze with all available methods
+                let analysisTypes: [RealtimeAnalyzer.AnalysisType] = [
+                    .classification(topK: 5),
+                    .ocr,
+                    .objectDetection(minConfidence: 0.5)
+                ]
+
+                let results = try await RealtimeAnalyzer.quickAnalyze(
+                    captureType: captureType,
+                    targetIdentifier: targetIdentifier,
+                    analysisTypes: analysisTypes
+                )
+
+                // Extract individual results
+                let classification = results["classification"] as? [[String: Any]]
+                let ocr = results["ocr_text"] as? [[Any]]
+                let objects = results["objects"] as? [[String: Any]]
+
+                // Generate intelligent summary
+                let summary = CoreMLManager.intelligentScreenAnalysis(
+                    classificationResults: classification,
+                    ocrResults: ocr,
+                    objectResults: objects
+                )
+
+                let jsonData = try JSONSerialization.data(withJSONObject: summary)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(content: [.text("Intelligent screen summary:\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "extract_key_info":
+            guard let ocrValue = args["ocr_results"]?.arrayValue else {
+                return .init(content: [.text("Invalid parameters: ocr_results array required")], isError: true)
+            }
+
+            // Convert Value array to [[Any]]
+            var ocrResults: [[Any]] = []
+            for item in ocrValue {
+                if let arr = item.arrayValue {
+                    var converted: [Any] = []
+                    for element in arr {
+                        if let str = element.stringValue {
+                            converted.append(str)
+                        } else if let num = element.doubleValue {
+                            converted.append(num)
+                        } else if let subArr = element.arrayValue {
+                            let subConverted = subArr.compactMap { $0.intValue }
+                            converted.append(subConverted)
+                        }
+                    }
+                    ocrResults.append(converted)
+                }
+            }
+
+            let keyInfo = CoreMLManager.extractKeyInfo(ocrResults: ocrResults)
+
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: keyInfo)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                return .init(content: [.text("Extracted key information:\n\(jsonString)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
             }
 
         case "click_screen":
