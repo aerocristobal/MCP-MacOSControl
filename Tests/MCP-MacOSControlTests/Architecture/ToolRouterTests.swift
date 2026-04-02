@@ -3,8 +3,8 @@ import MCP
 @testable import MacOSControlLib
 
 final class ToolRouterTests: XCTestCase {
-    func testAllToolsReturns57Tools() {
-        XCTAssertEqual(ToolRouter.allTools.count, 57)
+    func testAllToolsReturns61Tools() {
+        XCTAssertEqual(ToolRouter.allTools.count, 61)
     }
 
     func testAllToolNamesAreUnique() {
@@ -42,6 +42,16 @@ final class ToolRouterTests: XCTestCase {
         XCTAssertEqual(result.isError, true)
         let text = extractText(from: result)
         XCTAssertTrue(text?.contains("image_data") == true)
+    }
+
+    func testDispatchesToAccessibilityModule() async throws {
+        // accessibility_tree with no params should succeed (returns frontmost app or permission error)
+        let params = makeParams(name: "accessibility_tree")
+        let result = try await ToolRouter.handle(params)
+        XCTAssertNotNil(result)
+        // Should NOT be "Unknown tool"
+        let text = extractText(from: result)
+        XCTAssertFalse(text?.contains("Unknown tool") == true)
     }
 
     func testDispatchesToIPhoneMirroringModule() async throws {

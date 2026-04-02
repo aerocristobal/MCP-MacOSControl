@@ -13,6 +13,7 @@ public enum ToolRouter {
         RealtimeModule.self,
         SystemModule.self,
         IPhoneMirroringModule.self,
+        AccessibilityModule.self,
     ]
 
     public static var allTools: [Tool] {

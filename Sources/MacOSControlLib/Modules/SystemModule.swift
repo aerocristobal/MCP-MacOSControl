@@ -21,6 +21,20 @@ public enum SystemModule: ToolModule {
                     required: ["milliseconds"]
                 )
             ),
+            Tool(
+                name: "wait_for_text",
+                description: "Poll screenshot+OCR until specific text appears or timeout",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "text": ["type": "string", "description": "Text to wait for (case-insensitive substring match)"],
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 5000],
+                        "poll_interval_ms": ["type": "integer", "description": "Time between OCR polls in milliseconds", "default": 500],
+                        "title_pattern": ["type": "string", "description": "Optional window title pattern to target"]
+                    ],
+                    required: ["text"]
+                )
+            ),
         ]
     }
 
@@ -65,6 +79,56 @@ public enum SystemModule: ToolModule {
             let nanoseconds = UInt64(milliseconds) * 1_000_000
             try await Task.sleep(nanoseconds: nanoseconds)
             return .init(content: [.text("Waited \(milliseconds)ms")], isError: false)
+
+        case "wait_for_text":
+            guard let searchText = args["text"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+            }
+            let timeoutMs = args["timeout_ms"]?.intValue ?? 5000
+            let pollIntervalMs = args["poll_interval_ms"]?.intValue ?? 500
+            let titlePattern = args["title_pattern"]?.stringValue
+
+            let startTime = DispatchTime.now()
+            let timeoutNanos = UInt64(timeoutMs) * 1_000_000
+            let pollNanos = UInt64(pollIntervalMs) * 1_000_000
+
+            while true {
+                let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
+                if elapsed >= timeoutNanos {
+                    return .init(content: [.text("Timeout: '\(searchText)' not found within \(timeoutMs)ms")], isError: true)
+                }
+
+                do {
+                    let result = try await OCRProcessor.takeScreenshotWithOCR(
+                        titlePattern: titlePattern,
+                        useRegex: false,
+                        threshold: 60,
+                        saveToDownloads: false
+                    )
+
+                    // Search OCR results for the target text (case-insensitive)
+                    for entry in result.ocrResults {
+                        guard entry.count >= 3,
+                              let text = entry[1] as? String else { continue }
+                        if text.localizedCaseInsensitiveContains(searchText) {
+                            let matchInfo: [String: Any] = [
+                                "found": true,
+                                "text": text,
+                                "coordinates": entry[0],
+                                "confidence": entry[2],
+                                "elapsed_ms": Int(elapsed / 1_000_000)
+                            ]
+                            let jsonData = try JSONSerialization.data(withJSONObject: matchInfo)
+                            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                            return .init(content: [.text("Text found:\n\(jsonString)")], isError: false)
+                        }
+                    }
+                } catch {
+                    // OCR failed this poll, continue trying
+                }
+
+                try await Task.sleep(nanoseconds: pollNanos)
+            }
 
         default:
             return nil

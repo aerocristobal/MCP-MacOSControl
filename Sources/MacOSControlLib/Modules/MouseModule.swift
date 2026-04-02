@@ -11,7 +11,8 @@ public enum MouseModule: ToolModule {
                     type: "object",
                     properties: [
                         "x": ["type": "integer", "description": "X coordinate"],
-                        "y": ["type": "integer", "description": "Y coordinate"]
+                        "y": ["type": "integer", "description": "Y coordinate"],
+                        "button": ["type": "string", "description": "Mouse button (left, right, middle)", "default": "left"]
                     ],
                     required: ["x", "y"]
                 )
@@ -68,6 +69,32 @@ public enum MouseModule: ToolModule {
                     required: ["from_x", "from_y", "to_x", "to_y"]
                 )
             ),
+            Tool(
+                name: "double_click",
+                description: "Double-click at the specified screen coordinates",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "x": ["type": "integer", "description": "X coordinate"],
+                        "y": ["type": "integer", "description": "Y coordinate"]
+                    ],
+                    required: ["x", "y"]
+                )
+            ),
+            Tool(
+                name: "scroll",
+                description: "Scroll at the current or specified screen position",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "direction": ["type": "string", "description": "Scroll direction: up, down, left, right"],
+                        "amount": ["type": "integer", "description": "Scroll amount in lines", "default": 3],
+                        "x": ["type": "integer", "description": "X coordinate (optional, defaults to current position)"],
+                        "y": ["type": "integer", "description": "Y coordinate (optional, defaults to current position)"]
+                    ],
+                    required: ["direction"]
+                )
+            ),
         ]
     }
 
@@ -79,9 +106,10 @@ public enum MouseModule: ToolModule {
                   let y = args["y"]?.intValue else {
                 return .init(content: [.text("Invalid parameters: x and y coordinates required")], isError: true)
             }
+            let button = args["button"]?.stringValue ?? "left"
             do {
-                try MouseControl.click(x: x, y: y)
-                return .init(content: [.text("Clicked at (\(x), \(y))")], isError: false)
+                try MouseControl.click(x: x, y: y, button: button)
+                return .init(content: [.text("Clicked at (\(x), \(y)) with \(button) button")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
             }
@@ -131,6 +159,32 @@ public enum MouseModule: ToolModule {
             do {
                 try await MouseControl.dragMouse(fromX: fromX, fromY: fromY, toX: toX, toY: toY, duration: duration)
                 return .init(content: [.text("Dragged from (\(fromX), \(fromY)) to (\(toX), \(toY))")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "double_click":
+            guard let x = args["x"]?.intValue,
+                  let y = args["y"]?.intValue else {
+                return .init(content: [.text("Invalid parameters: x and y coordinates required")], isError: true)
+            }
+            do {
+                try MouseControl.doubleClick(x: x, y: y)
+                return .init(content: [.text("Double-clicked at (\(x), \(y))")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "scroll":
+            guard let direction = args["direction"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: direction required")], isError: true)
+            }
+            let amount = args["amount"]?.intValue ?? 3
+            let x = args["x"]?.intValue
+            let y = args["y"]?.intValue
+            do {
+                try MouseControl.scroll(x: x, y: y, direction: direction, amount: amount)
+                return .init(content: [.text("Scrolled \(direction) by \(amount)")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
             }

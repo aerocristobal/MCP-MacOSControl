@@ -147,7 +147,7 @@ public class KeyboardControl {
     }
 
     /// Get CGKeyCode for a given key string
-    private static func getKeyCode(for key: String) -> CGKeyCode? {
+    static func getKeyCode(for key: String) -> CGKeyCode? {
         let keyMap: [String: CGKeyCode] = [
             // Letters
             "a": 0x00, "b": 0x0B, "c": 0x08, "d": 0x02, "e": 0x0E, "f": 0x03, "g": 0x05,
@@ -186,7 +186,7 @@ public class KeyboardControl {
     }
 
     /// Get modifier flag for a given key string
-    private static func getModifierFlag(for key: String) -> CGEventFlags? {
+    static func getModifierFlag(for key: String) -> CGEventFlags? {
         switch key.lowercased() {
         case "command", "cmd":
             return .maskCommand

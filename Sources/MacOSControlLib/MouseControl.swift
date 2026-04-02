@@ -88,6 +88,74 @@ public class MouseControl {
         return (width: Int(frame.width), height: Int(frame.height))
     }
 
+    /// Click with configurable button at screen coordinates
+    public static func click(x: Int, y: Int, button: String) throws {
+        let point = CGPoint(x: x, y: y)
+        let (downType, mouseButton) = try getMouseTypeAndButton(button: button, isDown: true)
+        let (upType, _) = try getMouseTypeAndButton(button: button, isDown: false)
+
+        let mouseDown = CGEvent(mouseEventSource: nil, mouseType: downType, mouseCursorPosition: point, mouseButton: mouseButton)
+        let mouseUp = CGEvent(mouseEventSource: nil, mouseType: upType, mouseCursorPosition: point, mouseButton: mouseButton)
+
+        mouseDown?.post(tap: .cghidEventTap)
+        mouseUp?.post(tap: .cghidEventTap)
+    }
+
+    /// Double-click at the specified screen coordinates
+    public static func doubleClick(x: Int, y: Int) throws {
+        let point = CGPoint(x: x, y: y)
+
+        // First click
+        let down1 = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
+        down1?.setIntegerValueField(.mouseEventClickState, value: 1)
+        down1?.post(tap: .cghidEventTap)
+
+        let up1 = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+        up1?.setIntegerValueField(.mouseEventClickState, value: 1)
+        up1?.post(tap: .cghidEventTap)
+
+        // Brief delay
+        usleep(50000) // 50ms
+
+        // Second click with clickState=2
+        let down2 = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: point, mouseButton: .left)
+        down2?.setIntegerValueField(.mouseEventClickState, value: 2)
+        down2?.post(tap: .cghidEventTap)
+
+        let up2 = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left)
+        up2?.setIntegerValueField(.mouseEventClickState, value: 2)
+        up2?.post(tap: .cghidEventTap)
+    }
+
+    /// Scroll at the specified screen coordinates
+    public static func scroll(x: Int? = nil, y: Int? = nil, direction: String, amount: Int = 3) throws {
+        // Move to position if specified
+        if let x = x, let y = y {
+            try moveMouse(x: x, y: y)
+        }
+
+        var wheel1: Int32 = 0
+        var wheel2: Int32 = 0
+
+        switch direction.lowercased() {
+        case "up":
+            wheel1 = -Int32(amount)
+        case "down":
+            wheel1 = Int32(amount)
+        case "left":
+            wheel2 = -Int32(amount)
+        case "right":
+            wheel2 = Int32(amount)
+        default:
+            throw NSError(domain: "MouseControl", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid direction: \(direction). Must be up, down, left, or right"])
+        }
+
+        if let scrollEvent = CGEvent(scrollWheelEvent2Source: nil, units: .line,
+                                      wheelCount: 2, wheel1: wheel1, wheel2: wheel2, wheel3: 0) {
+            scrollEvent.post(tap: .cghidEventTap)
+        }
+    }
+
     // Helper function to convert button string to CGEventType and CGMouseButton
     private static func getMouseTypeAndButton(button: String, isDown: Bool) throws -> (CGEventType, CGMouseButton) {
         switch button.lowercased() {

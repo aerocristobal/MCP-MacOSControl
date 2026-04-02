@@ -317,6 +317,28 @@ final class ToolSchemaTests: XCTestCase {
         XCTAssertEqual(Set(requiredParams(for: tool)), Set(["model_name", "instruction"]))
     }
 
+    // MARK: - New Phase 3 Tools
+
+    func testScrollRequiredParams() {
+        let tool = findTool("scroll")
+        XCTAssertEqual(Set(requiredParams(for: tool)), Set(["direction"]))
+    }
+
+    func testDoubleClickRequiredParams() {
+        let tool = findTool("double_click")
+        XCTAssertEqual(Set(requiredParams(for: tool)), Set(["x", "y"]))
+    }
+
+    func testWaitForTextRequiredParams() {
+        let tool = findTool("wait_for_text")
+        XCTAssertEqual(requiredParams(for: tool), ["text"])
+    }
+
+    func testAccessibilityTreeRequiredParams() {
+        let tool = findTool("accessibility_tree")
+        XCTAssertEqual(requiredParams(for: tool), [])
+    }
+
     // MARK: - Schema Structure
 
     func testAllToolsHaveObjectSchema() {
