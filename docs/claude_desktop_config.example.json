@@ -3,6 +3,8 @@
     "macos-control": {
       "command": "/path/to/mcp-macos-control",
       "env": {
+        "MCP_MACOS_CONTROL_LOG_LEVEL": "warn",
+        "MCP_MACOS_CONTROL_MAX_INPUT_RATE": "10",
         "MCP_MACOS_CONTROL_SCREENSHOT_DIR": "/Users/yourusername/Screenshots"
       }
     }
