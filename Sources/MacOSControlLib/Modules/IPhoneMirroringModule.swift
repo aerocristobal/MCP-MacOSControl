@@ -25,7 +25,7 @@ public enum IPhoneMirroringModule: ToolModule {
             // Tap Gestures
             Tool(
                 name: "iphone_tap",
-                description: "Tap at normalized coordinates (0-1) on the iPhone screen",
+                description: "Tap at normalized coordinates (0-1) on the iPhone screen. Use coordinates from iphone_screenshot_with_ocr results directly.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
@@ -149,7 +149,7 @@ public enum IPhoneMirroringModule: ToolModule {
             ),
             Tool(
                 name: "iphone_screenshot_with_ocr",
-                description: "Capture iPhone screen and extract text with OCR (coordinates normalized 0-1)",
+                description: "Capture iPhone screen and extract text with OCR. Returns normalized 0-1 coordinates that can be passed directly to iphone_tap. This is the primary perception tool for iPhone automation.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
@@ -188,7 +188,7 @@ public enum IPhoneMirroringModule: ToolModule {
             // Convenience
             Tool(
                 name: "iphone_open_app",
-                description: "Open an iOS app by name via Spotlight search",
+                description: "Open an iOS app by name via Spotlight search. Handles the full sequence: Spotlight, type name, OCR, tap result. Single call replaces 5+ manual tool calls.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
@@ -199,7 +199,7 @@ public enum IPhoneMirroringModule: ToolModule {
             ),
             Tool(
                 name: "iphone_wait_for_text",
-                description: "Poll iPhone screen OCR until specific text appears (returns normalized coordinates)",
+                description: "Poll iPhone screen OCR until specific text appears. Returns normalized coordinates for immediate use with iphone_tap. Use instead of fixed delays between actions.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
