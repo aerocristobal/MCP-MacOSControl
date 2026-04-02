@@ -32,3 +32,5 @@ DerivedData/
 # Environment
 .env
 .env.local
+.memory/
+

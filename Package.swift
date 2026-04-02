@@ -13,15 +13,31 @@ let package = Package(
         )
     ],
     dependencies: [
-        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.10.0")
+        .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.0")
     ],
     targets: [
-        .executableTarget(
-            name: "MCP-MacOSControl",
+        .target(
+            name: "MacOSControlLib",
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk")
             ],
-            path: "Sources"
+            path: "Sources/MacOSControlLib"
+        ),
+        .executableTarget(
+            name: "MCP-MacOSControl",
+            dependencies: [
+                "MacOSControlLib",
+                .product(name: "MCP", package: "swift-sdk")
+            ],
+            path: "Sources/MCP-MacOSControl"
+        ),
+        .testTarget(
+            name: "MCP-MacOSControlTests",
+            dependencies: [
+                "MacOSControlLib",
+                .product(name: "MCP", package: "swift-sdk")
+            ],
+            path: "Tests/MCP-MacOSControlTests"
         )
     ]
 )
