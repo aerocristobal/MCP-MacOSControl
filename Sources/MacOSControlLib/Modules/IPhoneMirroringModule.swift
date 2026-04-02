@@ -184,6 +184,42 @@ public enum IPhoneMirroringModule: ToolModule {
                     required: ["model_name", "instruction"]
                 )
             ),
+
+            // Convenience
+            Tool(
+                name: "iphone_open_app",
+                description: "Open an iOS app by name via Spotlight search",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "app_name": ["type": "string", "description": "Name of the iOS app to open"]
+                    ],
+                    required: ["app_name"]
+                )
+            ),
+            Tool(
+                name: "iphone_wait_for_text",
+                description: "Poll iPhone screen OCR until specific text appears (returns normalized coordinates)",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "text": ["type": "string", "description": "Text to wait for (case-insensitive)"],
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 5000],
+                        "poll_interval_ms": ["type": "integer", "description": "Time between polls in milliseconds", "default": 500]
+                    ],
+                    required: ["text"]
+                )
+            ),
+            Tool(
+                name: "iphone_reconnect",
+                description: "Wait for iPhone Mirroring to reconnect after a disconnect",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 30000]
+                    ]
+                )
+            ),
         ]
     }
 
@@ -204,6 +240,7 @@ public enum IPhoneMirroringModule: ToolModule {
                     status["windowId"] = Int(windowID)
                     status["position"] = ["x": bounds.minX, "y": bounds.minY]
                     status["size"] = ["width": bounds.width, "height": bounds.height]
+                    status["connected"] = MirroringWindowDetector.isConnected()
                 } catch {
                     status["window_error"] = error.localizedDescription
                 }
@@ -522,6 +559,82 @@ public enum IPhoneMirroringModule: ToolModule {
                 return .init(content: [.text("iPhone LLM analysis:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
                 return error.toResult()
+            }
+
+        // MARK: Convenience
+        case "iphone_open_app":
+            guard let appName = args["app_name"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: app_name required")], isError: true)
+            }
+            do {
+                let message = try await IOSNavigation.openApp(name: appName)
+                return .init(content: [.text(message)], isError: false)
+            } catch let error as MCPError {
+                return error.toResult()
+            }
+
+        case "iphone_wait_for_text":
+            guard let searchText = args["text"]?.stringValue else {
+                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+            }
+            let timeoutMs = args["timeout_ms"]?.intValue ?? 5000
+            let pollIntervalMs = args["poll_interval_ms"]?.intValue ?? 500
+            let startTime = DispatchTime.now()
+            let timeoutNanos = UInt64(timeoutMs) * 1_000_000
+            let pollNanos = UInt64(pollIntervalMs) * 1_000_000
+
+            while true {
+                let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
+                if elapsed >= timeoutNanos {
+                    return .init(content: [.text("Timeout: '\(searchText)' not found on iPhone within \(timeoutMs)ms")], isError: true)
+                }
+                do {
+                    let imageData = try await captureIPhoneScreen()
+                    let ocrResults = try await OCRProcessor.performOCR(on: imageData)
+                    let nsImg = NSImage(data: imageData)
+                    let imgW = nsImg?.size.width ?? 1
+                    let imgH = nsImg?.size.height ?? 1
+
+                    for entry in ocrResults {
+                        guard entry.count >= 3, let text = entry[1] as? String else { continue }
+                        if text.localizedCaseInsensitiveContains(searchText) {
+                            var cx = 0.5, cy = 0.5
+                            if let coords = entry[0] as? [[Any]], coords.count >= 4 {
+                                var sx = 0.0, sy = 0.0
+                                for p in coords {
+                                    if let px = p[0] as? Int, let py = p[1] as? Int { sx += Double(px); sy += Double(py) }
+                                    else if let px = p[0] as? Double, let py = p[1] as? Double { sx += px; sy += py }
+                                }
+                                cx = sx / Double(coords.count) / Double(imgW)
+                                cy = sy / Double(coords.count) / Double(imgH)
+                            }
+                            let info: [String: Any] = ["found": true, "text": text, "x": cx, "y": cy, "confidence": entry[2], "elapsed_ms": Int(elapsed / 1_000_000)]
+                            let jsonData = try JSONSerialization.data(withJSONObject: info)
+                            let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
+                            return .init(content: [.text("Text found on iPhone:\n\(jsonString)")], isError: false)
+                        }
+                    }
+                } catch { /* OCR failed this poll, continue */ }
+                try await Task.sleep(nanoseconds: pollNanos)
+            }
+
+        case "iphone_reconnect":
+            let timeoutMs = args["timeout_ms"]?.intValue ?? 30000
+            let startTime = DispatchTime.now()
+            let timeoutNanos = UInt64(timeoutMs) * 1_000_000
+
+            while true {
+                let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
+                if elapsed >= timeoutNanos {
+                    return .init(content: [.text("Timeout: iPhone Mirroring did not reconnect within \(timeoutMs)ms")], isError: true)
+                }
+                MirroringWindowDetector.clearCache()
+                if let (windowID, bounds) = try? MirroringWindowDetector.findMirroringWindow(),
+                   MirroringWindowDetector.isConnected() {
+                    CoordinateTranslator.clearCache()
+                    return .init(content: [.text("iPhone Mirroring reconnected (window \(windowID), \(Int(bounds.width))x\(Int(bounds.height)))")], isError: false)
+                }
+                try await Task.sleep(nanoseconds: 1_000_000_000)
             }
 
         default:

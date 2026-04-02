@@ -18,6 +18,11 @@ final class MouseModuleTests: XCTestCase {
         XCTAssertEqual(result?.isError, true)
     }
 
+    func testScrollMissingParams() async throws {
+        let result = try await MouseModule.handle(makeParams(name: "scroll"))
+        XCTAssertEqual(result?.isError, true)
+    }
+
     func testUnknownToolReturnsNil() async throws {
         let result = try await MouseModule.handle(makeParams(name: "unknown"))
         XCTAssertNil(result)

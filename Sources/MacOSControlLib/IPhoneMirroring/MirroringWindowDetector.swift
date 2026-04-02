@@ -82,6 +82,47 @@ public enum MirroringWindowDetector {
         try await Task.sleep(nanoseconds: 50_000_000) // 50ms
     }
 
+    /// Check if the mirroring window is actively rendering (not blank/disconnected).
+    public static func isConnected() -> Bool {
+        guard let windowID = _cachedWindowID,
+              let bounds = _cachedWindowBounds else {
+            guard let (wid, wb) = try? findMirroringWindow() else { return false }
+            return checkWindowHasContent(windowID: wid, bounds: wb)
+        }
+        return checkWindowHasContent(windowID: windowID, bounds: bounds)
+    }
+
+    private static func checkWindowHasContent(windowID: CGWindowID, bounds: CGRect) -> Bool {
+        guard let image = CGWindowListCreateImage(
+            bounds, .optionIncludingWindow, windowID, [.nominalResolution]
+        ) else { return false }
+
+        let width = image.width
+        let height = image.height
+        guard width > 10, height > 10 else { return false }
+
+        guard let dataProvider = image.dataProvider,
+              let data = dataProvider.data,
+              let ptr = CFDataGetBytePtr(data) else { return false }
+
+        let bytesPerPixel = image.bitsPerPixel / 8
+        let bytesPerRow = image.bytesPerRow
+
+        // Sample 5 points — if all same color, likely disconnected
+        let points = [(width/4, height/4), (width/2, height/2), (3*width/4, height/4),
+                       (width/4, 3*height/4), (3*width/4, 3*height/4)]
+
+        var firstR: UInt8 = 0, firstG: UInt8 = 0, firstB: UInt8 = 0
+        for (i, (x, y)) in points.enumerated() {
+            let offset = y * bytesPerRow + x * bytesPerPixel
+            guard offset + 2 < CFDataGetLength(data) else { return false }
+            let r = ptr[offset], g = ptr[offset + 1], b = ptr[offset + 2]
+            if i == 0 { firstR = r; firstG = g; firstB = b }
+            else if r != firstR || g != firstG || b != firstB { return true }
+        }
+        return false // All pixels same = disconnected
+    }
+
     /// Clear cached window info.
     public static func clearCache() {
         _cachedWindowID = nil

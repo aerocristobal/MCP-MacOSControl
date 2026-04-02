@@ -21,11 +21,22 @@ public enum ToolRouter {
     }
 
     public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result {
+        let start = DispatchTime.now()
+        MCPLogger.trace("Tool call: \(params.name)")
+
         for module in modules {
             if let result = try await module.handle(params) {
+                let elapsed = Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1_000_000
+                if result.isError == true {
+                    MCPLogger.warn("\(params.name) failed in \(Int(elapsed))ms")
+                } else {
+                    MCPLogger.debug("\(params.name) completed in \(Int(elapsed))ms")
+                }
                 return result
             }
         }
+
+        MCPLogger.warn("Unknown tool: \(params.name)")
         return .init(content: [.text("Unknown tool: \(params.name)")], isError: false)
     }
 }

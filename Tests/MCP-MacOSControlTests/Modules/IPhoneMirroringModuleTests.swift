@@ -4,8 +4,8 @@ import MCP
 
 final class IPhoneMirroringModuleTests: XCTestCase {
 
-    func testHas18Tools() {
-        XCTAssertEqual(IPhoneMirroringModule.tools.count, 18)
+    func testHas21Tools() {
+        XCTAssertEqual(IPhoneMirroringModule.tools.count, 21)
     }
 
     func testToolNames() {
@@ -16,7 +16,8 @@ final class IPhoneMirroringModuleTests: XCTestCase {
             "iphone_type_text", "iphone_clear_text", "iphone_press_key",
             "iphone_home", "iphone_app_switcher", "iphone_spotlight",
             "iphone_screenshot", "iphone_screenshot_with_ocr",
-            "iphone_analyze_screen_now", "iphone_analyze_with_llm"
+            "iphone_analyze_screen_now", "iphone_analyze_with_llm",
+            "iphone_open_app", "iphone_wait_for_text", "iphone_reconnect"
         ]
         let actual = Set(IPhoneMirroringModule.tools.map(\.name))
         XCTAssertEqual(actual, expected)
@@ -59,6 +60,16 @@ final class IPhoneMirroringModuleTests: XCTestCase {
 
     func testAnalyzeWithLlmMissingParams() async throws {
         let result = try await IPhoneMirroringModule.handle(makeParams(name: "iphone_analyze_with_llm"))
+        XCTAssertEqual(result?.isError, true)
+    }
+
+    func testOpenAppMissingParams() async throws {
+        let result = try await IPhoneMirroringModule.handle(makeParams(name: "iphone_open_app"))
+        XCTAssertEqual(result?.isError, true)
+    }
+
+    func testWaitForTextMissingParams() async throws {
+        let result = try await IPhoneMirroringModule.handle(makeParams(name: "iphone_wait_for_text"))
         XCTAssertEqual(result?.isError, true)
     }
 

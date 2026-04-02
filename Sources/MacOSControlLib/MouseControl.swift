@@ -156,6 +156,36 @@ public class MouseControl {
         }
     }
 
+    /// List all connected displays with their properties
+    public static func listDisplays() -> [[String: Any]] {
+        var displayCount: UInt32 = 0
+        CGGetActiveDisplayList(0, nil, &displayCount)
+
+        var displays = [CGDirectDisplayID](repeating: 0, count: Int(displayCount))
+        CGGetActiveDisplayList(displayCount, &displays, &displayCount)
+
+        let mainDisplay = CGMainDisplayID()
+
+        return displays.map { displayID in
+            let bounds = CGDisplayBounds(displayID)
+            let pixelWidth = CGDisplayPixelsWide(displayID)
+            let pixelHeight = CGDisplayPixelsHigh(displayID)
+            let scaleFactor = bounds.width > 0 ? Double(pixelWidth) / Double(bounds.width) : 1.0
+
+            return [
+                "displayId": displayID,
+                "width": Int(bounds.width),
+                "height": Int(bounds.height),
+                "pixelWidth": pixelWidth,
+                "pixelHeight": pixelHeight,
+                "originX": Int(bounds.origin.x),
+                "originY": Int(bounds.origin.y),
+                "scaleFactor": scaleFactor,
+                "isMain": displayID == mainDisplay
+            ] as [String: Any]
+        }
+    }
+
     // Helper function to convert button string to CGEventType and CGMouseButton
     private static func getMouseTypeAndButton(button: String, isDown: Bool) throws -> (CGEventType, CGMouseButton) {
         switch button.lowercased() {

@@ -9,6 +9,9 @@ public enum MCPError: Error, CustomStringConvertible {
     case calibrationFailed(String)
     case invalidCoordinates(String)
     case inputFailed(String)
+    case mirroringDisconnected
+    case rateLimited(String)
+    case timeout(String)
 
     public var errorCode: String {
         switch self {
@@ -19,6 +22,9 @@ public enum MCPError: Error, CustomStringConvertible {
         case .calibrationFailed: return "CALIBRATION_FAILED"
         case .invalidCoordinates: return "INVALID_COORDINATES"
         case .inputFailed: return "INPUT_FAILED"
+        case .mirroringDisconnected: return "MIRRORING_DISCONNECTED"
+        case .rateLimited: return "RATE_LIMITED"
+        case .timeout: return "TIMEOUT"
         }
     }
 
@@ -31,6 +37,9 @@ public enum MCPError: Error, CustomStringConvertible {
         case .calibrationFailed(let detail): return "\(errorCode): \(detail)"
         case .invalidCoordinates(let detail): return "\(errorCode): \(detail)"
         case .inputFailed(let detail): return "\(errorCode): \(detail)"
+        case .mirroringDisconnected: return "\(errorCode): iPhone Mirroring connection lost. Use iphone_reconnect to wait for recovery."
+        case .rateLimited(let detail): return "\(errorCode): \(detail)"
+        case .timeout(let detail): return "\(errorCode): \(detail)"
         }
     }
 

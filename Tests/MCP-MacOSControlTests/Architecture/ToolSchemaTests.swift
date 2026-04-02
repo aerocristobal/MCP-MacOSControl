@@ -339,6 +339,28 @@ final class ToolSchemaTests: XCTestCase {
         XCTAssertEqual(requiredParams(for: tool), [])
     }
 
+    // MARK: - Phase 4 Tools
+
+    func testListDisplaysRequiredParams() {
+        let tool = findTool("list_displays")
+        XCTAssertEqual(requiredParams(for: tool), [])
+    }
+
+    func testIphoneOpenAppRequiredParams() {
+        let tool = findTool("iphone_open_app")
+        XCTAssertEqual(requiredParams(for: tool), ["app_name"])
+    }
+
+    func testIphoneWaitForTextRequiredParams() {
+        let tool = findTool("iphone_wait_for_text")
+        XCTAssertEqual(requiredParams(for: tool), ["text"])
+    }
+
+    func testIphoneReconnectRequiredParams() {
+        let tool = findTool("iphone_reconnect")
+        XCTAssertEqual(requiredParams(for: tool), [])
+    }
+
     // MARK: - Schema Structure
 
     func testAllToolsHaveObjectSchema() {

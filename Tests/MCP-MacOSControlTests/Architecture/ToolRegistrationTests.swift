@@ -3,8 +3,8 @@ import MCP
 @testable import MacOSControlLib
 
 final class ToolRegistrationTests: XCTestCase {
-    func testMouseModuleHas8Tools() {
-        XCTAssertEqual(MouseModule.tools.count, 8)
+    func testMouseModuleHas9Tools() {
+        XCTAssertEqual(MouseModule.tools.count, 9)
     }
 
     func testKeyboardModuleHas4Tools() {
@@ -43,13 +43,13 @@ final class ToolRegistrationTests: XCTestCase {
         XCTAssertEqual(AccessibilityModule.tools.count, 1)
     }
 
-    func testIPhoneMirroringModuleHas18Tools() {
-        XCTAssertEqual(IPhoneMirroringModule.tools.count, 18)
+    func testIPhoneMirroringModuleHas21Tools() {
+        XCTAssertEqual(IPhoneMirroringModule.tools.count, 21)
     }
 
     func testMouseModuleToolNames() {
         let names = Set(MouseModule.tools.map(\.name))
-        XCTAssertEqual(names, ["click_screen", "get_screen_size", "move_mouse", "mouse_down", "mouse_up", "drag_mouse", "double_click", "scroll"])
+        XCTAssertEqual(names, ["click_screen", "get_screen_size", "move_mouse", "mouse_down", "mouse_up", "drag_mouse", "double_click", "scroll", "list_displays"])
     }
 
     func testAllModulesToolNamesMatchExpected() {
@@ -72,7 +72,9 @@ final class ToolRegistrationTests: XCTestCase {
             "iphone_clear_text", "iphone_press_key", "iphone_home",
             "iphone_app_switcher", "iphone_spotlight", "iphone_screenshot",
             "iphone_screenshot_with_ocr", "iphone_analyze_screen_now",
-            "iphone_analyze_with_llm"
+            "iphone_analyze_with_llm",
+            "list_displays",
+            "iphone_open_app", "iphone_wait_for_text", "iphone_reconnect"
         ]
         let actual = Set(ToolRouter.allTools.map(\.name))
         XCTAssertEqual(actual, expected)

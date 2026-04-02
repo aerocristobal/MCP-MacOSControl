@@ -95,6 +95,11 @@ public enum MouseModule: ToolModule {
                     required: ["direction"]
                 )
             ),
+            Tool(
+                name: "list_displays",
+                description: "List all connected displays with IDs, resolutions, and positions",
+                inputSchema: jsonSchema(type: "object")
+            ),
         ]
     }
 
@@ -185,6 +190,16 @@ public enum MouseModule: ToolModule {
             do {
                 try MouseControl.scroll(x: x, y: y, direction: direction, amount: amount)
                 return .init(content: [.text("Scrolled \(direction) by \(amount)")], isError: false)
+            } catch {
+                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+            }
+
+        case "list_displays":
+            let displays = MouseControl.listDisplays()
+            do {
+                let jsonData = try JSONSerialization.data(withJSONObject: displays)
+                let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
+                return .init(content: [.text("Connected displays (\(displays.count)):\n\(jsonString)")], isError: false)
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
             }
