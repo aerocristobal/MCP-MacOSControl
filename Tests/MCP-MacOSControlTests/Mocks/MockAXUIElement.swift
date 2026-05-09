@@ -9,6 +9,8 @@ struct MockAXUIElement {
     var description: String?
     var pid: pid_t
     var bundleId: String?
+    var enabled: Bool
+    var value: String?
     var children: [MockAXUIElement]
 
     init(
@@ -19,6 +21,8 @@ struct MockAXUIElement {
         description: String? = nil,
         pid: pid_t = 0,
         bundleId: String? = nil,
+        enabled: Bool = true,
+        value: String? = nil,
         children: [MockAXUIElement] = []
     ) {
         self.role = role
@@ -28,6 +32,8 @@ struct MockAXUIElement {
         self.description = description
         self.pid = pid
         self.bundleId = bundleId
+        self.enabled = enabled
+        self.value = value
         self.children = children
     }
 }

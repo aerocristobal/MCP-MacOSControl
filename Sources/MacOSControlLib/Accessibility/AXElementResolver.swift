@@ -2,7 +2,7 @@ import Foundation
 import AppKit
 import ApplicationServices
 
-public final class AXElementResolver {
+public final class AXElementResolver: AXElementResolving {
     private let bridge: AXApplicationBridge
     private let options: AXResolverOptions
 
