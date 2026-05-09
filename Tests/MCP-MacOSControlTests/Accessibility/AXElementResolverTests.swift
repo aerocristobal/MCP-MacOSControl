@@ -162,6 +162,16 @@ final class AXElementResolverTests: XCTestCase {
         XCTAssertEqual(result.role, "AXTextField")
     }
 
+    func test_findElement_byTitle_returnsMatchingElement() throws {
+        let mock = MockAXUIElement(role: "AXTextField", title: "Username", pid: 1001)
+        let bridge = MockAXApplicationBridge(elements: [mock])
+        resolver = AXElementResolver(bridge: bridge)
+
+        let result = try resolver.findElement(by: .title, value: "Username")
+
+        XCTAssertEqual(result.title, "Username")
+    }
+
     // MARK: - Recursion / Depth
 
     func test_findElement_descendsThroughChildren() throws {

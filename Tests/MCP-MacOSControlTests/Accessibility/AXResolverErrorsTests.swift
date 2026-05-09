@@ -13,6 +13,13 @@ final class AXResolverErrorsTests: XCTestCase {
         XCTAssertEqual(error.errorCode, "AX_NOT_FOUND")
     }
 
+    func test_axNotFoundError_localizedDescriptionIncludesCriteria() {
+        // DoD: "AXNotFoundError carries full search criteria in localizedDescription".
+        let error: Error = AXNotFoundError(searchCriteria: "role=AXButton, title=Save")
+        XCTAssertTrue(error.localizedDescription.contains("role=AXButton"))
+        XCTAssertTrue(error.localizedDescription.contains("title=Save"))
+    }
+
     func test_axNotFoundError_toResultIsErrorTrue() {
         let error = AXNotFoundError(searchCriteria: "role=AXButton")
         let result = error.toResult()
