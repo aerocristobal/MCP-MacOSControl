@@ -11,6 +11,12 @@ final class MockAXApplicationBridge: AXApplicationBridge {
     var lastTargetElement: AXElementReference?
     var performActionCallCount: Int = 0
 
+    var copyActionNamesCallCount: Int = 0
+    var lastCopyActionNamesElement: AXElementReference?
+    /// Override the per-element supported-action list keyed by handle UUID. Falls back to the
+    /// `supportedActions` field on the underlying `MockAXUIElement` when no override exists.
+    var elementActions: [UUID: [String]] = [:]
+
     init(elements: [MockAXUIElement] = [], simulatedAXError: AXError? = nil) {
         self.elements = elements
         self.simulatedAXError = simulatedAXError
@@ -77,6 +83,20 @@ final class MockAXApplicationBridge: AXApplicationBridge {
                 underlyingCode: err.rawValue
             )
         }
+    }
+
+    func copyActionNames(_ ref: AXElementReference) throws -> [String] {
+        copyActionNamesCallCount += 1
+        lastCopyActionNamesElement = ref
+        if let err = simulatedAXError {
+            throw AXResolutionError(
+                detail: "simulated AX error \(err.rawValue) on copyActionNames",
+                underlyingCode: err.rawValue
+            )
+        }
+        guard case .mock(let id) = ref.handle else { return [] }
+        if let override = elementActions[id] { return override }
+        return refToMock[id]?.supportedActions ?? []
     }
 
     func isEnabled(_ ref: AXElementReference) -> Bool {

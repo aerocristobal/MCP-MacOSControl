@@ -8,6 +8,7 @@ public protocol AXApplicationBridge {
     func attribute(_ kind: AXAttributeKind, of ref: AXElementReference) -> String?
     func children(of ref: AXElementReference) throws -> [AXElementReference]
     func performAction(_ name: String, on ref: AXElementReference) throws
+    func copyActionNames(_ ref: AXElementReference) throws -> [String]
     func isEnabled(_ ref: AXElementReference) -> Bool
     func value(of ref: AXElementReference) -> String?
 }
@@ -73,6 +74,25 @@ public final class AXApplicationBridgeImpl: AXApplicationBridge {
         guard status == .success else {
             throw AXResolutionError(
                 detail: "perform action '\(name)' failed",
+                underlyingCode: status.rawValue
+            )
+        }
+    }
+
+    public func copyActionNames(_ ref: AXElementReference) throws -> [String] {
+        guard case .real(let element) = ref.handle else {
+            throw AXResolutionError(detail: "cannot enumerate actions on non-real element handle")
+        }
+        var namesRef: CFArray?
+        let status = AXUIElementCopyActionNames(element, &namesRef)
+        switch status {
+        case .success:
+            return (namesRef as? [String]) ?? []
+        case .noValue, .attributeUnsupported, .actionUnsupported:
+            return []
+        default:
+            throw AXResolutionError(
+                detail: "copy action names failed",
                 underlyingCode: status.rawValue
             )
         }

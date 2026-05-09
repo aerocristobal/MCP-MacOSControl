@@ -9,7 +9,10 @@ public final class AXElementInteractor: AXElementInteracting {
     }
 
     public func performPress(_ ref: AXElementReference) throws {
-        let action = kAXPressAction as String
+        try perform(kAXPressAction as String, on: ref)
+    }
+
+    public func perform(_ action: String, on ref: AXElementReference) throws {
         guard bridge.isEnabled(ref) else {
             throw AXActionError(
                 code: .elementDisabled,
