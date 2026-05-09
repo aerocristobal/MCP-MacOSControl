@@ -4,8 +4,12 @@ import ApplicationServices
 
 final class MockAXApplicationBridge: AXApplicationBridge {
     let elements: [MockAXUIElement]
-    let simulatedAXError: AXError?
+    var simulatedAXError: AXError?
     private var refToMock: [UUID: MockAXUIElement] = [:]
+
+    var lastPerformedAction: String?
+    var lastTargetElement: AXElementReference?
+    var performActionCallCount: Int = 0
 
     init(elements: [MockAXUIElement] = [], simulatedAXError: AXError? = nil) {
         self.elements = elements
@@ -64,7 +68,25 @@ final class MockAXApplicationBridge: AXApplicationBridge {
     }
 
     func performAction(_ name: String, on ref: AXElementReference) throws {
-        // Not exercised in STORY-001 tests.
+        performActionCallCount += 1
+        lastPerformedAction = name
+        lastTargetElement = ref
+        if let err = simulatedAXError {
+            throw AXResolutionError(
+                detail: "simulated AX error \(err.rawValue) on action '\(name)'",
+                underlyingCode: err.rawValue
+            )
+        }
+    }
+
+    func isEnabled(_ ref: AXElementReference) -> Bool {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return true }
+        return mock.enabled
+    }
+
+    func value(of ref: AXElementReference) -> String? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.value
     }
 
     private func reference(for mock: MockAXUIElement) -> AXElementReference {

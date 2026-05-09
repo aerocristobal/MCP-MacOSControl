@@ -8,6 +8,8 @@ public protocol AXApplicationBridge {
     func attribute(_ kind: AXAttributeKind, of ref: AXElementReference) -> String?
     func children(of ref: AXElementReference) throws -> [AXElementReference]
     func performAction(_ name: String, on ref: AXElementReference) throws
+    func isEnabled(_ ref: AXElementReference) -> Bool
+    func value(of ref: AXElementReference) -> String?
 }
 
 public final class AXApplicationBridgeImpl: AXApplicationBridge {
@@ -74,6 +76,29 @@ public final class AXApplicationBridgeImpl: AXApplicationBridge {
                 underlyingCode: status.rawValue
             )
         }
+    }
+
+    public func isEnabled(_ ref: AXElementReference) -> Bool {
+        guard case .real(let element) = ref.handle else { return true }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &raw)
+        guard status == .success, let cfBool = raw, CFGetTypeID(cfBool) == CFBooleanGetTypeID() else {
+            return true
+        }
+        return CFBooleanGetValue((cfBool as! CFBoolean))
+    }
+
+    public func value(of ref: AXElementReference) -> String? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &raw)
+        guard status == .success, let value = raw else { return nil }
+        if CFGetTypeID(value) == CFBooleanGetTypeID() {
+            return CFBooleanGetValue((value as! CFBoolean)) ? "1" : "0"
+        }
+        if let s = value as? String { return s.isEmpty ? nil : s }
+        if let n = value as? NSNumber { return n.stringValue }
+        return nil
     }
 
     private func buildReference(from element: AXUIElement, pid: pid_t, bundleId: String?) -> AXElementReference {

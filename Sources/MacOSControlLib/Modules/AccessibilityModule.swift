@@ -16,6 +16,26 @@ public enum AccessibilityModule: ToolModule {
                     ]
                 )
             ),
+            Tool(
+                name: "click_element",
+                description: "Click a UI element by semantic AX attributes (role, title, identifier, label) instead of pixel coordinates. Resolves the element via the macOS Accessibility tree and dispatches AXPress — works regardless of window position, display scale, or focus. DESTRUCTIVE: may activate Delete / Confirm controls. Returns immediately after AXPress; for post-click state, set return_state=true.",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "role": ["type": "string", "description": "AX role to match (e.g., AXButton, AXCheckBox)."],
+                        "title": ["type": "string", "description": "AX title to match (e.g., the visible label of a button)."],
+                        "identifier": ["type": "string", "description": "AX identifier — most specific locator when available."],
+                        "label": ["type": "string", "description": "AX accessibility label."],
+                        "description": ["type": "string", "description": "AX description / help text."],
+                        "application": ["type": "string", "description": "Restrict the search to this app — bundle ID (e.g., com.apple.TextEdit) or name (e.g., TextEdit)."],
+                        "return_state": ["type": "boolean", "description": "If true, re-read the element's value after the press and include it in the response.", "default": false]
+                    ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true
+                )
+            )
         ]
     }
 
@@ -41,6 +61,17 @@ public enum AccessibilityModule: ToolModule {
             } catch {
                 return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
             }
+
+        case "click_element":
+            let bridge = AXApplicationBridgeImpl()
+            let resolver = AXElementResolver(bridge: bridge)
+            let interactor = AXElementInteractor(bridge: bridge)
+            let tool = ClickElementTool(
+                resolver: resolver,
+                interactor: interactor,
+                bridge: bridge
+            )
+            return try await tool.execute(params)
 
         default:
             return nil
