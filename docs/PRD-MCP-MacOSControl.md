@@ -233,8 +233,10 @@ Sources/
     │   ├── GestureEngine.swift              # Tap, swipe, scroll, long-press
     │   └── IOSNavigation.swift              # Home, App Switcher, Spotlight
     │
-    ├── Accessibility/                       # NEW — AXUIElement tree reading
-    │   └── AccessibilityTreeReader.swift
+    ├── Accessibility/                       # AXUIElement tree reading + interaction
+    │   ├── AccessibilityTreeBuilder.swift   # Traversal + role-filter for action lookup
+    │   ├── AXNodeSerializer.swift           # JSON shaping + schema_version
+    │   └── AXNode.swift                     # Tree value type
     │
     └── Utilities/
         └── Errors.swift                     # Structured error types (NEW)
@@ -414,7 +416,7 @@ Build `IPhoneMirroring/` module and `IPhoneMirroringModule`.
 
 ### Phase 3: Accessibility + CoreML Composition
 
-- `AccessibilityTreeReader` + `accessibility_tree` tool for macOS windows.
+- `AccessibilityTreeBuilder` + `AXNodeSerializer` + `accessibility_tree` tool for macOS windows.
 - `iphone_analyze_with_llm` composing CoreML with iPhone screenshots.
 - `iphone_analyze_screen_now` composing Vision analysis with normalized coords.
 - Structured error codes across all modules.

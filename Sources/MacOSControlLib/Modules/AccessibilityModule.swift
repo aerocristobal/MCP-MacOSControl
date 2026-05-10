@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import MCP
 
 public enum AccessibilityModule: ToolModule {
@@ -6,14 +7,18 @@ public enum AccessibilityModule: ToolModule {
         [
             Tool(
                 name: "accessibility_tree",
-                description: "Read the accessibility tree of a macOS application window (AXUIElement). Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
+                description: "Read the accessibility tree of a macOS application (AXUIElement). Each node includes role, title, description, value, position, size, identifier, actions (per-node AXAction names), enabled, settable (whether AXValue is writable), and truncated (set on parents whose children were pruned by max_depth — re-request with a higher max_depth to drill in). Top-level schema_version is 2. Default max_depth is 6 — sufficient for toolbars / dialogs / menubar; pass 3 for smaller responses or 12+ for deeply nested apps. Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
                         "app_name": ["type": "string", "description": "Application name (optional, defaults to frontmost app)"],
                         "window_title": ["type": "string", "description": "Window title to target (optional)"],
-                        "max_depth": ["type": "integer", "description": "Maximum tree depth", "default": 3]
+                        "max_depth": ["type": "integer", "description": "Maximum tree depth (default 6). Root is depth 0; nodes whose pruned children would yield more detail are flagged truncated=true.", "default": 6]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false
                 )
             ),
             Tool(
@@ -66,15 +71,32 @@ public enum AccessibilityModule: ToolModule {
         case "accessibility_tree":
             let appName = args["app_name"]?.stringValue
             let windowTitle = args["window_title"]?.stringValue
-            let maxDepth = args["max_depth"]?.intValue ?? 3
+            let maxDepth = args["max_depth"]?.intValue ?? 6
 
             do {
-                let tree = try AccessibilityTreeReader.readTree(
-                    appName: appName,
-                    windowTitle: windowTitle,
-                    maxDepth: maxDepth
-                )
-                let jsonData = try JSONSerialization.data(withJSONObject: tree, options: [.prettyPrinted, .sortedKeys])
+                guard AXIsProcessTrusted() else {
+                    throw MCPError.permissionDenied("Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server.")
+                }
+
+                let runningApps = NSWorkspace.shared.runningApplications
+                let targetApp: NSRunningApplication?
+                if let appName {
+                    targetApp = runningApps.first { $0.localizedName?.localizedCaseInsensitiveContains(appName) == true }
+                } else {
+                    targetApp = NSWorkspace.shared.frontmostApplication
+                }
+                guard let app = targetApp else {
+                    throw MCPError.windowNotFound("Application '\(appName ?? "frontmost")' not found")
+                }
+
+                let bridge = AXApplicationBridgeImpl()
+                let builder = AccessibilityTreeBuilder(bridge: bridge)
+                let serializer = AXNodeSerializer()
+
+                let root = try builder.build(forPID: app.processIdentifier, windowTitle: windowTitle, maxDepth: maxDepth)
+                let response = serializer.serializeRoot(root)
+
+                let jsonData = try JSONSerialization.data(withJSONObject: response, options: [.prettyPrinted, .sortedKeys])
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Accessibility tree:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {

@@ -96,4 +96,49 @@ final class AccessibilityModuleTests: XCTestCase {
         XCTAssertTrue(text.lowercased().contains("locator"),
                       "expected validation message about missing locator; got: \(text)")
     }
+
+    // MARK: - STORY-004: accessibility_tree v2
+
+    func testAccessibilityTree_inputSchema_keepsExistingParameters() {
+        guard let tool = AccessibilityModule.tools.first(where: { $0.name == "accessibility_tree" }) else {
+            return XCTFail("accessibility_tree tool not registered")
+        }
+        let props = propertyNames(for: tool)
+        XCTAssertTrue(props.contains("app_name"), "must keep pre-existing app_name parameter")
+        XCTAssertTrue(props.contains("window_title"), "must keep pre-existing window_title parameter")
+        XCTAssertTrue(props.contains("max_depth"), "must keep pre-existing max_depth parameter")
+    }
+
+    func testAccessibilityTree_hasReadOnlyHintTrueAndDestructiveHintFalse() {
+        guard let tool = AccessibilityModule.tools.first(where: { $0.name == "accessibility_tree" }) else {
+            return XCTFail("accessibility_tree tool not registered")
+        }
+        XCTAssertEqual(tool.annotations.readOnlyHint, true,
+                       "readOnlyHint must be true — tree reads do not modify state")
+        XCTAssertEqual(tool.annotations.destructiveHint, false,
+                       "destructiveHint must be false — tree reads do not modify state")
+    }
+
+    func testAccessibilityTree_descriptionDocumentsNewFields() {
+        guard let tool = AccessibilityModule.tools.first(where: { $0.name == "accessibility_tree" }) else {
+            return XCTFail("accessibility_tree tool not registered")
+        }
+        let desc = tool.description ?? ""
+        XCTAssertTrue(desc.contains("actions"), "description should mention actions field")
+        XCTAssertTrue(desc.contains("enabled"), "description should mention enabled field")
+        XCTAssertTrue(desc.contains("settable"), "description should mention settable field")
+        XCTAssertTrue(desc.contains("truncated"), "description should mention truncated field")
+        XCTAssertTrue(desc.contains("schema_version"), "description should mention schema_version contract")
+    }
+
+    func testAccessibilityTree_maxDepthDefaultIs6() {
+        guard let tool = AccessibilityModule.tools.first(where: { $0.name == "accessibility_tree" }),
+              case .object(let schema) = tool.inputSchema,
+              case .object(let props) = schema["properties"],
+              case .object(let maxDepth) = props["max_depth"],
+              case .int(let defaultValue) = maxDepth["default"] else {
+            return XCTFail("accessibility_tree max_depth default not present in schema")
+        }
+        XCTAssertEqual(defaultValue, 6, "max_depth default should be 6 per resolved Open Question 3")
+    }
 }

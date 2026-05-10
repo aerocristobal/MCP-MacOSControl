@@ -11,6 +11,25 @@ public protocol AXApplicationBridge {
     func copyActionNames(_ ref: AXElementReference) throws -> [String]
     func isEnabled(_ ref: AXElementReference) -> Bool
     func value(of ref: AXElementReference) -> String?
+
+    /// Reference to the application's root AX element for the given pid.
+    func applicationRoot(forPID pid: pid_t) -> AXElementReference?
+
+    /// Position of the element on screen in absolute pixel coordinates.
+    func position(of ref: AXElementReference) -> CGPoint?
+
+    /// Size of the element on screen.
+    func size(of ref: AXElementReference) -> CGSize?
+
+    /// Whether the element advertises an `AXEnabled` attribute. Distinguishes
+    /// "unset / unsupported" from "set to true/false".
+    func isEnabledSupported(_ ref: AXElementReference) -> Bool
+
+    /// Whether `kAXValueAttribute` is settable on this element.
+    func isValueSettable(_ ref: AXElementReference) -> Bool
+
+    /// Raw value preserving its native type (String or Number); nil when absent.
+    func rawValue(of ref: AXElementReference) -> AXNodeValue?
 }
 
 public final class AXApplicationBridgeImpl: AXApplicationBridge {
@@ -106,6 +125,65 @@ public final class AXApplicationBridgeImpl: AXApplicationBridge {
             return true
         }
         return CFBooleanGetValue((cfBool as! CFBoolean))
+    }
+
+    public func applicationRoot(forPID pid: pid_t) -> AXElementReference? {
+        let element = AXUIElementCreateApplication(pid)
+        let runningApp = NSRunningApplication(processIdentifier: pid)
+        return buildReference(from: element, pid: pid, bundleId: runningApp?.bundleIdentifier)
+    }
+
+    public func position(of ref: AXElementReference) -> CGPoint? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXPositionAttribute as CFString, &raw)
+        guard status == .success, let value = raw else { return nil }
+        var point = CGPoint.zero
+        guard AXValueGetValue((value as! AXValue), .cgPoint, &point) else { return nil }
+        return point
+    }
+
+    public func size(of ref: AXElementReference) -> CGSize? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &raw)
+        guard status == .success, let value = raw else { return nil }
+        var size = CGSize.zero
+        guard AXValueGetValue((value as! AXValue), .cgSize, &size) else { return nil }
+        return size
+    }
+
+    public func isEnabledSupported(_ ref: AXElementReference) -> Bool {
+        guard case .real(let element) = ref.handle else { return false }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXEnabledAttribute as CFString, &raw)
+        return status == .success && raw != nil && CFGetTypeID(raw!) == CFBooleanGetTypeID()
+    }
+
+    public func isValueSettable(_ ref: AXElementReference) -> Bool {
+        guard case .real(let element) = ref.handle else { return false }
+        var settable: DarwinBoolean = false
+        let status = AXUIElementIsAttributeSettable(element, kAXValueAttribute as CFString, &settable)
+        guard status == .success else { return false }
+        return settable.boolValue
+    }
+
+    public func rawValue(of ref: AXElementReference) -> AXNodeValue? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &raw)
+        guard status == .success, let value = raw else { return nil }
+        if CFGetTypeID(value) == CFBooleanGetTypeID() {
+            let n: NSNumber = CFBooleanGetValue((value as! CFBoolean)) ? 1 : 0
+            return .number(n)
+        }
+        if let s = value as? String {
+            return s.isEmpty ? nil : .string(s)
+        }
+        if let n = value as? NSNumber {
+            return .number(n)
+        }
+        return nil
     }
 
     public func value(of ref: AXElementReference) -> String? {
