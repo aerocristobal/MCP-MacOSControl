@@ -12,6 +12,10 @@ public enum MCPError: Error, CustomStringConvertible {
     case mirroringDisconnected
     case rateLimited(String)
     case timeout(String)
+    case applescriptError(String)
+    case executionTimeout(String)
+    case securityPolicyViolation(String)
+    case automationPermissionRequired(String)
 
     public var errorCode: String {
         switch self {
@@ -25,6 +29,10 @@ public enum MCPError: Error, CustomStringConvertible {
         case .mirroringDisconnected: return "MIRRORING_DISCONNECTED"
         case .rateLimited: return "RATE_LIMITED"
         case .timeout: return "TIMEOUT"
+        case .applescriptError: return "APPLESCRIPT_ERROR"
+        case .executionTimeout: return "EXECUTION_TIMEOUT"
+        case .securityPolicyViolation: return "SECURITY_POLICY_VIOLATION"
+        case .automationPermissionRequired: return "AUTOMATION_PERMISSION_REQUIRED"
         }
     }
 
@@ -40,6 +48,10 @@ public enum MCPError: Error, CustomStringConvertible {
         case .mirroringDisconnected: return "\(errorCode): iPhone Mirroring connection lost. Use iphone_reconnect to wait for recovery."
         case .rateLimited(let detail): return "\(errorCode): \(detail)"
         case .timeout(let detail): return "\(errorCode): \(detail)"
+        case .applescriptError(let detail): return "\(errorCode): \(detail)"
+        case .executionTimeout(let detail): return "\(errorCode): \(detail)"
+        case .securityPolicyViolation(let detail): return "\(errorCode): \(detail)"
+        case .automationPermissionRequired(let detail): return "\(errorCode): \(detail)"
         }
     }
 

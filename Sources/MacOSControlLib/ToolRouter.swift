@@ -14,6 +14,7 @@ public enum ToolRouter {
         SystemModule.self,
         IPhoneMirroringModule.self,
         AccessibilityModule.self,
+        AppleScriptModule.self,
     ]
 
     public static var allTools: [Tool] {
