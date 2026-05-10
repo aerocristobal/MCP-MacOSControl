@@ -60,4 +60,47 @@ final class AppleScriptModuleTests: XCTestCase {
         let registered = ToolRouter.modules.contains { $0 == AppleScriptModule.self }
         XCTAssertTrue(registered, "AppleScriptModule must be registered in ToolRouter.modules")
     }
+
+    // MARK: - STORY-007: click_menu_item registration
+
+    func test_registersClickMenuItemTool() {
+        let names = AppleScriptModule.tools.map { $0.name }
+        XCTAssertTrue(names.contains("click_menu_item"))
+    }
+
+    func test_clickMenuItemTool_inputSchema_hasExpectedProperties() {
+        guard let tool = AppleScriptModule.tools.first(where: { $0.name == "click_menu_item" }) else {
+            return XCTFail("click_menu_item tool not registered")
+        }
+        let props = propertyNames(for: tool)
+        XCTAssertTrue(props.contains("application"))
+        XCTAssertTrue(props.contains("path"))
+        XCTAssertTrue(props.contains("do_not_activate"))
+    }
+
+    func test_clickMenuItemTool_requiresPath() {
+        guard let tool = AppleScriptModule.tools.first(where: { $0.name == "click_menu_item" }) else {
+            return XCTFail("click_menu_item tool not registered")
+        }
+        let required = requiredParams(for: tool)
+        XCTAssertEqual(required, ["path"],
+                       "path must be the only required parameter (application defaults to frontmost)")
+    }
+
+    func test_clickMenuItemTool_isAnnotatedDestructive() {
+        guard let tool = AppleScriptModule.tools.first(where: { $0.name == "click_menu_item" }) else {
+            return XCTFail("click_menu_item tool not registered")
+        }
+        XCTAssertEqual(tool.annotations.destructiveHint, true)
+        XCTAssertEqual(tool.annotations.readOnlyHint, false)
+    }
+
+    func test_clickMenuItemTool_descriptionMentionsLocaleSensitivity() {
+        guard let tool = AppleScriptModule.tools.first(where: { $0.name == "click_menu_item" }) else {
+            return XCTFail("click_menu_item tool not registered")
+        }
+        let desc = (tool.description ?? "").lowercased()
+        XCTAssertTrue(desc.contains("locale"),
+                      "description must warn callers that menu names are locale-sensitive")
+    }
 }

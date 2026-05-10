@@ -11,6 +11,46 @@ public enum AppleScriptModule: ToolModule {
     public static var tools: [Tool] {
         [
             Tool(
+                name: "click_menu_item",
+                description: """
+                Activate an application menu item by hierarchical name path (e.g. \
+                ["Format", "Font", "Bold"]). Locates and clicks the item via System Events. \
+                LOCALE-SENSITIVE: callers must pass each component in the user's current macOS \
+                locale — the tool does not translate menu names. Trailing ellipsis (… or ...) \
+                and surrounding whitespace are normalized away. By default the target app is \
+                briefly activated to receive the click; pass do_not_activate=true to skip the \
+                activation step. Returns code "menu_item_disabled" when the resolved item is \
+                present but disabled, and "menu_item_not_found" with an alphabetical \
+                "alternatives" list of items at the failing level otherwise. NOTE: a not-found \
+                response triggers a second AppleScript call to enumerate alternatives, so a \
+                single failed invocation produces TWO audit records. application defaults to \
+                the frontmost app when omitted. Path depth is capped at 6 components.
+                """,
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "application": [
+                            "type": "string",
+                            "description": "Target application name (e.g. \"TextEdit\"). Optional — defaults to the frontmost application's localized name. Locale-sensitive."
+                        ],
+                        "path": [
+                            "type": "array",
+                            "description": "Hierarchical menu path from menu bar inward, e.g. [\"Format\", \"Font\", \"Bold\"]. Required. Length 1–6. Locale-sensitive: each component must match the localized menu/item name. Trailing ellipsis and whitespace are normalized."
+                        ],
+                        "do_not_activate": [
+                            "type": "boolean",
+                            "description": "When true, skips the `tell application X to activate` preamble. Default false (the target app is activated, briefly stealing focus).",
+                            "default": false
+                        ]
+                    ],
+                    required: ["path"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true
+                )
+            ),
+            Tool(
                 name: "run_applescript",
                 description: """
                 Execute an AppleScript source string via /usr/bin/osascript and return structured \
@@ -63,6 +103,17 @@ public enum AppleScriptModule: ToolModule {
                 permissionChecker: AutomationPermissionChecker(),
                 executor: AppleScriptExecutor(),
                 audit: auditor
+            )
+            return try await tool.execute(params)
+        case "click_menu_item":
+            let backend = AppleScriptMenuClickBackend(
+                executor: AppleScriptExecutor(),
+                resolver: MenuPathResolver(),
+                audit: auditor
+            )
+            let tool = ClickMenuItemTool(
+                backend: backend,
+                normalizer: MenuItemNormalizer()
             )
             return try await tool.execute(params)
         default:
