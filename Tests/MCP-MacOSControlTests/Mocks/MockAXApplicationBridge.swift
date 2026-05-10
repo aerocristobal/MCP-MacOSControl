@@ -22,6 +22,14 @@ final class MockAXApplicationBridge: AXApplicationBridge {
     /// Allows tests to drive the tree builder from a synthetic application root.
     var applicationRoots: [pid_t: MockAXUIElement] = [:]
 
+    var hitTestCallCount: Int = 0
+    var lastHitTestX: CGFloat?
+    var lastHitTestY: CGFloat?
+    /// Element returned by `copyElementAtPosition`. nil → simulate empty hit.
+    var stubbedHitTestResult: MockAXUIElement?
+    /// When set, `copyElementAtPosition` throws this instead of returning.
+    var stubbedHitTestError: Error?
+
     init(elements: [MockAXUIElement] = [], simulatedAXError: AXError? = nil) {
         self.elements = elements
         self.simulatedAXError = simulatedAXError
@@ -144,6 +152,14 @@ final class MockAXApplicationBridge: AXApplicationBridge {
         if let raw = mock.rawValue { return raw }
         if let s = mock.value { return .string(s) }
         return nil
+    }
+
+    func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference? {
+        hitTestCallCount += 1
+        lastHitTestX = globalX
+        lastHitTestY = globalY
+        if let err = stubbedHitTestError { throw err }
+        return stubbedHitTestResult.map { reference(for: $0) }
     }
 
     private func reference(for mock: MockAXUIElement) -> AXElementReference {

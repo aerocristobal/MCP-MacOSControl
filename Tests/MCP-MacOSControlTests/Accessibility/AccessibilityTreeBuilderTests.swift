@@ -196,4 +196,65 @@ final class AccessibilityTreeBuilderTests: XCTestCase {
 
         XCTAssertEqual(tree.value, .string("hello"))
     }
+
+    // MARK: - STORY-005: buildShallow
+
+    func test_buildShallow_extractsCoreAttributes() {
+        let button = MockAXUIElement(
+            role: "AXButton",
+            title: "Save",
+            identifier: "save-btn",
+            description: "Saves the current document",
+            position: CGPoint(x: 100, y: 200),
+            size: CGSize(width: 80, height: 30),
+            supportedActions: ["AXPress"]
+        )
+        let ref = rootRef(button)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertEqual(node.role, "AXButton")
+        XCTAssertEqual(node.title, "Save")
+        XCTAssertEqual(node.identifier, "save-btn")
+        XCTAssertEqual(node.description, "Saves the current document")
+        XCTAssertEqual(node.position, CGPoint(x: 100, y: 200))
+        XCTAssertEqual(node.size, CGSize(width: 80, height: 30))
+        XCTAssertEqual(node.actions, ["AXPress"])
+    }
+
+    func test_buildShallow_omitsChildren_evenWhenChildrenExist() {
+        let child = MockAXUIElement(role: "AXStaticText", title: "label")
+        let parent = MockAXUIElement(role: "AXGroup", title: "container", children: [child])
+        let ref = rootRef(parent)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertTrue(node.children.isEmpty,
+                      "buildShallow must not recurse into children")
+        XCTAssertNil(node.truncated,
+                     "buildShallow must not flag the node as truncated — that lies about why children are absent")
+        XCTAssertNil(node.prunedChildCount,
+                     "buildShallow must not report pruned child count")
+    }
+
+    func test_buildShallow_setsSettable_forInteractiveTextField() {
+        var textField = MockAXUIElement(role: "AXTextField", title: "Search")
+        textField.valueSettable = true
+        let ref = rootRef(textField)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertEqual(node.settable, true)
+    }
+
+    func test_buildShallow_setsEnabled_whenSupported() {
+        var element = MockAXUIElement(role: "AXButton", title: "OK")
+        element.enabled = false
+        element.enabledSupported = true
+        let ref = rootRef(element)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertEqual(node.enabled, false)
+    }
 }

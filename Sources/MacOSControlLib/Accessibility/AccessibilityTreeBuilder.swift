@@ -38,6 +38,34 @@ public final class AccessibilityTreeBuilder {
         buildNode(from: root, currentDepth: 0, maxDepth: maxDepth)
     }
 
+    /// Build a single-node `AXNode` (no children, no `truncated` flag, no
+    /// `prunedChildCount`) for the given reference. Used by `element_at_position`,
+    /// where the response is a single hit-test result and "truncated due to
+    /// max_depth" semantics don't apply. Reuses the same attribute-extraction
+    /// logic as the recursive builder so the per-node shape is identical to a
+    /// node from `accessibility_tree`.
+    public func buildShallow(from ref: AXElementReference) -> AXNode {
+        var node = AXNode(
+            role: ref.role,
+            title: ref.title,
+            description: ref.description,
+            value: bridge.rawValue(of: ref),
+            position: bridge.position(of: ref),
+            size: bridge.size(of: ref),
+            identifier: ref.identifier
+        )
+        if let role = ref.role, Self.interactiveRoles.contains(role) {
+            node.actions = (try? bridge.copyActionNames(ref)) ?? []
+        }
+        if bridge.isEnabledSupported(ref) {
+            node.enabled = bridge.isEnabled(ref)
+        }
+        if let role = ref.role, Self.interactiveRoles.contains(role) {
+            node.settable = bridge.isValueSettable(ref)
+        }
+        return node
+    }
+
     /// Production entrypoint: build the tree for an application by pid,
     /// optionally targeting a specific window by title substring match.
     /// Throws when the application root cannot be obtained or the named window is missing.

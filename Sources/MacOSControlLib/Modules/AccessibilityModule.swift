@@ -61,6 +61,23 @@ public enum AccessibilityModule: ToolModule {
                     readOnlyHint: false,
                     destructiveHint: true
                 )
+            ),
+            Tool(
+                name: "element_at_position",
+                description: "Resolve the macOS AX element under a screen coordinate. Inverse of click_element: takes (x, y) and returns the element's role, title, description, identifier, position, size, value, and (for interactive roles) actions / enabled / settable — the same per-node shape as accessibility_tree (schema_version 2). Coordinates are logical points, top-left origin, global across the union of attached displays. On a single 1920×1080 retina display, the bottom-right corner is x=1920, y=1080 (logical points), not 3840/2160 (device pixels). Pass display_index to provide display-local coordinates that the tool will offset into global space. Returns the topmost AXApplication with a `note` field when the coordinate falls on empty desktop background. READ-ONLY: does not click, focus, or otherwise modify UI state.",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "x": ["type": "number", "description": "X coordinate (logical points). Global across all displays unless display_index is also provided, in which case x is display-local."],
+                        "y": ["type": "number", "description": "Y coordinate (logical points). Top-left origin. Global across all displays unless display_index is also provided."],
+                        "display_index": ["type": "integer", "description": "Optional. Index into the active display list (0 = main display). When provided, (x, y) is interpreted as display-local and offset into global by adding the display's frame origin."]
+                    ],
+                    required: ["x", "y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false
+                )
             )
         ]
     }
@@ -126,6 +143,20 @@ public enum AccessibilityModule: ToolModule {
                 interactor: interactor,
                 enumerator: enumerator,
                 bridge: bridge
+            )
+            return try await tool.execute(params)
+
+        case "element_at_position":
+            let bridge = AXApplicationBridgeImpl()
+            let displays = ActiveDisplayEnumerator().enumerate()
+            let translator = DisplayCoordinateTranslator(displays: displays)
+            let validator = DisplayBoundsValidator(displays: displays)
+            let treeBuilder = AccessibilityTreeBuilder(bridge: bridge)
+            let tool = ElementAtPositionTool(
+                bridge: bridge,
+                translator: translator,
+                validator: validator,
+                treeBuilder: treeBuilder
             )
             return try await tool.execute(params)
 

@@ -30,10 +30,21 @@ public protocol AXApplicationBridge {
 
     /// Raw value preserving its native type (String or Number); nil when absent.
     func rawValue(of ref: AXElementReference) -> AXNodeValue?
+
+    /// System-wide hit-test: returns the AX element at the given top-left global
+    /// coordinates (logical points). Throws on permission failure; returns nil
+    /// when the AX C-API reports `noValue` / `cannotComplete` (no element at
+    /// the point — distinct from "an empty area returns the topmost
+    /// AXApplication", which is also a successful hit).
+    func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference?
 }
 
 public final class AXApplicationBridgeImpl: AXApplicationBridge {
-    public init() {}
+    private let systemWideElement: AXUIElement
+
+    public init() {
+        self.systemWideElement = AXUIElementCreateSystemWide()
+    }
 
     public func runningApplications() -> [(pid: pid_t, bundleId: String?, name: String?)] {
         NSWorkspace.shared.runningApplications.map { app in
@@ -197,6 +208,33 @@ public final class AXApplicationBridgeImpl: AXApplicationBridge {
         if let s = value as? String { return s.isEmpty ? nil : s }
         if let n = value as? NSNumber { return n.stringValue }
         return nil
+    }
+
+    public func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference? {
+        var hit: AXUIElement?
+        let status = AXUIElementCopyElementAtPosition(
+            systemWideElement,
+            Float(globalX),
+            Float(globalY),
+            &hit
+        )
+        switch status {
+        case .success:
+            guard let element = hit else { return nil }
+            var pid: pid_t = 0
+            _ = AXUIElementGetPid(element, &pid)
+            let bundleId = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier
+            return buildReference(from: element, pid: pid, bundleId: bundleId)
+        case .noValue, .cannotComplete:
+            return nil
+        case .apiDisabled, .notImplemented:
+            throw MCPError.permissionDenied("Accessibility permission required to perform AX hit-test (AXError \(status.rawValue)).")
+        default:
+            throw AXResolutionError(
+                detail: "AXUIElementCopyElementAtPosition failed at (\(globalX), \(globalY))",
+                underlyingCode: status.rawValue
+            )
+        }
     }
 
     private func buildReference(from element: AXUIElement, pid: pid_t, bundleId: String?) -> AXElementReference {
