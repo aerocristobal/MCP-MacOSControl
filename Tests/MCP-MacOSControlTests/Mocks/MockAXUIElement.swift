@@ -12,6 +12,7 @@ struct MockAXUIElement {
     var enabled: Bool
     var value: String?
     var children: [MockAXUIElement]
+    var supportedActions: [String]
 
     init(
         role: String? = nil,
@@ -23,7 +24,8 @@ struct MockAXUIElement {
         bundleId: String? = nil,
         enabled: Bool = true,
         value: String? = nil,
-        children: [MockAXUIElement] = []
+        children: [MockAXUIElement] = [],
+        supportedActions: [String] = []
     ) {
         self.role = role
         self.title = title
@@ -35,5 +37,6 @@ struct MockAXUIElement {
         self.enabled = enabled
         self.value = value
         self.children = children
+        self.supportedActions = supportedActions
     }
 }

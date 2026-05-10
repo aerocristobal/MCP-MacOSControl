@@ -35,6 +35,27 @@ public enum AccessibilityModule: ToolModule {
                     readOnlyHint: false,
                     destructiveHint: true
                 )
+            ),
+            Tool(
+                name: "perform_ax_action",
+                description: "Dispatch any standard AX accessibility action (AXPress, AXIncrement, AXShowMenu, AXConfirm, AXCancel, AXDecrement, AXRaise, AXPick) on a UI element resolved by semantic attributes. Use click_element for simple AXPress; use this tool for non-press actions (steppers, popups, confirmations) or to enumerate an element's supported actions. Omit `action` to discover supported actions without dispatching. App-defined custom actions require allow_custom=true. DESTRUCTIVE: can dispatch AXCancel, AXConfirm, and arbitrary custom actions.",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "role": ["type": "string", "description": "AX role to match (e.g., AXButton, AXSlider, AXPopUpButton)."],
+                        "title": ["type": "string", "description": "AX title to match."],
+                        "identifier": ["type": "string", "description": "AX identifier — most specific locator when available."],
+                        "label": ["type": "string", "description": "AX accessibility label."],
+                        "description": ["type": "string", "description": "AX description / help text."],
+                        "application": ["type": "string", "description": "Restrict the search to this app — bundle ID (e.g., com.apple.TextEdit) or name (e.g., TextEdit)."],
+                        "action": ["type": "string", "description": "AX action name to dispatch (AXPress, AXIncrement, AXDecrement, AXConfirm, AXCancel, AXShowMenu, AXRaise, AXPick). Omit to return the element's supported_actions list without dispatching."],
+                        "allow_custom": ["type": "boolean", "description": "Allow dispatching app-defined actions outside the 8-name standard whitelist (e.g., AXShowAlternateUI). Off by default to catch typos like AXNonsense early.", "default": false]
+                    ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true
+                )
             )
         ]
     }
@@ -69,6 +90,19 @@ public enum AccessibilityModule: ToolModule {
             let tool = ClickElementTool(
                 resolver: resolver,
                 interactor: interactor,
+                bridge: bridge
+            )
+            return try await tool.execute(params)
+
+        case "perform_ax_action":
+            let bridge = AXApplicationBridgeImpl()
+            let resolver = AXElementResolver(bridge: bridge)
+            let interactor = AXElementInteractor(bridge: bridge)
+            let enumerator = AXActionEnumerator(bridge: bridge)
+            let tool = PerformAXActionTool(
+                resolver: resolver,
+                interactor: interactor,
+                enumerator: enumerator,
                 bridge: bridge
             )
             return try await tool.execute(params)
