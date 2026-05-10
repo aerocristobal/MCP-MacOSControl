@@ -213,7 +213,9 @@ Sources/
     ContinuousCaptureManager.swift   # ScreenCaptureKit streams
     RealtimeAnalyzer.swift           # Continuous vision analysis
     Accessibility/
-      AccessibilityTreeReader.swift  # AXUIElement tree walker
+      AccessibilityTreeBuilder.swift # AXUIElement tree traversal
+      AXNodeSerializer.swift         # JSON shaping + schema_version
+      AXNode.swift                   # Tree value type
     IPhoneMirroring/
       MirroringWindowDetector.swift  # Window detection + focus guard
       CoordinateTranslator.swift     # Content rect calibration + coord translation

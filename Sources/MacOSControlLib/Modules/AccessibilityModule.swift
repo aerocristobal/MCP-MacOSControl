@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 import MCP
 
 public enum AccessibilityModule: ToolModule {
@@ -6,14 +7,18 @@ public enum AccessibilityModule: ToolModule {
         [
             Tool(
                 name: "accessibility_tree",
-                description: "Read the accessibility tree of a macOS application window (AXUIElement). Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
+                description: "Read the accessibility tree of a macOS application (AXUIElement). Each node includes role, title, description, value, position, size, identifier, actions (per-node AXAction names), enabled, settable (whether AXValue is writable), and truncated (set on parents whose children were pruned by max_depth — re-request with a higher max_depth to drill in). Top-level schema_version is 2. Default max_depth is 6 — sufficient for toolbars / dialogs / menubar; pass 3 for smaller responses or 12+ for deeply nested apps. Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
                         "app_name": ["type": "string", "description": "Application name (optional, defaults to frontmost app)"],
                         "window_title": ["type": "string", "description": "Window title to target (optional)"],
-                        "max_depth": ["type": "integer", "description": "Maximum tree depth", "default": 3]
+                        "max_depth": ["type": "integer", "description": "Maximum tree depth (default 6). Root is depth 0; nodes whose pruned children would yield more detail are flagged truncated=true.", "default": 6]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false
                 )
             ),
             Tool(
@@ -56,6 +61,23 @@ public enum AccessibilityModule: ToolModule {
                     readOnlyHint: false,
                     destructiveHint: true
                 )
+            ),
+            Tool(
+                name: "element_at_position",
+                description: "Resolve the macOS AX element under a screen coordinate. Inverse of click_element: takes (x, y) and returns the element's role, title, description, identifier, position, size, value, and (for interactive roles) actions / enabled / settable — the same per-node shape as accessibility_tree (schema_version 2). Coordinates are logical points, top-left origin, global across the union of attached displays. On a single 1920×1080 retina display, the bottom-right corner is x=1920, y=1080 (logical points), not 3840/2160 (device pixels). Pass display_index to provide display-local coordinates that the tool will offset into global space. Returns the topmost AXApplication with a `note` field when the coordinate falls on empty desktop background. READ-ONLY: does not click, focus, or otherwise modify UI state.",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "x": ["type": "number", "description": "X coordinate (logical points). Global across all displays unless display_index is also provided, in which case x is display-local."],
+                        "y": ["type": "number", "description": "Y coordinate (logical points). Top-left origin. Global across all displays unless display_index is also provided."],
+                        "display_index": ["type": "integer", "description": "Optional. Index into the active display list (0 = main display). When provided, (x, y) is interpreted as display-local and offset into global by adding the display's frame origin."]
+                    ],
+                    required: ["x", "y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false
+                )
             )
         ]
     }
@@ -66,15 +88,32 @@ public enum AccessibilityModule: ToolModule {
         case "accessibility_tree":
             let appName = args["app_name"]?.stringValue
             let windowTitle = args["window_title"]?.stringValue
-            let maxDepth = args["max_depth"]?.intValue ?? 3
+            let maxDepth = args["max_depth"]?.intValue ?? 6
 
             do {
-                let tree = try AccessibilityTreeReader.readTree(
-                    appName: appName,
-                    windowTitle: windowTitle,
-                    maxDepth: maxDepth
-                )
-                let jsonData = try JSONSerialization.data(withJSONObject: tree, options: [.prettyPrinted, .sortedKeys])
+                guard AXIsProcessTrusted() else {
+                    throw MCPError.permissionDenied("Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server.")
+                }
+
+                let runningApps = NSWorkspace.shared.runningApplications
+                let targetApp: NSRunningApplication?
+                if let appName {
+                    targetApp = runningApps.first { $0.localizedName?.localizedCaseInsensitiveContains(appName) == true }
+                } else {
+                    targetApp = NSWorkspace.shared.frontmostApplication
+                }
+                guard let app = targetApp else {
+                    throw MCPError.windowNotFound("Application '\(appName ?? "frontmost")' not found")
+                }
+
+                let bridge = AXApplicationBridgeImpl()
+                let builder = AccessibilityTreeBuilder(bridge: bridge)
+                let serializer = AXNodeSerializer()
+
+                let root = try builder.build(forPID: app.processIdentifier, windowTitle: windowTitle, maxDepth: maxDepth)
+                let response = serializer.serializeRoot(root)
+
+                let jsonData = try JSONSerialization.data(withJSONObject: response, options: [.prettyPrinted, .sortedKeys])
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Accessibility tree:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
@@ -104,6 +143,20 @@ public enum AccessibilityModule: ToolModule {
                 interactor: interactor,
                 enumerator: enumerator,
                 bridge: bridge
+            )
+            return try await tool.execute(params)
+
+        case "element_at_position":
+            let bridge = AXApplicationBridgeImpl()
+            let displays = ActiveDisplayEnumerator().enumerate()
+            let translator = DisplayCoordinateTranslator(displays: displays)
+            let validator = DisplayBoundsValidator(displays: displays)
+            let treeBuilder = AccessibilityTreeBuilder(bridge: bridge)
+            let tool = ElementAtPositionTool(
+                bridge: bridge,
+                translator: translator,
+                validator: validator,
+                treeBuilder: treeBuilder
             )
             return try await tool.execute(params)
 

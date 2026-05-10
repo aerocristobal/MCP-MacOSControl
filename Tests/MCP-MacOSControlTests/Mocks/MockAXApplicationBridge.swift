@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import ApplicationServices
 @testable import MacOSControlLib
 
@@ -16,6 +17,18 @@ final class MockAXApplicationBridge: AXApplicationBridge {
     /// Override the per-element supported-action list keyed by handle UUID. Falls back to the
     /// `supportedActions` field on the underlying `MockAXUIElement` when no override exists.
     var elementActions: [UUID: [String]] = [:]
+
+    /// Per-PID application root element. When set, `applicationRoot(forPID:)` returns this.
+    /// Allows tests to drive the tree builder from a synthetic application root.
+    var applicationRoots: [pid_t: MockAXUIElement] = [:]
+
+    var hitTestCallCount: Int = 0
+    var lastHitTestX: CGFloat?
+    var lastHitTestY: CGFloat?
+    /// Element returned by `copyElementAtPosition`. nil → simulate empty hit.
+    var stubbedHitTestResult: MockAXUIElement?
+    /// When set, `copyElementAtPosition` throws this instead of returning.
+    var stubbedHitTestError: Error?
 
     init(elements: [MockAXUIElement] = [], simulatedAXError: AXError? = nil) {
         self.elements = elements
@@ -107,6 +120,46 @@ final class MockAXApplicationBridge: AXApplicationBridge {
     func value(of ref: AXElementReference) -> String? {
         guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
         return mock.value
+    }
+
+    func applicationRoot(forPID pid: pid_t) -> AXElementReference? {
+        guard let mock = applicationRoots[pid] else { return nil }
+        return reference(for: mock)
+    }
+
+    func position(of ref: AXElementReference) -> CGPoint? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.position
+    }
+
+    func size(of ref: AXElementReference) -> CGSize? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.size
+    }
+
+    func isEnabledSupported(_ ref: AXElementReference) -> Bool {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return false }
+        return mock.enabledSupported
+    }
+
+    func isValueSettable(_ ref: AXElementReference) -> Bool {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return false }
+        return mock.valueSettable
+    }
+
+    func rawValue(of ref: AXElementReference) -> AXNodeValue? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        if let raw = mock.rawValue { return raw }
+        if let s = mock.value { return .string(s) }
+        return nil
+    }
+
+    func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference? {
+        hitTestCallCount += 1
+        lastHitTestX = globalX
+        lastHitTestY = globalY
+        if let err = stubbedHitTestError { throw err }
+        return stubbedHitTestResult.map { reference(for: $0) }
     }
 
     private func reference(for mock: MockAXUIElement) -> AXElementReference {
