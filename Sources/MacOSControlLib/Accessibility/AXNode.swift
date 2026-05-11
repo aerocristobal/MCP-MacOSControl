@@ -26,6 +26,13 @@ public struct AXNode {
     public var enabled: Bool?
     public var settable: Bool?
     public var truncated: Bool?
+    public var focused: Bool?
+    public var selected: Bool?
+    public var expanded: Bool?
+    public var visibleInViewport: Bool?
+    public var isMain: Bool?
+    public var isMinimized: Bool?
+    public var isFrontmost: Bool?
     public var children: [AXNode]
     public var prunedChildCount: Int?
 
@@ -41,6 +48,13 @@ public struct AXNode {
         enabled: Bool? = nil,
         settable: Bool? = nil,
         truncated: Bool? = nil,
+        focused: Bool? = nil,
+        selected: Bool? = nil,
+        expanded: Bool? = nil,
+        visibleInViewport: Bool? = nil,
+        isMain: Bool? = nil,
+        isMinimized: Bool? = nil,
+        isFrontmost: Bool? = nil,
         children: [AXNode] = [],
         prunedChildCount: Int? = nil
     ) {
@@ -55,6 +69,13 @@ public struct AXNode {
         self.enabled = enabled
         self.settable = settable
         self.truncated = truncated
+        self.focused = focused
+        self.selected = selected
+        self.expanded = expanded
+        self.visibleInViewport = visibleInViewport
+        self.isMain = isMain
+        self.isMinimized = isMinimized
+        self.isFrontmost = isFrontmost
         self.children = children
         self.prunedChildCount = prunedChildCount
     }

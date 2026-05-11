@@ -37,7 +37,10 @@ let package = Package(
                 "MacOSControlLib",
                 .product(name: "MCP", package: "swift-sdk")
             ],
-            path: "Tests/MCP-MacOSControlTests"
+            path: "Tests/MCP-MacOSControlTests",
+            resources: [
+                .copy("Features")
+            ]
         )
     ]
 )

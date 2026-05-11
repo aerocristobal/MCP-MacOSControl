@@ -4,7 +4,7 @@ import MCP
 
 final class AccessibilityModuleTests: XCTestCase {
     func testHasExpectedTools() {
-        XCTAssertEqual(AccessibilityModule.tools.count, 4)
+        XCTAssertEqual(AccessibilityModule.tools.count, 5)
     }
 
     func testToolNames() {
@@ -13,6 +13,7 @@ final class AccessibilityModuleTests: XCTestCase {
         XCTAssertTrue(names.contains("click_element"))
         XCTAssertTrue(names.contains("perform_ax_action"))
         XCTAssertTrue(names.contains("element_at_position"))
+        XCTAssertTrue(names.contains("find_elements"))
     }
 
     func testUnknownToolReturnsNil() async throws {
@@ -130,6 +131,14 @@ final class AccessibilityModuleTests: XCTestCase {
         XCTAssertTrue(desc.contains("settable"), "description should mention settable field")
         XCTAssertTrue(desc.contains("truncated"), "description should mention truncated field")
         XCTAssertTrue(desc.contains("schema_version"), "description should mention schema_version contract")
+        // STORY-015: extended state attributes
+        XCTAssertTrue(desc.contains("focused"), "description should mention focused field")
+        XCTAssertTrue(desc.contains("selected"), "description should mention selected field")
+        XCTAssertTrue(desc.contains("expanded"), "description should mention expanded field")
+        XCTAssertTrue(desc.contains("visible_in_viewport"),
+                      "description should mention visible_in_viewport field")
+        XCTAssertTrue(desc.contains("schema_version is 3") || desc.contains("schema_version 3"),
+                      "description should advertise schema_version 3")
     }
 
     func testAccessibilityTree_maxDepthDefaultIs6() {

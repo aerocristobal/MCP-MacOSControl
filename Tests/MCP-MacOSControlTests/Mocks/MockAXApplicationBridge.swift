@@ -154,6 +154,52 @@ final class MockAXApplicationBridge: AXApplicationBridge {
         return nil
     }
 
+    // MARK: - STORY-015: Extended state attributes
+
+    func isFocused(_ ref: AXElementReference) -> Bool? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.focused
+    }
+
+    func isSelected(_ ref: AXElementReference) -> Bool? {
+        guard let role = ref.role,
+              AXApplicationBridgeImpl.selectableRoles.contains(role) else { return nil }
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.selected
+    }
+
+    func isExpanded(_ ref: AXElementReference) -> Bool? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.expanded
+    }
+
+    func isMain(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == "AXWindow" else { return nil }
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.isMain
+    }
+
+    func isMinimized(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == "AXWindow" else { return nil }
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.isMinimized
+    }
+
+    func isFrontmost(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == "AXWindow" else { return nil }
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        return mock.isFrontmost
+    }
+
+    func frame(of ref: AXElementReference) -> CGRect? {
+        guard case .mock(let id) = ref.handle, let mock = refToMock[id] else { return nil }
+        if let f = mock.frame { return f }
+        if let pos = mock.position, let sz = mock.size {
+            return CGRect(origin: pos, size: sz)
+        }
+        return nil
+    }
+
     func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference? {
         hitTestCallCount += 1
         lastHitTestX = globalX

@@ -27,15 +27,18 @@ public final class AccessibilityTreeBuilder {
     ]
 
     private let bridge: AXApplicationBridge
+    private let viewportResolver: ViewportVisibilityResolver
 
-    public init(bridge: AXApplicationBridge) {
+    public init(bridge: AXApplicationBridge,
+                viewportResolver: ViewportVisibilityResolver = ViewportVisibilityResolver()) {
         self.bridge = bridge
+        self.viewportResolver = viewportResolver
     }
 
     /// Build the tree starting from the given element reference.
     /// Root is depth 0; a child at depth N is included iff `N <= maxDepth`.
     public func build(from root: AXElementReference, maxDepth: Int) -> AXNode {
-        buildNode(from: root, currentDepth: 0, maxDepth: maxDepth)
+        buildNode(from: root, currentDepth: 0, maxDepth: maxDepth, containingWindowFrame: nil)
     }
 
     /// Build a single-node `AXNode` (no children, no `truncated` flag, no
@@ -43,7 +46,9 @@ public final class AccessibilityTreeBuilder {
     /// where the response is a single hit-test result and "truncated due to
     /// max_depth" semantics don't apply. Reuses the same attribute-extraction
     /// logic as the recursive builder so the per-node shape is identical to a
-    /// node from `accessibility_tree`.
+    /// node from `accessibility_tree`. STORY-015: shallow builds populate
+    /// focus / selected / expanded / window-state but NOT `visible_in_viewport`,
+    /// since the shallow path has no ancestor context to compute against.
     public func buildShallow(from ref: AXElementReference) -> AXNode {
         var node = AXNode(
             role: ref.role,
@@ -62,6 +67,14 @@ public final class AccessibilityTreeBuilder {
         }
         if let role = ref.role, Self.interactiveRoles.contains(role) {
             node.settable = bridge.isValueSettable(ref)
+        }
+        node.focused = bridge.isFocused(ref)
+        node.selected = bridge.isSelected(ref)
+        node.expanded = bridge.isExpanded(ref)
+        if ref.role == "AXWindow" {
+            node.isMain = bridge.isMain(ref)
+            node.isMinimized = bridge.isMinimized(ref)
+            node.isFrontmost = bridge.isFrontmost(ref)
         }
         return node
     }
@@ -89,7 +102,10 @@ public final class AccessibilityTreeBuilder {
 
     // MARK: - Recursion
 
-    private func buildNode(from ref: AXElementReference, currentDepth: Int, maxDepth: Int) -> AXNode {
+    private func buildNode(from ref: AXElementReference,
+                           currentDepth: Int,
+                           maxDepth: Int,
+                           containingWindowFrame: CGRect?) -> AXNode {
         var node = AXNode(
             role: ref.role,
             title: ref.title,
@@ -112,6 +128,31 @@ public final class AccessibilityTreeBuilder {
             node.settable = bridge.isValueSettable(ref)
         }
 
+        // STORY-015: extended state attributes.
+        node.focused = bridge.isFocused(ref)
+        node.selected = bridge.isSelected(ref)
+        node.expanded = bridge.isExpanded(ref)
+
+        // Compute viewport visibility against the most recent ancestor window.
+        // Self-window nodes don't get the field — there's no "containing
+        // window" relationship to compare against.
+        let isWindow = (ref.role == "AXWindow")
+        if !isWindow {
+            node.visibleInViewport = viewportResolver.isVisible(
+                nodeFrame: bridge.frame(of: ref),
+                in: containingWindowFrame
+            )
+        }
+
+        if isWindow {
+            node.isMain = bridge.isMain(ref)
+            node.isMinimized = bridge.isMinimized(ref)
+            node.isFrontmost = bridge.isFrontmost(ref)
+        }
+
+        // Children inherit this node as the containing window when role==AXWindow.
+        let nextWindowFrame = isWindow ? bridge.frame(of: ref) : containingWindowFrame
+
         let children = (try? bridge.children(of: ref)) ?? []
         if children.isEmpty {
             return node
@@ -125,7 +166,10 @@ public final class AccessibilityTreeBuilder {
         }
 
         node.children = children.map {
-            buildNode(from: $0, currentDepth: nextDepth, maxDepth: maxDepth)
+            buildNode(from: $0,
+                      currentDepth: nextDepth,
+                      maxDepth: maxDepth,
+                      containingWindowFrame: nextWindowFrame)
         }
         return node
     }

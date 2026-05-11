@@ -20,6 +20,18 @@ struct MockAXUIElement {
     var children: [MockAXUIElement]
     var supportedActions: [String]
 
+    // STORY-015 — extended state attributes. nil = "AX attribute unsupported";
+    // a Bool value mirrors what AXUIElementCopyAttributeValue would surface.
+    var focused: Bool?
+    var selected: Bool?
+    var expanded: Bool?
+    var isMain: Bool?
+    var isMinimized: Bool?
+    var isFrontmost: Bool?
+    /// Optional explicit frame override; when nil the bridge composes from
+    /// position + size.
+    var frame: CGRect?
+
     init(
         role: String? = nil,
         title: String? = nil,
@@ -36,7 +48,14 @@ struct MockAXUIElement {
         size: CGSize? = nil,
         valueSettable: Bool = false,
         children: [MockAXUIElement] = [],
-        supportedActions: [String] = []
+        supportedActions: [String] = [],
+        focused: Bool? = nil,
+        selected: Bool? = nil,
+        expanded: Bool? = nil,
+        isMain: Bool? = nil,
+        isMinimized: Bool? = nil,
+        isFrontmost: Bool? = nil,
+        frame: CGRect? = nil
     ) {
         self.role = role
         self.title = title
@@ -54,5 +73,12 @@ struct MockAXUIElement {
         self.valueSettable = valueSettable
         self.children = children
         self.supportedActions = supportedActions
+        self.focused = focused
+        self.selected = selected
+        self.expanded = expanded
+        self.isMain = isMain
+        self.isMinimized = isMinimized
+        self.isFrontmost = isFrontmost
+        self.frame = frame
     }
 }

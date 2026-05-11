@@ -37,9 +37,54 @@ public protocol AXApplicationBridge {
     /// the point — distinct from "an empty area returns the topmost
     /// AXApplication", which is also a successful hit).
     func copyElementAtPosition(globalX: CGFloat, globalY: CGFloat) throws -> AXElementReference?
+
+    // MARK: - STORY-015: Extended state attributes
+    //
+    // Each returns Bool? with the contract: nil = attribute unsupported on this
+    // element (caller omits the JSON field); true/false = attribute reported
+    // that value. Implementations MAY skip the AX call entirely when the role
+    // does not support the attribute (e.g. window-state on a button).
+
+    /// `AXFocused` — whether keyboard focus is on this element.
+    func isFocused(_ ref: AXElementReference) -> Bool?
+
+    /// `AXSelected` — whether the element is in a selected state. Implementations
+    /// gate this to a small set of selectable roles (rows, cells, tabs, menu
+    /// items, list items, outline rows) to control per-node cost on long lists.
+    func isSelected(_ ref: AXElementReference) -> Bool?
+
+    /// `AXExpanded` — whether a disclosure / popup / outline is expanded.
+    func isExpanded(_ ref: AXElementReference) -> Bool?
+
+    /// `AXMain` — only meaningful on `AXWindow` elements; returns nil otherwise.
+    func isMain(_ ref: AXElementReference) -> Bool?
+
+    /// `AXMinimized` — only meaningful on `AXWindow` elements; returns nil otherwise.
+    func isMinimized(_ ref: AXElementReference) -> Bool?
+
+    /// `AXFrontmost` — only meaningful on `AXWindow` elements; returns nil otherwise.
+    func isFrontmost(_ ref: AXElementReference) -> Bool?
+
+    /// Resolved frame of the element on screen. Reads `kAXFrameAttribute` first
+    /// and falls back to composing position + size when the frame attribute is
+    /// unsupported (most non-window elements).
+    func frame(of ref: AXElementReference) -> CGRect?
 }
 
 public final class AXApplicationBridgeImpl: AXApplicationBridge {
+    /// Roles for which `AXSelected` is queried. Skipping the lookup on
+    /// non-selectable roles keeps long-list (e.g. AXButton-heavy toolbar,
+    /// AXStaticText-heavy column) traversals cheap. Mirrors the
+    /// `interactiveRoles` allow-list pattern from STORY-004.
+    public static let selectableRoles: Set<String> = [
+        "AXRow",
+        "AXCell",
+        "AXTab",
+        "AXMenuItem",
+        "AXListItem",
+        "AXOutlineRow"
+    ]
+
     private let systemWideElement: AXUIElement
 
     public init() {
@@ -235,6 +280,63 @@ public final class AXApplicationBridgeImpl: AXApplicationBridge {
                 underlyingCode: status.rawValue
             )
         }
+    }
+
+    // MARK: - STORY-015: Extended state attribute readers
+
+    public func isFocused(_ ref: AXElementReference) -> Bool? {
+        readBoolAttribute(ref, attribute: kAXFocusedAttribute as CFString)
+    }
+
+    public func isSelected(_ ref: AXElementReference) -> Bool? {
+        guard let role = ref.role, Self.selectableRoles.contains(role) else { return nil }
+        return readBoolAttribute(ref, attribute: kAXSelectedAttribute as CFString)
+    }
+
+    public func isExpanded(_ ref: AXElementReference) -> Bool? {
+        readBoolAttribute(ref, attribute: kAXExpandedAttribute as CFString)
+    }
+
+    public func isMain(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == kAXWindowRole as String else { return nil }
+        return readBoolAttribute(ref, attribute: kAXMainAttribute as CFString)
+    }
+
+    public func isMinimized(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == kAXWindowRole as String else { return nil }
+        return readBoolAttribute(ref, attribute: kAXMinimizedAttribute as CFString)
+    }
+
+    public func isFrontmost(_ ref: AXElementReference) -> Bool? {
+        guard ref.role == kAXWindowRole as String else { return nil }
+        return readBoolAttribute(ref, attribute: "AXFrontmost" as CFString)
+    }
+
+    public func frame(of ref: AXElementReference) -> CGRect? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, "AXFrame" as CFString, &raw)
+        if status == .success, let value = raw {
+            var rect = CGRect.zero
+            if AXValueGetValue((value as! AXValue), .cgRect, &rect) {
+                return rect
+            }
+        }
+        // Fallback: compose from position + size.
+        if let pos = position(of: ref), let sz = size(of: ref) {
+            return CGRect(origin: pos, size: sz)
+        }
+        return nil
+    }
+
+    private func readBoolAttribute(_ ref: AXElementReference, attribute: CFString) -> Bool? {
+        guard case .real(let element) = ref.handle else { return nil }
+        var raw: CFTypeRef?
+        let status = AXUIElementCopyAttributeValue(element, attribute, &raw)
+        guard status == .success, let value = raw, CFGetTypeID(value) == CFBooleanGetTypeID() else {
+            return nil
+        }
+        return CFBooleanGetValue((value as! CFBoolean))
     }
 
     private func buildReference(from element: AXUIElement, pid: pid_t, bundleId: String?) -> AXElementReference {

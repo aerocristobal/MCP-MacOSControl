@@ -2,7 +2,7 @@ import Foundation
 import CoreGraphics
 
 public final class AXNodeSerializer {
-    public static let schemaVersion = 2
+    public static let schemaVersion = 3
 
     public init() {}
 
@@ -46,6 +46,34 @@ public final class AXNodeSerializer {
 
         if let truncated = node.truncated {
             dict["truncated"] = truncated
+        }
+
+        if let focused = node.focused {
+            dict["focused"] = focused
+        }
+
+        if let selected = node.selected {
+            dict["selected"] = selected
+        }
+
+        if let expanded = node.expanded {
+            dict["expanded"] = expanded
+        }
+
+        if let visibleInViewport = node.visibleInViewport {
+            dict["visible_in_viewport"] = visibleInViewport
+        }
+
+        if let isMain = node.isMain {
+            dict["is_main"] = isMain
+        }
+
+        if let isMinimized = node.isMinimized {
+            dict["is_minimized"] = isMinimized
+        }
+
+        if let isFrontmost = node.isFrontmost {
+            dict["is_frontmost"] = isFrontmost
         }
 
         if !node.children.isEmpty {
