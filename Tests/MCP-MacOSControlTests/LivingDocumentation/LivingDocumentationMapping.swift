@@ -353,6 +353,7 @@ enum LivingDocumentationMapping {
         "Window root node reports window-level state flags": [
             "AccessibilityTreeBuilderTests.test_build_setsWindowStateFlags_onAXWindowRoleOnly",
             "AccessibilityTreeBuilderTests.test_build_omitsWindowStateFlags_onNonWindowRoles",
+            "AccessibilityTreeBuilderTests.test_build_setsIndependentWindowStateFlags_acrossSiblingWindows",
             "AXNodeSerializer_StateTests.test_serialize_windowStateFields_forAXWindowRole",
             "AXNodeSerializer_StateTests.test_serialize_skipsWindowStateFields_forNonWindowRoles",
         ],

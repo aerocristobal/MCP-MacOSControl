@@ -333,6 +333,43 @@ final class AccessibilityTreeBuilderTests: XCTestCase {
         XCTAssertNil(tree.isFrontmost)
     }
 
+    // STORY-015 Scenario 5: two AXWindow children of an AXApplication report
+    // independent state — proves the builder visits each window with its own
+    // ref rather than reusing values across siblings.
+    func test_build_setsIndependentWindowStateFlags_acrossSiblingWindows() {
+        let frontmost = MockAXUIElement(
+            role: "AXWindow",
+            title: "Doc A",
+            isMain: true,
+            isMinimized: false,
+            isFrontmost: true
+        )
+        let minimized = MockAXUIElement(
+            role: "AXWindow",
+            title: "Doc B",
+            isMain: false,
+            isMinimized: true,
+            isFrontmost: false
+        )
+        let app = MockAXUIElement(
+            role: "AXApplication",
+            title: "TextEdit",
+            children: [frontmost, minimized]
+        )
+        let root = rootRef(app)
+
+        let tree = builder.build(from: root, maxDepth: 3)
+
+        let windows = tree.children
+        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(windows[0].title, "Doc A")
+        XCTAssertEqual(windows[0].isFrontmost, true)
+        XCTAssertEqual(windows[0].isMinimized, false)
+        XCTAssertEqual(windows[1].title, "Doc B")
+        XCTAssertEqual(windows[1].isFrontmost, false)
+        XCTAssertEqual(windows[1].isMinimized, true)
+    }
+
     func test_build_setsVisibleInViewport_true_whenChildIntersectsAncestorWindow() {
         var inner = MockAXUIElement(role: "AXButton", title: "OK")
         inner.position = CGPoint(x: 100, y: 100)
