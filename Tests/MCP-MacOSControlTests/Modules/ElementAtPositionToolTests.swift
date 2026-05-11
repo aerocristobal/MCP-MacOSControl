@@ -89,7 +89,7 @@ final class ElementAtPositionToolTests: XCTestCase {
         XCTAssertTrue(text.contains("\"width\":60"), "expected size.width=60; got: \(text)")
     }
 
-    func test_execute_responseIncludesSchemaVersion2() async throws {
+    func test_execute_responseIncludesSchemaVersion3() async throws {
         bridgeSpy.stubbedHitTestResult = MockAXUIElement(role: "AXButton", title: "Save")
         let params = makeParams(name: "element_at_position", args: [
             "x": .double(400), "y": .double(300)
@@ -98,7 +98,7 @@ final class ElementAtPositionToolTests: XCTestCase {
         let result = try await tool.execute(params)
 
         let text = extractText(from: result!) ?? ""
-        XCTAssertTrue(text.contains("\"schema_version\":2"), "expected schema_version=2; got: \(text)")
+        XCTAssertTrue(text.contains("\"schema_version\":3"), "expected schema_version=3; got: \(text)")
     }
 
     // MARK: - Alternative Success (Scenario 2)
@@ -121,6 +121,28 @@ final class ElementAtPositionToolTests: XCTestCase {
                       "expected role=AXTextField; got: \(text)")
         XCTAssertTrue(text.contains("\"settable\":true"),
                       "expected settable=true; got: \(text)")
+    }
+
+    // STORY-015 — Scenario 6: focused surfaces through element_at_position
+    // (proves the serializer is the single source of truth for the per-node shape).
+    func test_execute_includesFocused_whenElementIsFocused() async throws {
+        bridgeSpy.stubbedHitTestResult = MockAXUIElement(
+            role: "AXTextField",
+            label: "Search",
+            focused: true
+        )
+        let params = makeParams(name: "element_at_position", args: [
+            "x": .double(200),
+            "y": .double(150)
+        ])
+
+        let result = try await tool.execute(params)
+
+        let text = extractText(from: result!) ?? ""
+        XCTAssertTrue(text.contains("\"focused\":true"),
+                      "expected focused=true; got: \(text)")
+        XCTAssertFalse(text.contains("visible_in_viewport"),
+                       "shallow build must omit visible_in_viewport; got: \(text)")
     }
 
     // MARK: - Boundary (Scenario 3)

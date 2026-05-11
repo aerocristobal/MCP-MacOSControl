@@ -245,7 +245,7 @@ final class FindElementsToolTests: XCTestCase {
         ]))!
 
         let json = try parseJSON(extractText(from: result) ?? "")
-        XCTAssertEqual(json["schema_version"] as? Int, 2)
+        XCTAssertEqual(json["schema_version"] as? Int, 3)
     }
 
     func test_execute_returnsPermissionDenied_whenCheckerReturnsFalse() async throws {

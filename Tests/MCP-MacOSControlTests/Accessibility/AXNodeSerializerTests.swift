@@ -125,10 +125,10 @@ final class AXNodeSerializerTests: XCTestCase {
         XCTAssertEqual(json["value"] as? NSNumber, NSNumber(value: 0.42))
     }
 
-    func test_serializeRoot_includesSchemaVersion2_atTopLevel() {
+    func test_serializeRoot_includesSchemaVersion3_atTopLevel() {
         let node = AXNode(role: "AXApplication")
         let response = serializer.serializeRoot(node)
-        XCTAssertEqual(response["schema_version"] as? Int, 2)
+        XCTAssertEqual(response["schema_version"] as? Int, 3)
     }
 
     func test_serializeRoot_keepsRootFieldsAtTopLevel_forBackwardCompatibility() {

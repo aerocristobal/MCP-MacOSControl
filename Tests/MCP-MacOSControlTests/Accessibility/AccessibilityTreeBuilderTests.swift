@@ -257,4 +257,150 @@ final class AccessibilityTreeBuilderTests: XCTestCase {
 
         XCTAssertEqual(node.enabled, false)
     }
+
+    // MARK: - STORY-015: Extended state attributes
+
+    func test_build_propagatesFocused_fromBridge() {
+        let textField = MockAXUIElement(role: "AXTextField", title: "Search", focused: true)
+        let root = rootRef(textField)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertEqual(tree.focused, true)
+    }
+
+    func test_build_propagatesSelected_forAXRow() {
+        let row = MockAXUIElement(role: "AXRow", selected: true)
+        let root = rootRef(row)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertEqual(tree.selected, true)
+    }
+
+    func test_build_skipsSelected_forAXButton() {
+        // Even if the mock supplies a selected value, the bridge gates by
+        // role — non-selectable roles must surface nil so the field is omitted.
+        let button = MockAXUIElement(role: "AXButton", title: "Save", selected: true)
+        let root = rootRef(button)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertNil(tree.selected,
+                     "selected must be nil for AXButton — role-gated lookup")
+    }
+
+    func test_build_propagatesExpanded_forDisclosureTriangle() {
+        let triangle = MockAXUIElement(role: "AXDisclosureTriangle", expanded: true)
+        let root = rootRef(triangle)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertEqual(tree.expanded, true)
+    }
+
+    func test_build_setsWindowStateFlags_onAXWindowRoleOnly() {
+        let window = MockAXUIElement(
+            role: "AXWindow",
+            title: "Untitled",
+            isMain: true,
+            isMinimized: false,
+            isFrontmost: true
+        )
+        let root = rootRef(window)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertEqual(tree.isMain, true)
+        XCTAssertEqual(tree.isMinimized, false)
+        XCTAssertEqual(tree.isFrontmost, true)
+    }
+
+    func test_build_omitsWindowStateFlags_onNonWindowRoles() {
+        let button = MockAXUIElement(
+            role: "AXButton",
+            title: "Save",
+            isMain: true,
+            isMinimized: true,
+            isFrontmost: true
+        )
+        let root = rootRef(button)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertNil(tree.isMain)
+        XCTAssertNil(tree.isMinimized)
+        XCTAssertNil(tree.isFrontmost)
+    }
+
+    func test_build_setsVisibleInViewport_true_whenChildIntersectsAncestorWindow() {
+        var inner = MockAXUIElement(role: "AXButton", title: "OK")
+        inner.position = CGPoint(x: 100, y: 100)
+        inner.size = CGSize(width: 50, height: 30)
+        var window = MockAXUIElement(role: "AXWindow", title: "Untitled", children: [inner])
+        window.position = CGPoint(x: 0, y: 0)
+        window.size = CGSize(width: 800, height: 600)
+        let root = rootRef(window)
+
+        let tree = builder.build(from: root, maxDepth: 5)
+
+        let buttonNode = tree.children.first
+        XCTAssertEqual(buttonNode?.role, "AXButton")
+        XCTAssertEqual(buttonNode?.visibleInViewport, true)
+    }
+
+    func test_build_setsVisibleInViewport_false_whenChildOutsideAncestorWindow() {
+        var inner = MockAXUIElement(role: "AXButton", title: "Hidden")
+        inner.position = CGPoint(x: 1000, y: 1000)
+        inner.size = CGSize(width: 50, height: 30)
+        var window = MockAXUIElement(role: "AXWindow", title: "Untitled", children: [inner])
+        window.position = CGPoint(x: 0, y: 0)
+        window.size = CGSize(width: 800, height: 600)
+        let root = rootRef(window)
+
+        let tree = builder.build(from: root, maxDepth: 5)
+
+        let buttonNode = tree.children.first
+        XCTAssertEqual(buttonNode?.visibleInViewport, false)
+    }
+
+    func test_build_omitsVisibleInViewport_onWindowRootItself() {
+        var window = MockAXUIElement(role: "AXWindow", title: "Untitled")
+        window.position = CGPoint(x: 0, y: 0)
+        window.size = CGSize(width: 800, height: 600)
+        let root = rootRef(window)
+
+        let tree = builder.build(from: root, maxDepth: 1)
+
+        XCTAssertNil(tree.visibleInViewport,
+                     "the window root has no containing window — viewport flag must be omitted")
+    }
+
+    func test_buildShallow_omitsVisibleInViewport() {
+        var element = MockAXUIElement(role: "AXButton", title: "OK")
+        element.position = CGPoint(x: 100, y: 100)
+        element.size = CGSize(width: 50, height: 30)
+        let ref = rootRef(element)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertNil(node.visibleInViewport,
+                     "shallow build has no ancestor context — viewport flag is omitted by design")
+    }
+
+    func test_buildShallow_setsFocusedSelectedExpanded() {
+        let row = MockAXUIElement(
+            role: "AXRow",
+            focused: true,
+            selected: true,
+            expanded: false
+        )
+        let ref = rootRef(row)
+
+        let node = builder.buildShallow(from: ref)
+
+        XCTAssertEqual(node.focused, true)
+        XCTAssertEqual(node.selected, true)
+        XCTAssertEqual(node.expanded, false)
+    }
 }

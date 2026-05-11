@@ -184,8 +184,11 @@ mapped test.
 - `AXNodeSerializerTests.test_serialize_includesDescription_whenPresent`
 - `AXNodeSerializerTests.test_serialize_includesStringValue_asString`
 - `AXNodeSerializerTests.test_serialize_includesNumericValue_asNumber`
-- `AXNodeSerializerTests.test_serializeRoot_includesSchemaVersion2_atTopLevel`
+- `AXNodeSerializerTests.test_serializeRoot_includesSchemaVersion3_atTopLevel`
 - `AXNodeSerializerTests.test_serializeRoot_keepsRootFieldsAtTopLevel_forBackwardCompatibility`
+- `AXNodeSerializer_StateTests.test_serialize_preservesAllV2Fields_whenStateFieldsAdded`
+- `AXNodeSerializer_StateTests.test_schemaVersion_isIncrementedTo3`
+- `AXNodeSerializer_StateTests.test_serializeRoot_includesSchemaVersion3_atRoot`
 
 
 ## Element At Position Hit-Test Tool
@@ -402,4 +405,73 @@ mapped test.
 - `ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenTitleMatchesIsMalformed`
 - `ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenIdentifierMatchesIsMalformed`
 - `FindElementsToolTests.test_execute_returnsInvalidRegex_withFieldName_andWithoutTouchingBridge`
+
+
+## Extended Element State Attributes
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-015-extended-element-state.feature`*
+
+> In order to capture full element state in a single tree read
+> As an AI agent
+> I want every per-node response to include focused, selected, expanded, and visibility flags
+
+### Scenario: Focused text field reports focused = true
+
+- `AccessibilityTreeBuilderTests.test_build_propagatesFocused_fromBridge`
+- `AXNodeSerializer_StateTests.test_serialize_focusedTrue_whenAXFocusedIsTrue`
+- `AXNodeSerializer_StateTests.test_serialize_omitsFocused_whenAttributeUnsupported`
+
+### Scenario: Selected list row reports selected = true
+
+- `AccessibilityTreeBuilderTests.test_build_propagatesSelected_forAXRow`
+- `AccessibilityTreeBuilderTests.test_build_skipsSelected_forAXButton`
+- `AXNodeSerializer_StateTests.test_serialize_selected_forAXRow`
+- `AXNodeSerializer_StateTests.test_serialize_omitsSelected_forNonSelectableRole`
+
+### Scenario: Expanded disclosure triangle reports expanded = true
+
+- `AccessibilityTreeBuilderTests.test_build_propagatesExpanded_forDisclosureTriangle`
+- `AXNodeSerializer_StateTests.test_serialize_expanded_forAXDisclosureTriangle`
+- `AXNodeSerializer_StateTests.test_serialize_expanded_falseForCollapsedDisclosure`
+
+### Scenario: Off-screen elements report visible_in_viewport = false
+
+- `ViewportVisibilityResolverTests.test_isVisible_returnsTrue_whenNodeFrameWithinWindow`
+- `ViewportVisibilityResolverTests.test_isVisible_returnsFalse_whenNodeFrameOutsideWindow`
+- `ViewportVisibilityResolverTests.test_isVisible_returnsTrue_forPartialClip`
+- `ViewportVisibilityResolverTests.test_isVisible_returnsFalse_forZeroSizedNode`
+- `ViewportVisibilityResolverTests.test_isVisible_returnsNil_whenContainingWindowFrameUnavailable`
+- `ViewportVisibilityResolverTests.test_isVisible_returnsNil_whenNodeFrameUnavailable`
+- `AccessibilityTreeBuilderTests.test_build_setsVisibleInViewport_true_whenChildIntersectsAncestorWindow`
+- `AccessibilityTreeBuilderTests.test_build_setsVisibleInViewport_false_whenChildOutsideAncestorWindow`
+- `AccessibilityTreeBuilderTests.test_build_omitsVisibleInViewport_onWindowRootItself`
+- `AXNodeSerializer_StateTests.test_serialize_visibleInViewportTrue_whenSet`
+- `AXNodeSerializer_StateTests.test_serialize_visibleInViewportFalse_whenSet`
+- `AXNodeSerializer_StateTests.test_serialize_omitsVisibleInViewport_whenNil`
+
+### Scenario: Window root node reports window-level state flags
+
+- `AccessibilityTreeBuilderTests.test_build_setsWindowStateFlags_onAXWindowRoleOnly`
+- `AccessibilityTreeBuilderTests.test_build_omitsWindowStateFlags_onNonWindowRoles`
+- `AXNodeSerializer_StateTests.test_serialize_windowStateFields_forAXWindowRole`
+- `AXNodeSerializer_StateTests.test_serialize_skipsWindowStateFields_forNonWindowRoles`
+
+### Scenario: New fields surface through element_at_position with the same shape
+
+- `ElementAtPositionToolTests.test_execute_includesFocused_whenElementIsFocused`
+- `ElementAtPositionToolTests.test_execute_responseIncludesSchemaVersion3`
+- `AccessibilityTreeBuilderTests.test_buildShallow_setsFocusedSelectedExpanded`
+- `AccessibilityTreeBuilderTests.test_buildShallow_omitsVisibleInViewport`
+
+### Scenario: Pre-existing fields remain unchanged for backward compatibility
+
+- `AXNodeSerializerTests.test_serialize_includesAllPreExistingFields`
+- `AXNodeSerializerTests.test_serialize_includesDescription_whenPresent`
+- `AXNodeSerializerTests.test_serialize_includesStringValue_asString`
+- `AXNodeSerializerTests.test_serialize_includesNumericValue_asNumber`
+- `AXNodeSerializerTests.test_serializeRoot_includesSchemaVersion3_atTopLevel`
+- `AXNodeSerializerTests.test_serializeRoot_keepsRootFieldsAtTopLevel_forBackwardCompatibility`
+- `AXNodeSerializer_StateTests.test_serialize_preservesAllV2Fields_whenStateFieldsAdded`
+- `AXNodeSerializer_StateTests.test_schemaVersion_isIncrementedTo3`
+- `AXNodeSerializer_StateTests.test_serializeRoot_includesSchemaVersion3_atRoot`
 

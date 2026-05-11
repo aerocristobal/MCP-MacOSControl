@@ -134,13 +134,18 @@ enum LivingDocumentationMapping {
             "AXNodeSerializerTests.test_serialize_omitsTruncated_whenNil",
             "AXNodeSerializerTests.test_serialize_emitsChildCount_whenChildrenPrunedAndCountKnown",
         ],
+        // Shared between STORY-004 (original v2 backward-compat scenario) and
+        // STORY-015 (additive v3 fields preserve all v2 keys + bump to v3).
         "Pre-existing fields remain unchanged for backward compatibility": [
             "AXNodeSerializerTests.test_serialize_includesAllPreExistingFields",
             "AXNodeSerializerTests.test_serialize_includesDescription_whenPresent",
             "AXNodeSerializerTests.test_serialize_includesStringValue_asString",
             "AXNodeSerializerTests.test_serialize_includesNumericValue_asNumber",
-            "AXNodeSerializerTests.test_serializeRoot_includesSchemaVersion2_atTopLevel",
+            "AXNodeSerializerTests.test_serializeRoot_includesSchemaVersion3_atTopLevel",
             "AXNodeSerializerTests.test_serializeRoot_keepsRootFieldsAtTopLevel_forBackwardCompatibility",
+            "AXNodeSerializer_StateTests.test_serialize_preservesAllV2Fields_whenStateFieldsAdded",
+            "AXNodeSerializer_StateTests.test_schemaVersion_isIncrementedTo3",
+            "AXNodeSerializer_StateTests.test_serializeRoot_includesSchemaVersion3_atRoot",
         ],
 
         // MARK: STORY-005 — Element At Position Hit-Test Tool
@@ -312,5 +317,54 @@ enum LivingDocumentationMapping {
             "ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenIdentifierMatchesIsMalformed",
             "FindElementsToolTests.test_execute_returnsInvalidRegex_withFieldName_andWithoutTouchingBridge",
         ],
+
+        // MARK: STORY-015 — Extended Element State Attributes
+
+        "Focused text field reports focused = true": [
+            "AccessibilityTreeBuilderTests.test_build_propagatesFocused_fromBridge",
+            "AXNodeSerializer_StateTests.test_serialize_focusedTrue_whenAXFocusedIsTrue",
+            "AXNodeSerializer_StateTests.test_serialize_omitsFocused_whenAttributeUnsupported",
+        ],
+        "Selected list row reports selected = true": [
+            "AccessibilityTreeBuilderTests.test_build_propagatesSelected_forAXRow",
+            "AccessibilityTreeBuilderTests.test_build_skipsSelected_forAXButton",
+            "AXNodeSerializer_StateTests.test_serialize_selected_forAXRow",
+            "AXNodeSerializer_StateTests.test_serialize_omitsSelected_forNonSelectableRole",
+        ],
+        "Expanded disclosure triangle reports expanded = true": [
+            "AccessibilityTreeBuilderTests.test_build_propagatesExpanded_forDisclosureTriangle",
+            "AXNodeSerializer_StateTests.test_serialize_expanded_forAXDisclosureTriangle",
+            "AXNodeSerializer_StateTests.test_serialize_expanded_falseForCollapsedDisclosure",
+        ],
+        "Off-screen elements report visible_in_viewport = false": [
+            "ViewportVisibilityResolverTests.test_isVisible_returnsTrue_whenNodeFrameWithinWindow",
+            "ViewportVisibilityResolverTests.test_isVisible_returnsFalse_whenNodeFrameOutsideWindow",
+            "ViewportVisibilityResolverTests.test_isVisible_returnsTrue_forPartialClip",
+            "ViewportVisibilityResolverTests.test_isVisible_returnsFalse_forZeroSizedNode",
+            "ViewportVisibilityResolverTests.test_isVisible_returnsNil_whenContainingWindowFrameUnavailable",
+            "ViewportVisibilityResolverTests.test_isVisible_returnsNil_whenNodeFrameUnavailable",
+            "AccessibilityTreeBuilderTests.test_build_setsVisibleInViewport_true_whenChildIntersectsAncestorWindow",
+            "AccessibilityTreeBuilderTests.test_build_setsVisibleInViewport_false_whenChildOutsideAncestorWindow",
+            "AccessibilityTreeBuilderTests.test_build_omitsVisibleInViewport_onWindowRootItself",
+            "AXNodeSerializer_StateTests.test_serialize_visibleInViewportTrue_whenSet",
+            "AXNodeSerializer_StateTests.test_serialize_visibleInViewportFalse_whenSet",
+            "AXNodeSerializer_StateTests.test_serialize_omitsVisibleInViewport_whenNil",
+        ],
+        "Window root node reports window-level state flags": [
+            "AccessibilityTreeBuilderTests.test_build_setsWindowStateFlags_onAXWindowRoleOnly",
+            "AccessibilityTreeBuilderTests.test_build_omitsWindowStateFlags_onNonWindowRoles",
+            "AXNodeSerializer_StateTests.test_serialize_windowStateFields_forAXWindowRole",
+            "AXNodeSerializer_StateTests.test_serialize_skipsWindowStateFields_forNonWindowRoles",
+        ],
+        "New fields surface through element_at_position with the same shape": [
+            "ElementAtPositionToolTests.test_execute_includesFocused_whenElementIsFocused",
+            "ElementAtPositionToolTests.test_execute_responseIncludesSchemaVersion3",
+            "AccessibilityTreeBuilderTests.test_buildShallow_setsFocusedSelectedExpanded",
+            "AccessibilityTreeBuilderTests.test_buildShallow_omitsVisibleInViewport",
+        ],
+        // NOTE: "Pre-existing fields remain unchanged for backward compatibility"
+        // is the title of both the STORY-004 and STORY-015 backward-compat
+        // scenarios. The mapping for it lives in the STORY-004 block above and
+        // covers proofs for both stories.
     ]
 }
