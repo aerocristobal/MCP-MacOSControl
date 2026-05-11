@@ -25,3 +25,6 @@ jobs:
 
       - name: Run Tests
         run: swift test
+
+      - name: Verify living documentation is up to date
+        run: git diff --exit-code docs/LIVING-DOCUMENTATION.md
