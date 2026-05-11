@@ -268,5 +268,49 @@ enum LivingDocumentationMapping {
             "AppleScriptMenuClickBackendTests.test_alternativesScript_threeLevelPathEnumeratesIntermediateMenu",
             "AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar",
         ],
+
+        // MARK: STORY-014 — Find Elements by Query
+
+        "Returns matching nodes by role and title substring": [
+            "ElementPredicateTests.test_matches_byTitleContainsSubstring",
+            "ElementPredicateTests.test_matches_requiresAllCriteriaToMatch",
+            "FindElementsToolTests.test_execute_returnsMatchingButton_byRoleAndTitleContains",
+            "FindElementsToolTests.test_execute_excludesNonMatchingSiblings",
+        ],
+        "Returns matching nodes by identifier exact match": [
+            "ElementPredicateTests.test_matches_byExactIdentifier",
+            "ElementPredicateTests.test_matches_rejectsDifferentIdentifier_whenExactSpecified",
+            "ElementPredicateTests.test_matches_rejectsPartialIdentifier_whenExactSpecified",
+            "FindElementsToolTests.test_execute_returnsOnlyExactIdentifierMatch",
+        ],
+        "Each result includes its AX path for disambiguation": [
+            "AXPathBuilderTests.test_path_startsWithApplicationRole_andTitle",
+            "AXPathBuilderTests.test_path_usesIdentifier_whenTitleAbsent",
+            "AXPathBuilderTests.test_path_prefersTitle_overIdentifier_whenBothPresent",
+            "AXPathBuilderTests.test_path_emitsEmptyDisambiguator_whenBothTitleAndIdentifierAbsent",
+            "AXTreeWalkerTests.test_walk_capturesAncestorsForEachMatch",
+            "FindElementsToolTests.test_execute_includesAXPath_withApplicationAndWindowAncestors",
+        ],
+        "Empty result for query with no matches is not an error": [
+            "AXTreeWalkerTests.test_walk_returnsEmptyMatches_withoutTruncation_whenNothingMatches",
+            "FindElementsToolTests.test_execute_returnsEmptyMatchesWithMetadata_whenNoMatch",
+        ],
+        "Hard cap on max_results prevents oversized payloads": [
+            "AXTreeWalkerTests.test_walk_stopsAtMaxResults_andSetsTruncatedFlag",
+            "AXTreeWalkerTests.test_walk_noTruncation_whenAllMatchesFitUnderCap",
+            "AXTreeWalkerTests.test_walk_returnsShallowMatchesBeforeDeepMatches",
+            "FindElementsToolTests.test_execute_truncatesAtMaxResults_andSetsFlagWithHint",
+            "FindElementsToolTests.test_execute_clampsMaxResults_aboveHardLimit",
+            "FindElementsToolTests.test_findElementsPayload_isFiveOrLess_percentOf_fullTreePayload",
+        ],
+        "Rejects predicates that would match every node": [
+            "ElementPredicateTests.test_compile_throwsPredicateTooBroad_whenNoCriteriaSet",
+            "FindElementsToolTests.test_execute_returnsPredicateTooBroad_withoutTouchingBridge",
+        ],
+        "Returns invalid_regex error when title_matches contains an invalid regex": [
+            "ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenTitleMatchesIsMalformed",
+            "ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenIdentifierMatchesIsMalformed",
+            "FindElementsToolTests.test_execute_returnsInvalidRegex_withFieldName_andWithoutTouchingBridge",
+        ],
     ]
 }

@@ -4,7 +4,7 @@ import MCP
 
 final class AccessibilityModuleTests: XCTestCase {
     func testHasExpectedTools() {
-        XCTAssertEqual(AccessibilityModule.tools.count, 4)
+        XCTAssertEqual(AccessibilityModule.tools.count, 5)
     }
 
     func testToolNames() {
@@ -13,6 +13,7 @@ final class AccessibilityModuleTests: XCTestCase {
         XCTAssertTrue(names.contains("click_element"))
         XCTAssertTrue(names.contains("perform_ax_action"))
         XCTAssertTrue(names.contains("element_at_position"))
+        XCTAssertTrue(names.contains("find_elements"))
     }
 
     func testUnknownToolReturnsNil() async throws {

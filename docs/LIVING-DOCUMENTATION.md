@@ -346,3 +346,60 @@ mapped test.
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_threeLevelPathEnumeratesIntermediateMenu`
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar`
 
+
+## Find Elements by Query
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-014-find-elements-by-query.feature`*
+
+> In order to locate UI elements without retrieving the entire accessibility tree
+> As an AI agent
+> I want find_elements to return only the nodes matching a semantic predicate
+
+### Scenario: Returns matching nodes by role and title substring
+
+- `ElementPredicateTests.test_matches_byTitleContainsSubstring`
+- `ElementPredicateTests.test_matches_requiresAllCriteriaToMatch`
+- `FindElementsToolTests.test_execute_returnsMatchingButton_byRoleAndTitleContains`
+- `FindElementsToolTests.test_execute_excludesNonMatchingSiblings`
+
+### Scenario: Returns matching nodes by identifier exact match
+
+- `ElementPredicateTests.test_matches_byExactIdentifier`
+- `ElementPredicateTests.test_matches_rejectsDifferentIdentifier_whenExactSpecified`
+- `ElementPredicateTests.test_matches_rejectsPartialIdentifier_whenExactSpecified`
+- `FindElementsToolTests.test_execute_returnsOnlyExactIdentifierMatch`
+
+### Scenario: Each result includes its AX path for disambiguation
+
+- `AXPathBuilderTests.test_path_startsWithApplicationRole_andTitle`
+- `AXPathBuilderTests.test_path_usesIdentifier_whenTitleAbsent`
+- `AXPathBuilderTests.test_path_prefersTitle_overIdentifier_whenBothPresent`
+- `AXPathBuilderTests.test_path_emitsEmptyDisambiguator_whenBothTitleAndIdentifierAbsent`
+- `AXTreeWalkerTests.test_walk_capturesAncestorsForEachMatch`
+- `FindElementsToolTests.test_execute_includesAXPath_withApplicationAndWindowAncestors`
+
+### Scenario: Empty result for query with no matches is not an error
+
+- `AXTreeWalkerTests.test_walk_returnsEmptyMatches_withoutTruncation_whenNothingMatches`
+- `FindElementsToolTests.test_execute_returnsEmptyMatchesWithMetadata_whenNoMatch`
+
+### Scenario: Hard cap on max_results prevents oversized payloads
+
+- `AXTreeWalkerTests.test_walk_stopsAtMaxResults_andSetsTruncatedFlag`
+- `AXTreeWalkerTests.test_walk_noTruncation_whenAllMatchesFitUnderCap`
+- `AXTreeWalkerTests.test_walk_returnsShallowMatchesBeforeDeepMatches`
+- `FindElementsToolTests.test_execute_truncatesAtMaxResults_andSetsFlagWithHint`
+- `FindElementsToolTests.test_execute_clampsMaxResults_aboveHardLimit`
+- `FindElementsToolTests.test_findElementsPayload_isFiveOrLess_percentOf_fullTreePayload`
+
+### Scenario: Rejects predicates that would match every node
+
+- `ElementPredicateTests.test_compile_throwsPredicateTooBroad_whenNoCriteriaSet`
+- `FindElementsToolTests.test_execute_returnsPredicateTooBroad_withoutTouchingBridge`
+
+### Scenario: Returns invalid_regex error when title_matches contains an invalid regex
+
+- `ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenTitleMatchesIsMalformed`
+- `ElementPredicateTests.test_compile_throwsInvalidRegex_withFieldName_whenIdentifierMatchesIsMalformed`
+- `FindElementsToolTests.test_execute_returnsInvalidRegex_withFieldName_andWithoutTouchingBridge`
+

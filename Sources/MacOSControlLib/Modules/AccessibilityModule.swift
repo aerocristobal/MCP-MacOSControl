@@ -63,6 +63,31 @@ public enum AccessibilityModule: ToolModule {
                 )
             ),
             Tool(
+                name: "find_elements",
+                description: "Find UI elements matching a semantic predicate (role / title / identifier / label / description) without retrieving the full accessibility tree. Returns a flat list of matches plus each match's `ax_path` from application root, the same per-node shape as accessibility_tree (schema_version 2). Traversal is breadth-first so shallow matches surface first when max_results is hit — payload is bounded by BOTH max_depth (default 12) AND max_results (default 50, max 500). At least one of role / title / title_contains / title_matches / identifier / identifier_matches / label / description MUST be set or the tool returns `predicate_too_broad` before any AX call. At most one title predicate (title / title_contains / title_matches) and at most one identifier predicate (identifier / identifier_matches) per call. Regex compilation errors short-circuit before traversal. Designed to keep tool-call payloads small enough for an agent to reason about within its context window. READ-ONLY.",
+                inputSchema: jsonSchema(
+                    type: "object",
+                    properties: [
+                        "application": ["type": "string", "description": "Restrict the search to this app — bundle ID (e.g., com.apple.TextEdit) or name (e.g., TextEdit). Defaults to frontmost app."],
+                        "window_title": ["type": "string", "description": "Restrict the search to a window whose title contains this substring (case-insensitive)."],
+                        "role": ["type": "string", "description": "AX role to match exactly (e.g., AXButton, AXTextField)."],
+                        "title": ["type": "string", "description": "AX title to match exactly. Mutually exclusive with title_contains and title_matches."],
+                        "title_contains": ["type": "string", "description": "Case-insensitive substring match against AX title. Mutually exclusive with title and title_matches."],
+                        "title_matches": ["type": "string", "description": "ICU regex matched against AX title. Mutually exclusive with title and title_contains. invalid_regex short-circuits before traversal."],
+                        "identifier": ["type": "string", "description": "AX identifier to match exactly. Mutually exclusive with identifier_matches."],
+                        "identifier_matches": ["type": "string", "description": "ICU regex matched against AX identifier. Mutually exclusive with identifier."],
+                        "label": ["type": "string", "description": "AX accessibility label to match exactly."],
+                        "description": ["type": "string", "description": "AX description / help text to match exactly."],
+                        "max_results": ["type": "integer", "description": "Hard cap on returned matches; clamped to [1, 500]. truncated_results=true if predicate matched additional nodes beyond the cap.", "default": 50],
+                        "max_depth": ["type": "integer", "description": "Maximum tree depth to traverse. Root is depth 0. Default 12 — deeper than accessibility_tree's 6 since payload is bounded by max_results too.", "default": 12]
+                    ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false
+                )
+            ),
+            Tool(
                 name: "element_at_position",
                 description: "Resolve the macOS AX element under a screen coordinate. Inverse of click_element: takes (x, y) and returns the element's role, title, description, identifier, position, size, value, and (for interactive roles) actions / enabled / settable — the same per-node shape as accessibility_tree (schema_version 2). Coordinates are logical points, top-left origin, global across the union of attached displays. On a single 1920×1080 retina display, the bottom-right corner is x=1920, y=1080 (logical points), not 3840/2160 (device pixels). Pass display_index to provide display-local coordinates that the tool will offset into global space. Returns the topmost AXApplication with a `note` field when the coordinate falls on empty desktop background. READ-ONLY: does not click, focus, or otherwise modify UI state.",
                 inputSchema: jsonSchema(
@@ -144,6 +169,11 @@ public enum AccessibilityModule: ToolModule {
                 enumerator: enumerator,
                 bridge: bridge
             )
+            return try await tool.execute(params)
+
+        case "find_elements":
+            let bridge = AXApplicationBridgeImpl()
+            let tool = FindElementsTool(bridge: bridge)
             return try await tool.execute(params)
 
         case "element_at_position":

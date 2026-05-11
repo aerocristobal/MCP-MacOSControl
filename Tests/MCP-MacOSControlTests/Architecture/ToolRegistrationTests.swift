@@ -39,8 +39,8 @@ final class ToolRegistrationTests: XCTestCase {
         XCTAssertEqual(SystemModule.tools.count, 3)
     }
 
-    func testAccessibilityModuleHas4Tools() {
-        XCTAssertEqual(AccessibilityModule.tools.count, 4)
+    func testAccessibilityModuleHas5Tools() {
+        XCTAssertEqual(AccessibilityModule.tools.count, 5)
     }
 
     func testAppleScriptModuleHas2Tools() {
@@ -69,7 +69,7 @@ final class ToolRegistrationTests: XCTestCase {
             "generate_text_llm", "analyze_screen_with_llm", "intelligent_screen_summary", "extract_key_info",
             "analyze_screen_now", "start_screen_monitoring", "get_monitoring_results", "stop_screen_monitoring",
             "check_permissions", "wait_milliseconds", "wait_for_text",
-            "accessibility_tree", "click_element", "perform_ax_action", "element_at_position",
+            "accessibility_tree", "click_element", "perform_ax_action", "element_at_position", "find_elements",
             "run_applescript", "click_menu_item",
             "iphone_status", "iphone_launch", "iphone_calibrate",
             "iphone_tap", "iphone_double_tap", "iphone_long_press",
