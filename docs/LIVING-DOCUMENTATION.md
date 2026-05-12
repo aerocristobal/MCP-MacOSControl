@@ -350,6 +350,67 @@ mapped test.
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar`
 
 
+## MCP Tool Annotations and Descriptions
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*
+
+> In order to allow AI clients to reason safely about tool invocation
+> As an MCP server author
+> I want every tool definition to include behavioral annotations and a rich description
+
+### Scenario: Read-only tools declare readOnlyHint = true
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `ToolCatalogAuditTests.test_accessibilityTree_descriptionMentionsReadOnlyBehavior`
+
+### Scenario: Destructive tools declare destructiveHint = true
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `ToolCatalogAuditTests.test_runAppleScript_descriptionWarnsAboutSystemModification`
+
+### Scenario: Every registered tool has annotations populated
+
+- `ToolCatalogAuditTests.test_everyRegisteredTool_hasAnnotationsPopulated`
+- `ToolCatalogAuditTests.test_everyTool_hasReadOnlyAndDestructiveHintsSet`
+- `PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool`
+
+### Scenario: All tool descriptions meet the quality bar
+
+- `ToolCatalogAuditTests.test_everyToolDescription_isAtLeast50Chars`
+- `ToolCatalogAuditTests.test_everyToolDescription_hasNoPlaceholderText`
+- `ToolCatalogAuditReportTests.test_writesCatalogAudit_andEveryToolPassesDoDChecks`
+
+### Scenario: Tool schemas declare required vs optional parameters
+
+- `ToolSchemaTests.testClickScreenRequiredParams`
+- `ToolSchemaTests.testRunAppleScriptRequiredParams`
+- `ToolSchemaTests.testTypeTextRequiredParams`
+- `ToolSchemaTests.testWaitMillisecondsRequiredParams`
+
+### Scenario: Enumerated parameter values are constrained in the schema
+
+- `SchemaEnumAuditTests.test_clickScreen_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_mouseDown_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_mouseUp_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_scroll_directionParam_declaresEnum`
+- `SchemaEnumAuditTests.test_startContinuousCapture_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_analyzeScreenNow_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_startScreenMonitoring_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_analyzeScreenWithLlm_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_intelligentScreenSummary_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_iphonePressKey_modifiersParam_declaresEnumViaItems`
+
+### Scenario: idempotentHint is set for tools that are safe to retry
+
+- `IdempotentHintTests.test_readOnlyTools_haveIdempotentHintTrue`
+- `IdempotentHintTests.test_nonIdempotentTools_haveIdempotentHintFalse`
+
+### Scenario Outline: Correct annotation for each tool category
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool`
+
+
 ## Find Elements by Query
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-014-find-elements-by-query.feature`*

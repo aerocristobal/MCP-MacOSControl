@@ -47,7 +47,8 @@ public enum AppleScriptModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
@@ -89,7 +90,8 @@ public enum AppleScriptModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             )
         ]

@@ -18,7 +18,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
@@ -33,12 +34,13 @@ public enum AccessibilityModule: ToolModule {
                         "label": ["type": "string", "description": "AX accessibility label."],
                         "description": ["type": "string", "description": "AX description / help text."],
                         "application": ["type": "string", "description": "Restrict the search to this app — bundle ID (e.g., com.apple.TextEdit) or name (e.g., TextEdit)."],
-                        "return_state": ["type": "boolean", "description": "If true, re-read the element's value after the press and include it in the response.", "default": false]
+                        "return_state": ["type": "boolean", "description": "If true, re-read the element's value after the press and include it in the response. Defaults to false.", "default": false]
                     ]
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
@@ -59,7 +61,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
@@ -78,13 +81,14 @@ public enum AccessibilityModule: ToolModule {
                         "identifier_matches": ["type": "string", "description": "ICU regex matched against AX identifier. Mutually exclusive with identifier."],
                         "label": ["type": "string", "description": "AX accessibility label to match exactly."],
                         "description": ["type": "string", "description": "AX description / help text to match exactly."],
-                        "max_results": ["type": "integer", "description": "Hard cap on returned matches; clamped to [1, 500]. truncated_results=true if predicate matched additional nodes beyond the cap.", "default": 50],
+                        "max_results": ["type": "integer", "description": "Hard cap on returned matches; clamped to [1, 500]. truncated_results=true if predicate matched additional nodes beyond the cap. Default 50.", "default": 50],
                         "max_depth": ["type": "integer", "description": "Maximum tree depth to traverse. Root is depth 0. Default 12 — deeper than accessibility_tree's 6 since payload is bounded by max_results too.", "default": 12]
                     ]
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
@@ -101,7 +105,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             )
         ]

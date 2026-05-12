@@ -6,20 +6,30 @@ public enum WindowModule: ToolModule {
         [
             Tool(
                 name: "list_windows",
-                description: "List all open windows on the system",
-                inputSchema: jsonSchema(type: "object")
+                description: "Enumerate every on-screen window across all applications, with title, owner PID, window ID, and frame bounds. Use to discover which app currently owns a target window before activating or capturing it. Read-only; returns a JSON array.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "activate_window",
-                description: "Activate a window (bring it to the foreground) by matching its title",
+                description: "Raise and focus a window whose title matches the given pattern. Use to ensure subsequent keyboard / click events land in the intended window. Idempotent — focusing an already-frontmost window is a no-op. Returns a confirmation string naming the activated window.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "title_pattern": ["type": "string", "description": "Window title pattern"],
-                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
-                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60]
+                        "title_pattern": ["type": "string", "description": "Window title pattern to match. Fuzzy substring by default; regex when use_regex=true."],
+                        "use_regex": ["type": "boolean", "description": "Match title_pattern as a regex. Defaults to false.", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100) used when use_regex=false. Defaults to 60.", "default": 60]
                     ],
                     required: ["title_pattern"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
         ]

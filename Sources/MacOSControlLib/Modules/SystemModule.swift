@@ -7,32 +7,47 @@ public enum SystemModule: ToolModule {
         [
             Tool(
                 name: "check_permissions",
-                description: "Check system permissions required for MCP server functionality",
-                inputSchema: jsonSchema(type: "object")
+                description: "Inspect the macOS permissions this MCP server needs (Screen Recording, Accessibility) and report which are granted. Use as a pre-flight check before invoking input or capture tools. Read-only; returns a JSON object listing each permission, its grant status, the tools that depend on it, and remediation instructions.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "wait_milliseconds",
-                description: "Wait for a specified number of milliseconds",
+                description: "Block for the requested number of milliseconds. Use sparingly — prefer wait_for_text / wait_for_element_state when waiting for a UI condition. Read-only with respect to the system; non-idempotent because elapsed time differs per call. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "milliseconds": ["type": "integer", "description": "Milliseconds to wait"]
+                        "milliseconds": ["type": "integer", "description": "Number of milliseconds to sleep before returning."]
                     ],
                     required: ["milliseconds"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "wait_for_text",
-                description: "Poll screenshot+OCR until specific text appears or timeout",
+                description: "Poll screen OCR until specific text appears, or fail with timeout. Use to synchronize with UI transitions instead of sleeping. Read-only with respect to the system; non-idempotent because the screen state changes over time. Returns a JSON object describing the matched text and its coordinates.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "text": ["type": "string", "description": "Text to wait for (case-insensitive substring match)"],
-                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 5000],
-                        "poll_interval_ms": ["type": "integer", "description": "Time between OCR polls in milliseconds", "default": 500],
-                        "title_pattern": ["type": "string", "description": "Optional window title pattern to target"]
+                        "text": ["type": "string", "description": "Text to wait for (case-insensitive substring match)."],
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds. Defaults to 5000.", "default": 5000],
+                        "poll_interval_ms": ["type": "integer", "description": "Time between OCR polls in milliseconds. Defaults to 500.", "default": 500],
+                        "title_pattern": ["type": "string", "description": "Optional window title pattern to restrict the poll to a specific window."]
                     ],
                     required: ["text"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
         ]

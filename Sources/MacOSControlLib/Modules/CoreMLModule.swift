@@ -6,100 +6,148 @@ public enum CoreMLModule: ToolModule {
         [
             Tool(
                 name: "list_coreml_models",
-                description: "List available CoreML models on the system",
+                description: "List CoreML models discoverable on the system, optionally restricted to a directory. Use to see what's available before calling load_coreml_model. Read-only; returns a JSON array of model metadata.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "directory": ["type": "string", "description": "Optional directory to search for models"]
+                        "directory": ["type": "string", "description": "Optional directory to search. When omitted, searches the standard model locations."]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "load_coreml_model",
-                description: "Load a CoreML model into memory for inference",
+                description: "Load a CoreML model from disk into in-process memory under a user-chosen name. Use before generate_text_llm or analyze_screen_with_llm. Idempotent — loading the same name + path twice is a no-op. Returns a confirmation string with the load result.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "name": ["type": "string", "description": "Name to reference the model by"],
-                        "path": ["type": "string", "description": "File path to the .mlmodel or .mlmodelc"]
+                        "name": ["type": "string", "description": "Handle used to reference the model in later tool calls."],
+                        "path": ["type": "string", "description": "File path to the .mlmodel or .mlmodelc bundle to load."]
                     ],
                     required: ["name", "path"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "unload_coreml_model",
-                description: "Unload a CoreML model from memory",
+                description: "Free a previously-loaded CoreML model from memory. Use to release RAM once you no longer need a model. Idempotent — unloading an already-unloaded name is a no-op. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "name": ["type": "string", "description": "Name of the loaded model to unload"]
+                        "name": ["type": "string", "description": "Handle of the model to unload (matches the name used in load_coreml_model)."]
                     ],
                     required: ["name"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "get_model_info",
-                description: "Get metadata and info about a loaded CoreML model",
+                description: "Return metadata for a loaded CoreML model — input / output schemas, descriptions, and version. Use to understand how to feed and interpret the model. Read-only; returns a JSON object.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "name": ["type": "string", "description": "Name of the loaded model"]
+                        "name": ["type": "string", "description": "Handle of the loaded model to introspect."]
                     ],
                     required: ["name"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "generate_text_llm",
-                description: "Generate text using a loaded CoreML LLM model",
+                description: "Generate text from a prompt using a loaded CoreML LLM. Use for on-device language tasks. Sampling means repeated calls with the same input may produce different outputs (non-idempotent). Read-only with respect to the system. Returns the generated text as a string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "model_name": ["type": "string", "description": "Name of the loaded LLM model"],
-                        "prompt": ["type": "string", "description": "Text prompt for generation"],
-                        "max_tokens": ["type": "integer", "description": "Maximum tokens to generate (default: 256)", "default": 256],
-                        "temperature": ["type": "number", "description": "Sampling temperature (default: 0.7)", "default": 0.7]
+                        "model_name": ["type": "string", "description": "Handle of the loaded LLM model."],
+                        "prompt": ["type": "string", "description": "Prompt text to feed the model."],
+                        "max_tokens": ["type": "integer", "description": "Maximum number of tokens to generate. Defaults to 256.", "default": 256],
+                        "temperature": ["type": "number", "description": "Sampling temperature; lower = more deterministic. Defaults to 0.7.", "default": 0.7]
                     ],
                     required: ["model_name", "prompt"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "analyze_screen_with_llm",
-                description: "Capture the screen and analyze it using a CoreML LLM with Vision data",
+                description: "Capture the screen, run a configurable Vision / OCR pipeline, and feed the result to a loaded CoreML LLM with the given instruction. Use for end-to-end visual reasoning on the current screen. Non-idempotent (live screen + sampling). Read-only with respect to the system. Returns a JSON object with the LLM's response.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "model_name": ["type": "string", "description": "Name of the loaded LLM model"],
-                        "instruction": ["type": "string", "description": "Analysis instruction for the LLM"],
-                        "capture_type": ["type": "string", "description": "Type of capture: display, window, or application"],
-                        "target_identifier": ["type": "string", "description": "Display ID, window ID/title, or app bundle identifier"],
-                        "include_ocr": ["type": "boolean", "description": "Include OCR text extraction (default: true)"],
-                        "include_classification": ["type": "boolean", "description": "Include image classification (default: true)"],
-                        "include_objects": ["type": "boolean", "description": "Include object detection (default: false)"],
-                        "max_response_tokens": ["type": "integer", "description": "Maximum response tokens (default: 512)"]
+                        "model_name": ["type": "string", "description": "Handle of the loaded LLM model."],
+                        "instruction": ["type": "string", "description": "What the LLM should analyze about the captured screen."],
+                        "capture_type": [
+                            "type": "string",
+                            "description": "Scope of the screen capture: one of display, window, or application.",
+                            "enum": ["display", "window", "application"]
+                        ],
+                        "target_identifier": ["type": "string", "description": "Display ID, window ID / title, or app bundle identifier — depending on capture_type."],
+                        "include_ocr": ["type": "boolean", "description": "Include OCR text extraction in the pipeline. Defaults to true.", "default": true],
+                        "include_classification": ["type": "boolean", "description": "Include image classification. Defaults to true.", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection. Defaults to false.", "default": false],
+                        "max_response_tokens": ["type": "integer", "description": "Maximum response tokens for the LLM. Defaults to 512.", "default": 512]
                     ],
                     required: ["model_name", "instruction"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "intelligent_screen_summary",
-                description: "Capture and analyze the screen using Vision framework for an intelligent summary",
+                description: "Capture the screen and produce a structured Vision-based summary (classification + OCR + object detection) without invoking an LLM. Use as a lightweight alternative to analyze_screen_with_llm when you only need raw signals. Non-idempotent (live screen). Read-only with respect to the system. Returns a JSON summary.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "capture_type": ["type": "string", "description": "Type of capture: display, window, or application"],
-                        "target_identifier": ["type": "string", "description": "Display ID, window ID/title, or app bundle identifier"]
+                        "capture_type": [
+                            "type": "string",
+                            "description": "Scope of the screen capture: one of display, window, or application.",
+                            "enum": ["display", "window", "application"]
+                        ],
+                        "target_identifier": ["type": "string", "description": "Display ID, window ID / title, or app bundle identifier — depending on capture_type."]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "extract_key_info",
-                description: "Extract key information from OCR results",
+                description: "Pure function over OCR results — distills key-value-like text into a structured object (titles, emails, URLs, numbers, etc.) without any system access. Use to post-process a take_screenshot_with_ocr response. Idempotent for a given input. Returns a JSON object.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "ocr_results": ["type": "array", "description": "Array of OCR result arrays"]
+                        "ocr_results": ["type": "array", "description": "Array of [polygon, text, confidence] arrays as returned by take_screenshot_with_ocr."]
                     ],
                     required: ["ocr_results"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
         ]

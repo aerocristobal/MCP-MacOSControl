@@ -9,41 +9,75 @@ public enum ContinuousCaptureModule: ToolModule {
         [
             Tool(
                 name: "start_continuous_capture",
-                description: "Start continuous screen/window/app capture using ScreenCaptureKit",
+                description: "Start a continuous ScreenCaptureKit session over a display, window, or application at the given frame rate. Use when you need a live feed instead of a single screenshot — typically paired with get_capture_frame and stop_continuous_capture. Returns a confirmation string with the capture type and frame rate.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "capture_type": ["type": "string", "description": "Type of capture: display, window, or application"],
-                        "target_identifier": ["type": "string", "description": "Display ID, window ID/title, or app bundle identifier"],
-                        "frame_rate": ["type": "integer", "description": "Capture frame rate (default: 30)", "default": 30]
+                        "capture_type": [
+                            "type": "string",
+                            "description": "What to capture: one of display, window, or application.",
+                            "enum": ["display", "window", "application"]
+                        ],
+                        "target_identifier": ["type": "string", "description": "Display ID, window ID / title, or app bundle identifier — depending on capture_type."],
+                        "frame_rate": ["type": "integer", "description": "Capture frame rate in frames per second. Defaults to 30.", "default": 30]
                     ],
                     required: ["capture_type"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "stop_continuous_capture",
-                description: "Stop the active continuous capture session",
-                inputSchema: jsonSchema(type: "object")
+                description: "Stop the active ScreenCaptureKit capture session, if any. Use to release capture resources after collecting needed frames. Idempotent — calling when no session is active returns a benign \"no active capture\" message. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "get_capture_frame",
-                description: "Get the latest frame from continuous capture as base64 PNG",
-                inputSchema: jsonSchema(type: "object")
+                description: "Fetch the most recent frame from the active continuous capture as base64 PNG image content. Use as the polling step in a capture loop. Not idempotent — successive calls advance through different frames as new ones arrive. Returns image content when a frame is available, error text otherwise.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
+                )
             ),
             Tool(
                 name: "list_capturable_displays",
-                description: "List all available displays for capture",
-                inputSchema: jsonSchema(type: "object")
+                description: "List displays available to ScreenCaptureKit, with display ID, name, and resolution. Use to pick a target_identifier before start_continuous_capture. Read-only; returns a JSON array.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "list_capturable_windows",
-                description: "List all capturable windows (ScreenCaptureKit)",
-                inputSchema: jsonSchema(type: "object")
+                description: "List windows available to ScreenCaptureKit, including title, window ID, and owning application bundle identifier. Use to pick a target_identifier before start_continuous_capture. Read-only; returns a JSON array.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "list_capturable_applications",
-                description: "List all running applications available for capture",
-                inputSchema: jsonSchema(type: "object")
+                description: "List running applications available to ScreenCaptureKit, with bundle identifier, name, and PID. Use to pick a target_identifier when capture_type=\"application\". Read-only; returns a JSON array.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
         ]
     }

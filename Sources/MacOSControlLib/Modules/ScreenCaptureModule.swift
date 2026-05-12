@@ -6,28 +6,38 @@ public enum ScreenCaptureModule: ToolModule {
         [
             Tool(
                 name: "take_screenshot",
-                description: "Get screenshot of entire screen or specific window",
+                description: "Capture a PNG of the entire screen or a specific window matched by title pattern. Use when you need a visual snapshot to feed Vision / OCR pipelines or to deliver to a model. Read-only — no system state is modified. Returns base64-encoded PNG image content; optionally also saves a copy to ~/Downloads.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "title_pattern": ["type": "string", "description": "Window title pattern (optional)"],
-                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
-                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60],
-                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to downloads folder", "default": false]
+                        "title_pattern": ["type": "string", "description": "Optional window title pattern. When omitted, captures the entire screen."],
+                        "use_regex": ["type": "boolean", "description": "Match title_pattern as a regex instead of fuzzy substring. Defaults to false.", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100) used when use_regex=false. Defaults to 60.", "default": 60],
+                        "save_to_downloads": ["type": "boolean", "description": "Also save the PNG to ~/Downloads for later inspection. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "take_screenshot_with_ocr",
-                description: "Take screenshot and extract text with OCR, returns list of [coordinates, text, confidence]",
+                description: "Capture the screen or a window and run Vision OCR over the result. Use to find UI text with coordinates so a later click_screen or wait_for_text call can target it. Returns a JSON array of [polygon, text, confidence] triples sorted by Vision's recognition order. Read-only with respect to the system.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "title_pattern": ["type": "string", "description": "Window title pattern (optional)"],
-                        "use_regex": ["type": "boolean", "description": "Use regex for pattern matching", "default": false],
-                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100)", "default": 60],
-                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to downloads folder", "default": false]
+                        "title_pattern": ["type": "string", "description": "Optional window title pattern. When omitted, captures the entire screen."],
+                        "use_regex": ["type": "boolean", "description": "Match title_pattern as a regex instead of fuzzy substring. Defaults to false.", "default": false],
+                        "threshold": ["type": "integer", "description": "Fuzzy match threshold (0-100) used when use_regex=false. Defaults to 60.", "default": 60],
+                        "save_to_downloads": ["type": "boolean", "description": "Also save the captured PNG to ~/Downloads. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
         ]

@@ -367,5 +367,52 @@ enum LivingDocumentationMapping {
         // is the title of both the STORY-004 and STORY-015 backward-compat
         // scenarios. The mapping for it lives in the STORY-004 block above and
         // covers proofs for both stories.
+
+        // MARK: STORY-011 — MCP Tool Annotations and Descriptions
+
+        "Read-only tools declare readOnlyHint = true": [
+            "PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation",
+            "ToolCatalogAuditTests.test_accessibilityTree_descriptionMentionsReadOnlyBehavior",
+        ],
+        "Destructive tools declare destructiveHint = true": [
+            "PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation",
+            "ToolCatalogAuditTests.test_runAppleScript_descriptionWarnsAboutSystemModification",
+        ],
+        "Every registered tool has annotations populated": [
+            "ToolCatalogAuditTests.test_everyRegisteredTool_hasAnnotationsPopulated",
+            "ToolCatalogAuditTests.test_everyTool_hasReadOnlyAndDestructiveHintsSet",
+            "PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool",
+        ],
+        "All tool descriptions meet the quality bar": [
+            "ToolCatalogAuditTests.test_everyToolDescription_isAtLeast50Chars",
+            "ToolCatalogAuditTests.test_everyToolDescription_hasNoPlaceholderText",
+            "ToolCatalogAuditReportTests.test_writesCatalogAudit_andEveryToolPassesDoDChecks",
+        ],
+        "Tool schemas declare required vs optional parameters": [
+            "ToolSchemaTests.testClickScreenRequiredParams",
+            "ToolSchemaTests.testRunAppleScriptRequiredParams",
+            "ToolSchemaTests.testTypeTextRequiredParams",
+            "ToolSchemaTests.testWaitMillisecondsRequiredParams",
+        ],
+        "Enumerated parameter values are constrained in the schema": [
+            "SchemaEnumAuditTests.test_clickScreen_buttonParam_declaresEnum",
+            "SchemaEnumAuditTests.test_mouseDown_buttonParam_declaresEnum",
+            "SchemaEnumAuditTests.test_mouseUp_buttonParam_declaresEnum",
+            "SchemaEnumAuditTests.test_scroll_directionParam_declaresEnum",
+            "SchemaEnumAuditTests.test_startContinuousCapture_captureType_declaresEnum",
+            "SchemaEnumAuditTests.test_analyzeScreenNow_captureType_declaresEnum",
+            "SchemaEnumAuditTests.test_startScreenMonitoring_captureType_declaresEnum",
+            "SchemaEnumAuditTests.test_analyzeScreenWithLlm_captureType_declaresEnum",
+            "SchemaEnumAuditTests.test_intelligentScreenSummary_captureType_declaresEnum",
+            "SchemaEnumAuditTests.test_iphonePressKey_modifiersParam_declaresEnumViaItems",
+        ],
+        "idempotentHint is set for tools that are safe to retry": [
+            "IdempotentHintTests.test_readOnlyTools_haveIdempotentHintTrue",
+            "IdempotentHintTests.test_nonIdempotentTools_haveIdempotentHintFalse",
+        ],
+        "Correct annotation for each tool category": [
+            "PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation",
+            "PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool",
+        ],
     ]
 }
