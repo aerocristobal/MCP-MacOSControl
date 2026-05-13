@@ -414,5 +414,70 @@ enum LivingDocumentationMapping {
             "PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation",
             "PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool",
         ],
+
+        // MARK: STORY-013 — MCP Resources for Ambient Context
+
+        "Active application resource returns current frontmost app": [
+            "ActiveApplicationResourceTests.test_read_returnsLocalizedName_bundleId_andPID",
+            "ActiveApplicationResourceTests.test_read_includesLocalizedDisplayName",
+            "MCPResourceCatalogTests.test_allResources_containsExpectedURIs",
+            "MCPResourceCatalogTests.test_activeApplication_resourceHasJsonMime",
+        ],
+        "UI tree resource returns the current AX tree for the active window": [
+            "ActiveWindowTreeResourceTests.test_read_returnsTreeForFrontmostApp_withSerializerSchema",
+            "ActiveWindowTreeResourceTests.test_read_passesMaxDepthToBuilder",
+            "MCPResourceCatalogTests.test_activeWindowTree_descriptionReferencesCurrentSchemaVersion",
+            "MCPResourceCatalogTests.test_activeWindowTree_descriptionMentionsMaxDepthOverride",
+            "ResourceURITests.test_parse_extractsMaxDepthQueryItem",
+            "ResourceURITests.test_maxDepth_returnsDefault_whenQueryAbsent",
+            "ResourceURITests.test_maxDepth_clampsBelowLowerBound",
+            "ResourceURITests.test_maxDepth_clampsAboveUpperBound",
+            "ResourceURITests.test_maxDepth_returnsDefault_whenValueNotAnInteger",
+            "ResourceURITests.test_parse_extractsCanonicalURI_withoutQuery",
+        ],
+        "Resources update when the active application changes": [
+            "ResourceSubscriptionRegistryTests.test_upstreamActivation_deliversUpdateToSubscribers",
+            "ResourceSubscriptionRegistryTests.test_subscribe_installsObserver_onFirstSubscriber",
+            "ResourceSubscriptionRegistryTests.test_rapidActivations_coalesce_toSingleDelivery",
+        ],
+        "Active-window-tree resource updates when the user switches windows within the same app": [
+            "AXFocusedWindowSignalLifecycleTests.test_focusedWindowChange_firesHandler",
+            "AXFocusedWindowSignalLifecycleTests.test_subscribe_installsAXSourceForCurrentFrontmostApp",
+            "AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_reTargetsAXSourceToNewPID",
+            "AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_doesNotReTarget_whenPIDUnchanged",
+            "AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_alsoFiresHandler",
+            "AXFocusedWindowSignalLifecycleTests.test_remove_stopsAXSource_andDropsWorkspaceObserver",
+            "AXFocusedWindowSignalLifecycleTests.test_remove_keepsAXSource_whileOtherSubscribersRemain",
+            "CompositeEventLifecycleTests.test_addObserver_installsObserverOnEachUnderlyingSource",
+            "CompositeEventLifecycleTests.test_handlerFires_whenAnyUnderlyingSourceFires",
+            "CompositeEventLifecycleTests.test_remove_dropsObserverFromEachUnderlyingSource",
+            "CompositeEventLifecycleTests.test_remove_isIdempotent",
+            "ResourceSubscriptionRegistryTests.test_registerSignalSource_routesURIToOverrideLifecycle",
+            "ResourceSubscriptionRegistryTests.test_unsubscribeWithOverride_removesFromOverrideLifecycle",
+            "ResourceSubscriptionRegistryTests.test_eventOnOverrideLifecycle_deliversToSubscribers",
+            "ActiveWindowTreeResourceTests.test_invalidateCache_forcesRebuildOnNextRead",
+            "ActiveWindowTreeResourceTests.test_read_rebuildsTree_afterCacheExpires",
+        ],
+        "Resource read returns no_frontmost_application error when no app has focus": [
+            "ActiveApplicationResourceTests.test_read_returnsNoFrontmostApplicationError_whenWorkspaceReturnsNil",
+            "ActiveWindowTreeResourceTests.test_read_returnsNoFrontmostApplicationError_whenWorkspaceReturnsNil",
+            "ResourceErrorsTests.test_noFrontmostApplication_hasExpectedErrorCode",
+            "ResourceErrorsTests.test_noFrontmostApplication_descriptionIncludesErrorCode",
+            "MCPResourceCatalogTests.test_activeApplication_descriptionMentionsErrorPath",
+        ],
+        "Resource read returns accessibility_permission_required error when AX permission is denied": [
+            "ActiveWindowTreeResourceTests.test_read_returnsAccessibilityPermissionRequiredError_whenAXNotTrusted",
+            "ResourceErrorsTests.test_accessibilityPermissionRequired_hasExpectedErrorCode",
+            "ResourceErrorsTests.test_accessibilityPermissionRequired_descriptionExplainsHowToGrant",
+        ],
+        "Subscription unsubscribe stops further update notifications": [
+            "ResourceSubscriptionRegistryTests.test_unsubscribe_stopsFurtherDeliveries",
+            "ResourceSubscriptionRegistryTests.test_unsubscribe_removesUnderlyingObserver_whenLastSubscriberLeaves",
+            "ResourceSubscriptionRegistryTests.test_unsubscribe_keepsObserver_whileOtherSubscribersRemain",
+        ],
+        "Concurrent subscribers each receive update notifications": [
+            "ResourceSubscriptionRegistryTests.test_publish_deliversIdenticalContent_toAllSubscribers",
+            "ResourceSubscriptionRegistryTests.test_subscribe_doesNotInstallExtraObserver_forSecondSubscriber",
+        ],
     ]
 }

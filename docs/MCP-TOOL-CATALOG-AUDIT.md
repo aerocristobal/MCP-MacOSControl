@@ -13,7 +13,7 @@ at least 50 characters.
 
 | Tool | readOnlyHint | destructiveHint | idempotentHint | description length |
 |---|---|---|---|---|
-| `accessibility_tree` | true | false | true | 858 |
+| `accessibility_tree` | true | false | true | 1095 |
 | `activate_window` | false | false | true | 262 |
 | `analyze_screen_now` | true | false | false | 311 |
 | `analyze_screen_with_llm` | true | false | false | 317 |

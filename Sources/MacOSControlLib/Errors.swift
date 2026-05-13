@@ -16,6 +16,8 @@ public enum MCPError: Error, CustomStringConvertible {
     case executionTimeout(String)
     case securityPolicyViolation(String)
     case automationPermissionRequired(String)
+    case noFrontmostApplication
+    case accessibilityPermissionRequired
 
     public var errorCode: String {
         switch self {
@@ -33,6 +35,8 @@ public enum MCPError: Error, CustomStringConvertible {
         case .executionTimeout: return "EXECUTION_TIMEOUT"
         case .securityPolicyViolation: return "SECURITY_POLICY_VIOLATION"
         case .automationPermissionRequired: return "AUTOMATION_PERMISSION_REQUIRED"
+        case .noFrontmostApplication: return "NO_FRONTMOST_APPLICATION"
+        case .accessibilityPermissionRequired: return "ACCESSIBILITY_PERMISSION_REQUIRED"
         }
     }
 
@@ -52,6 +56,10 @@ public enum MCPError: Error, CustomStringConvertible {
         case .executionTimeout(let detail): return "\(errorCode): \(detail)"
         case .securityPolicyViolation(let detail): return "\(errorCode): \(detail)"
         case .automationPermissionRequired(let detail): return "\(errorCode): \(detail)"
+        case .noFrontmostApplication:
+            return "\(errorCode): No application currently has frontmost status. The system may be in Mission Control, the login screen, or another state without a foreground app."
+        case .accessibilityPermissionRequired:
+            return "\(errorCode): Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server."
         }
     }
 
