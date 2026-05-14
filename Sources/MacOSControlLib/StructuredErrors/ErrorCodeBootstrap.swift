@@ -248,5 +248,22 @@ public enum ErrorCodeBootstrap {
             description: "element_at_position was given a display_index that does not map to an active display.",
             detailsSchema: [:]
         )
+
+        // MARK: - Prompts (STORY-017)
+
+        try registry.register(
+            code: "missing_required_argument",
+            description: "A prompts/get request omitted an argument declared as required by the prompt definition, or the prompt body referenced a placeholder for which no argument was supplied.",
+            detailsSchema: [
+                "argument": "string"
+            ]
+        )
+        try registry.register(
+            code: "prompt_not_found",
+            description: "A prompts/get request named a prompt that is not registered with the server. The error details include the list of available prompt names.",
+            detailsSchema: [
+                "available": "array"
+            ]
+        )
     }
 }

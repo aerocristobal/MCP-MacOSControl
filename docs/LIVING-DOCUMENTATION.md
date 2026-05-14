@@ -691,3 +691,48 @@ mapped test.
 - `ToolRouterUnknownToolTests.test_unknownTool_returnsIsErrorTrue`
 - `ToolRouterUnknownToolTests.test_unknownTool_returnsStructuredUnknownToolCode`
 
+
+## MCP Prompts for Agent Workflows
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-017-mcp-prompts.feature`*
+
+> In order to publish reusable agent guidance from the server
+> As an MCP server author
+> I want to expose named prompts via the MCP Prompts primitive
+
+### Scenario: Server lists registered prompts
+
+- `PromptRegistryTests.test_list_includesAllThreeBundledPrompts`
+- `PromptRegistryTests.test_list_eachPromptHasDescriptionAtLeast50Chars`
+
+### Scenario: Client retrieves the interaction hierarchy prompt
+
+- `PromptRegistryTests.test_get_interactionHierarchy_namesAllFourLayers`
+- `PromptRegistryTests.test_get_interactionHierarchy_isUserRoleMessage`
+
+### Scenario: Client retrieves the macOS permissions prompt
+
+- `PromptRegistryTests.test_get_permissionsChecklist_describesAllThreePermissions`
+
+### Scenario: Prompt with arguments substitutes them into the resolved content
+
+- `PromptTemplateTests.test_resolve_substitutesNamedPlaceholder`
+- `PromptTemplateTests.test_resolve_leavesNoUnsubstitutedPlaceholders`
+- `PromptTemplateTests.test_resolve_handlesArgumentWithSpecialChars`
+- `PromptRegistryTests.test_get_clickAndVerify_substitutesArguments`
+
+### Scenario: Prompt request with missing required argument returns a structured error
+
+- `PromptTemplateTests.test_resolve_throwsMissingRequiredArgument_whenRequiredArgAbsent`
+- `PromptRegistryTests.test_get_throwsMissingRequiredArgument_whenArgumentAbsent`
+
+### Scenario: Prompt request for an unknown name returns a structured error
+
+- `PromptRegistryTests.test_get_throwsPromptNotFound_whenNameUnregistered`
+
+### Scenario: Prompts are versioned and the version is exposed in metadata
+
+- `PromptDefinitionTests.test_parse_loadsNameDescriptionAndPromptVersionFromFrontMatter`
+- `PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing`
+- `PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata`
+

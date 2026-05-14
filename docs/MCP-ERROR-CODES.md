@@ -52,10 +52,12 @@ different semantics — the server refuses to start on collision.
 | `mirroring_disconnected` | iPhone Mirroring connection was lost. Use iphone_reconnect to wait for recovery. | — |
 | `mirroring_not_available` | iPhone Mirroring is not available on this Mac or for this Apple ID. | — |
 | `mirroring_not_running` | iPhone Mirroring is not running. Launch iphone_launch first. | — |
+| `missing_required_argument` | A prompts/get request omitted an argument declared as required by the prompt definition, or the prompt body referenced a placeholder for which no argument was supplied. | `argument` (string) |
 | `no_frontmost_application` | No application currently has frontmost status (e.g., system is in Mission Control or the login screen). | — |
 | `permission_denied` | A required system permission was denied. Generic permission failure; see accessibility_permission_required or automation_permission_required for kind-specific variants. | — |
 | `predicate_compile_failed` | find_elements predicate compilation failed before traversal began (catch-all sibling of predicate_too_broad / invalid_regex). | — |
 | `predicate_too_broad` | find_elements was called without any matching criteria. At least one of role/title/identifier/label/description must be set. | — |
+| `prompt_not_found` | A prompts/get request named a prompt that is not registered with the server. The error details include the list of available prompt names. | `available` (array) |
 | `rate_limited` | Tool invocation was rate-limited by an internal token bucket. Retry with backoff. | — |
 | `security_policy_violation` | Input violated the server's security policy (e.g., disallowed AppleScript verb). | — |
 | `state_condition_not_met` | Expected post-condition state was not observed after performing the action. | — |

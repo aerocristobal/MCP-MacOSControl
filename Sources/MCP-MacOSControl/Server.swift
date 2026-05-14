@@ -51,6 +51,7 @@ enum MacOSControlServer {
                 - Vision (5), CoreML (8), Realtime (4), Continuous Capture (6)
                 """,
             capabilities: .init(
+                prompts: .init(listChanged: false),
                 resources: .init(subscribe: true, listChanged: false),
                 tools: .init(listChanged: true)
             )
@@ -104,6 +105,49 @@ enum MacOSControlServer {
 
         await server.withMethodHandler(CallTool.self) { params in
             try await ToolRouter.handle(params)
+        }
+
+        // Prompt wiring (STORY-017). Built once at startup; loading errors are
+        // fatal — a missing prompt file means the binary is mis-bundled and we
+        // would rather refuse to start than serve a half-empty catalog.
+        let promptRegistry: PromptRegistry
+        do {
+            promptRegistry = try PromptRegistry.standardRegistry()
+        } catch {
+            fputs("Failed to load bundled prompt definitions: \(error)\n", stderr)
+            exit(1)
+        }
+
+        await server.withMethodHandler(ListPrompts.self) { _ in
+            .init(prompts: promptRegistry.list())
+        }
+
+        await server.withMethodHandler(GetPrompt.self) { params in
+            do {
+                return try promptRegistry.get(name: params.name, arguments: params.arguments ?? [:])
+            } catch let error as PromptError {
+                // Mirror the resources/read error pattern (Server.swift below):
+                // wrap the structured error in a {ok:false, error:{...}} envelope
+                // and return it as the prompt's single message so agents can parse
+                // it uniformly across tools, resources, and prompts.
+                var errorObject: [String: Any] = [
+                    "code": error.code,
+                    "message": error.message
+                ]
+                if let details = error.details, !details.isEmpty {
+                    errorObject["details"] = details
+                }
+                let envelope: [String: Any] = [
+                    "ok": false,
+                    "error": errorObject
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys])) ?? Data()
+                let text = String(data: data, encoding: .utf8) ?? "{}"
+                return .init(
+                    description: "error: \(error.code)",
+                    messages: [.user(.text(text: text))]
+                )
+            }
         }
 
         await server.withMethodHandler(ListResources.self) { _ in

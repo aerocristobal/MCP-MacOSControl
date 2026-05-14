@@ -533,5 +533,37 @@ enum LivingDocumentationMapping {
             "ToolRouterUnknownToolTests.test_unknownTool_returnsIsErrorTrue",
             "ToolRouterUnknownToolTests.test_unknownTool_returnsStructuredUnknownToolCode",
         ],
+
+        // MARK: STORY-017 — MCP Prompts for Agent Workflows
+
+        "Server lists registered prompts": [
+            "PromptRegistryTests.test_list_includesAllThreeBundledPrompts",
+            "PromptRegistryTests.test_list_eachPromptHasDescriptionAtLeast50Chars",
+        ],
+        "Client retrieves the interaction hierarchy prompt": [
+            "PromptRegistryTests.test_get_interactionHierarchy_namesAllFourLayers",
+            "PromptRegistryTests.test_get_interactionHierarchy_isUserRoleMessage",
+        ],
+        "Client retrieves the macOS permissions prompt": [
+            "PromptRegistryTests.test_get_permissionsChecklist_describesAllThreePermissions",
+        ],
+        "Prompt with arguments substitutes them into the resolved content": [
+            "PromptTemplateTests.test_resolve_substitutesNamedPlaceholder",
+            "PromptTemplateTests.test_resolve_leavesNoUnsubstitutedPlaceholders",
+            "PromptTemplateTests.test_resolve_handlesArgumentWithSpecialChars",
+            "PromptRegistryTests.test_get_clickAndVerify_substitutesArguments",
+        ],
+        "Prompt request with missing required argument returns a structured error": [
+            "PromptTemplateTests.test_resolve_throwsMissingRequiredArgument_whenRequiredArgAbsent",
+            "PromptRegistryTests.test_get_throwsMissingRequiredArgument_whenArgumentAbsent",
+        ],
+        "Prompt request for an unknown name returns a structured error": [
+            "PromptRegistryTests.test_get_throwsPromptNotFound_whenNameUnregistered",
+        ],
+        "Prompts are versioned and the version is exposed in metadata": [
+            "PromptDefinitionTests.test_parse_loadsNameDescriptionAndPromptVersionFromFrontMatter",
+            "PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing",
+            "PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata",
+        ],
     ]
 }
