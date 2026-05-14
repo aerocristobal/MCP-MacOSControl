@@ -76,40 +76,40 @@ public enum KeyboardModule: ToolModule {
         switch params.name {
         case "type_text":
             guard let text = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             do {
                 try await KeyboardControl.typeText(text: text)
                 return .init(content: [.text("Typed: \(text)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "key_down":
             guard let key = args["key"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: key required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "key required")
             }
             do {
                 try KeyboardControl.keyDown(key: key)
                 return .init(content: [.text("Key \(key) down")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "key_up":
             guard let key = args["key"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: key required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "key required")
             }
             do {
                 try KeyboardControl.keyUp(key: key)
                 return .init(content: [.text("Key \(key) up")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "press_keys":
             guard let keysValue = args["keys"]?.arrayValue else {
-                return .init(content: [.text("Invalid parameters: keys array required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "keys array required")
             }
             let keys = keysValue.map { value -> Any in
                 if let str = value.stringValue {
@@ -123,7 +123,7 @@ public enum KeyboardModule: ToolModule {
                 try await KeyboardControl.pressKeys(keys: keys)
                 return .init(content: [.text("Pressed keys")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

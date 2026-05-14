@@ -173,14 +173,14 @@ public enum MouseModule: ToolModule {
         case "click_screen":
             guard let x = args["x"]?.intValue,
                   let y = args["y"]?.intValue else {
-                return .init(content: [.text("Invalid parameters: x and y coordinates required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y coordinates required")
             }
             let button = args["button"]?.stringValue ?? "left"
             do {
                 try MouseControl.click(x: x, y: y, button: button)
                 return .init(content: [.text("Clicked at (\(x), \(y)) with \(button) button")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "get_screen_size":
@@ -190,13 +190,13 @@ public enum MouseModule: ToolModule {
         case "move_mouse":
             guard let x = args["x"]?.intValue,
                   let y = args["y"]?.intValue else {
-                return .init(content: [.text("Invalid parameters: x and y coordinates required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y coordinates required")
             }
             do {
                 try MouseControl.moveMouse(x: x, y: y)
                 return .init(content: [.text("Moved mouse to (\(x), \(y))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "mouse_down":
@@ -205,7 +205,7 @@ public enum MouseModule: ToolModule {
                 try MouseControl.mouseDown(button: button)
                 return .init(content: [.text("Mouse button \(button) down")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "mouse_up":
@@ -214,7 +214,7 @@ public enum MouseModule: ToolModule {
                 try MouseControl.mouseUp(button: button)
                 return .init(content: [.text("Mouse button \(button) up")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "drag_mouse":
@@ -222,31 +222,31 @@ public enum MouseModule: ToolModule {
                   let fromY = args["from_y"]?.intValue,
                   let toX = args["to_x"]?.intValue,
                   let toY = args["to_y"]?.intValue else {
-                return .init(content: [.text("Invalid parameters: from_x, from_y, to_x, to_y required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "from_x, from_y, to_x, to_y required")
             }
             let duration = args["duration"]?.doubleValue ?? 0.5
             do {
                 try await MouseControl.dragMouse(fromX: fromX, fromY: fromY, toX: toX, toY: toY, duration: duration)
                 return .init(content: [.text("Dragged from (\(fromX), \(fromY)) to (\(toX), \(toY))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "double_click":
             guard let x = args["x"]?.intValue,
                   let y = args["y"]?.intValue else {
-                return .init(content: [.text("Invalid parameters: x and y coordinates required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y coordinates required")
             }
             do {
                 try MouseControl.doubleClick(x: x, y: y)
                 return .init(content: [.text("Double-clicked at (\(x), \(y))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "scroll":
             guard let direction = args["direction"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: direction required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "direction required")
             }
             let amount = args["amount"]?.intValue ?? 3
             let x = args["x"]?.intValue
@@ -255,7 +255,7 @@ public enum MouseModule: ToolModule {
                 try MouseControl.scroll(x: x, y: y, direction: direction, amount: amount)
                 return .init(content: [.text("Scrolled \(direction) by \(amount)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "list_displays":
@@ -265,7 +265,7 @@ public enum MouseModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Connected displays (\(displays.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

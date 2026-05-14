@@ -24,7 +24,7 @@ enum LivingDocumentationMapping {
             "AXElementResolverTests.test_findElement_byAttribute_throwsNotFound_whenNoMatch",
             "AXResolverErrorsTests.test_axNotFoundError_descriptionIncludesCriteria",
             "AXResolverErrorsTests.test_axNotFoundError_localizedDescriptionIncludesCriteria",
-            "AXResolverErrorsTests.test_axNotFoundError_toResultIsErrorTrue",
+            "AXResolverErrorsTests.test_axNotFoundError_toStructuredResult_isErrorTrue",
         ],
         "Resolve element scoped to a specific application": [
             "AXElementResolverTests.test_findElement_scopedToApplication_excludesOtherProcesses",
@@ -478,6 +478,60 @@ enum LivingDocumentationMapping {
         "Concurrent subscribers each receive update notifications": [
             "ResourceSubscriptionRegistryTests.test_publish_deliversIdenticalContent_toAllSubscribers",
             "ResourceSubscriptionRegistryTests.test_subscribe_doesNotInstallExtraObserver_forSecondSubscriber",
+        ],
+
+        // MARK: STORY-016 — Structured Error Response Contract
+
+        "Error response is structured JSON, not a free-text string": [
+            "MCPErrorResponseBuilderTests.test_build_returnsResultWithIsErrorTrue",
+            "MCPErrorResponseBuilderTests.test_build_emitsCodeMessageAndDetails_asWrappedJSON",
+            "MCPErrorResponseBuilderTests.test_build_envelopeHasOkFalse",
+            "MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsNil",
+            "MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsEmpty",
+        ],
+        "Error codes follow snake_case convention": [
+            "ErrorCodeRegistryTests.test_register_rejectsUppercaseCode",
+            "ErrorCodeRegistryTests.test_register_rejectsCodeWithDash",
+            "ErrorCodeRegistryTests.test_register_rejectsCodeStartingWithDigit",
+            "ErrorCodeRegistryTests.test_register_rejectsEmptyCode",
+            "ErrorCodeRegistryTests.test_register_acceptsValidSnakeCaseCode",
+            "ErrorCodeRegistryTests.test_register_acceptsCodeAtMaxLength",
+            "ErrorCodeRegistryTests.test_register_rejectsCodeLongerThan64Chars",
+            "ErrorCodeBootstrapTests.test_bootstrap_codesAllValidSnakeCase",
+        ],
+        "Permission-denied error includes a recovery hint in details": [
+            "PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesRecoveryHintInDetails",
+            "PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesSystemSettingsURIInDetails",
+            "PermissionDeniedDetailsTests.test_automationPermissionRequired_includesTargetApplicationInDetails",
+            "ResourceErrorsTests.test_accessibilityPermissionRequired_detailsCarryRecoveryHintAndSettingsURI",
+        ],
+        "Coordinate-out-of-bounds error includes the valid bounds in details": [
+            "ElementAtPositionToolTests.test_execute_rejectsCoords_outsideDisplayUnion",
+            "ElementAtPositionToolTests.test_execute_doesNotInvokeBridge_whenOutOfBounds",
+            "CoordinatesOutOfBoundsDetailsTests.test_outOfBounds_responseIncludesDisplayBoundsObjectInDetails",
+        ],
+        "Two tools cannot register the same error code with conflicting semantics": [
+            "ErrorCodeRegistryTests.test_register_throwsCollisionError_whenCodeAlreadyRegistered",
+            "ErrorCodeRegistryTests.test_collisionError_surfacesBothRegistrationCallSites",
+            "ErrorCodeBootstrapTests.test_bootstrap_throwsCollision_whenCalledTwiceOnSameRegistry",
+        ],
+        "Unknown internal exception produces a generic structured error": [
+            "MCPErrorResponseBuilderTests.test_buildFromUnknown_mapsArbitraryErrorToInternalError",
+            "MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakUserPaths",
+            "MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakPrivatePaths",
+            "MCPErrorResponseBuilderTests.test_buildFromUnknown_setsIsErrorTrue",
+        ],
+        "Existing MCPError cases map to the new contract without behavioral change": [
+            "MCPErrorMigrationTests.test_permissionDenied_mapsToSnakeCaseCode",
+            "MCPErrorMigrationTests.test_windowNotFound_mapsToSnakeCaseCode",
+            "MCPErrorMigrationTests.test_accessibilityPermissionRequired_mapsToSnakeCase_andCarriesDetails",
+            "MCPErrorMigrationTests.test_everyMCPErrorCase_producesIsErrorTrueAndRegisteredSnakeCaseCode",
+            "MCPErrorMigrationTests.test_descriptionFormat_isSnakeCaseColonMessage_notScreamingSnake",
+            "NoAdhocErrorConstructionAuditTests.test_noAdhocErrorTextConstructionExists",
+        ],
+        "Unknown tool returns a structured error with isError = true": [
+            "ToolRouterUnknownToolTests.test_unknownTool_returnsIsErrorTrue",
+            "ToolRouterUnknownToolTests.test_unknownTool_returnsStructuredUnknownToolCode",
         ],
     ]
 }

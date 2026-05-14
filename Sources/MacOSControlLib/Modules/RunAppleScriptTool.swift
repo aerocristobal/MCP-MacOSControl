@@ -189,15 +189,7 @@ public final class RunAppleScriptTool {
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        let payload: [String: Any] = [
-            "ok": false,
-            "error": [
-                "code": code,
-                "message": message
-            ]
-        ]
-        let text = jsonString(payload) ?? "\(code): \(message)"
-        return .init(content: [.text(text)], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

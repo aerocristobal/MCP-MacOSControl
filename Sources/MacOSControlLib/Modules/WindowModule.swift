@@ -48,12 +48,12 @@ public enum WindowModule: ToolModule {
                     isError: false
                 )
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "activate_window":
             guard let titlePattern = args["title_pattern"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: title_pattern required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "title_pattern required")
             }
             let useRegex = args["use_regex"]?.boolValue ?? false
             let threshold = args["threshold"]?.intValue ?? 60
@@ -61,7 +61,7 @@ public enum WindowModule: ToolModule {
                 try WindowManagement.activateWindow(titlePattern: titlePattern, useRegex: useRegex, threshold: threshold)
                 return .init(content: [.text("Activated window: \(titlePattern)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

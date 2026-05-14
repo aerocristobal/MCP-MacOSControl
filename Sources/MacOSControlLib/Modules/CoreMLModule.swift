@@ -164,35 +164,35 @@ public enum CoreMLModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Available CoreML models (\(models.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "load_coreml_model":
             guard let name = args["name"]?.stringValue,
                   let path = args["path"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: name and path required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "name and path required")
             }
             do {
                 let message = try await CoreMLManager.shared.loadModel(name: name, path: path)
                 return .init(content: [.text(message)], isError: false)
             } catch {
-                return .init(content: [.text("Error loading model: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "unload_coreml_model":
             guard let name = args["name"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: name required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "name required")
             }
             do {
                 try await CoreMLManager.shared.unloadModel(name: name)
                 return .init(content: [.text("Model '\(name)' unloaded successfully")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "get_model_info":
             guard let name = args["name"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: name required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "name required")
             }
             do {
                 let metadata = try await CoreMLManager.shared.getModelMetadata(name: name)
@@ -200,13 +200,13 @@ public enum CoreMLModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Model '\(name)' info:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "generate_text_llm":
             guard let modelName = args["model_name"]?.stringValue,
                   let prompt = args["prompt"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: model_name and prompt required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "model_name and prompt required")
             }
             let maxTokens = args["max_tokens"]?.intValue ?? 256
             let temperature = args["temperature"]?.doubleValue ?? 0.7
@@ -219,13 +219,13 @@ public enum CoreMLModule: ToolModule {
                 )
                 return .init(content: [.text("LLM Response:\n\(response)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "analyze_screen_with_llm":
             guard let modelName = args["model_name"]?.stringValue,
                   let instruction = args["instruction"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: model_name and instruction required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "model_name and instruction required")
             }
             let captureTypeStr = args["capture_type"]?.stringValue ?? "display"
             let targetIdentifier = args["target_identifier"]?.stringValue
@@ -240,7 +240,7 @@ public enum CoreMLModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
 
             do {
@@ -266,7 +266,7 @@ public enum CoreMLModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Screen analysis with LLM:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "intelligent_screen_summary":
@@ -279,7 +279,7 @@ public enum CoreMLModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type")
             }
 
             do {
@@ -309,12 +309,12 @@ public enum CoreMLModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Intelligent screen summary:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "extract_key_info":
             guard let ocrValue = args["ocr_results"]?.arrayValue else {
-                return .init(content: [.text("Invalid parameters: ocr_results array required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "ocr_results array required")
             }
 
             var ocrResults: [[Any]] = []
@@ -342,7 +342,7 @@ public enum CoreMLModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Extracted key information:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

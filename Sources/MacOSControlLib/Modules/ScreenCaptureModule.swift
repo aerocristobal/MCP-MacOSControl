@@ -66,7 +66,7 @@ public enum ScreenCaptureModule: ToolModule {
                     isError: false
                 )
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "take_screenshot_with_ocr":
@@ -90,7 +90,7 @@ public enum ScreenCaptureModule: ToolModule {
                     isError: false
                 )
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

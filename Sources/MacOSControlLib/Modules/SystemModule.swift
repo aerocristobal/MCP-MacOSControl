@@ -84,12 +84,12 @@ public enum SystemModule: ToolModule {
                     isError: !allGranted
                 )
             } catch {
-                return .init(content: [.text("Error checking permissions: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "wait_milliseconds":
             guard let milliseconds = args["milliseconds"]?.intValue else {
-                return .init(content: [.text("Invalid parameters: milliseconds required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "milliseconds required")
             }
             let nanoseconds = UInt64(milliseconds) * 1_000_000
             try await Task.sleep(nanoseconds: nanoseconds)
@@ -97,7 +97,7 @@ public enum SystemModule: ToolModule {
 
         case "wait_for_text":
             guard let searchText = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             let timeoutMs = args["timeout_ms"]?.intValue ?? 5000
             let pollIntervalMs = args["poll_interval_ms"]?.intValue ?? 500
@@ -110,7 +110,7 @@ public enum SystemModule: ToolModule {
             while true {
                 let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
                 if elapsed >= timeoutNanos {
-                    return .init(content: [.text("Timeout: '\(searchText)' not found within \(timeoutMs)ms")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "wait_timeout", message: "'\(searchText)' not found within \(timeoutMs)ms")
                 }
 
                 do {

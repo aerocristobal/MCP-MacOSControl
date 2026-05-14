@@ -92,7 +92,7 @@ public enum RealtimeModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
             let targetIdentifier = args["target_identifier"]?.stringValue
             var analysisTypes: [RealtimeAnalyzer.AnalysisType] = []
@@ -112,7 +112,7 @@ public enum RealtimeModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Screen analysis completed:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "start_screen_monitoring":
@@ -123,7 +123,7 @@ public enum RealtimeModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
             let targetIdentifier = args["target_identifier"]?.stringValue
             let frameRate = args["frame_rate"]?.intValue ?? 10
@@ -143,7 +143,7 @@ public enum RealtimeModule: ToolModule {
                 )
                 return .init(content: [.text("Started screen monitoring (type: \(captureTypeStr), fps: \(frameRate))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "get_monitoring_results":
@@ -157,10 +157,10 @@ public enum RealtimeModule: ToolModule {
                     let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                     return .init(content: [.text("Latest monitoring results:\n\(jsonString)")], isError: false)
                 } catch {
-                    return .init(content: [.text("Error serializing results: \(error.localizedDescription)")], isError: true)
+                    return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
                 }
             } else {
-                return .init(content: [.text("No active monitoring session. Use start_screen_monitoring first.")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "backend_error", message: "No active monitoring session. Use start_screen_monitoring first.")
             }
 
         case "stop_screen_monitoring":
@@ -173,7 +173,7 @@ public enum RealtimeModule: ToolModule {
                     return .init(content: [.text("No active monitoring session")], isError: false)
                 }
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

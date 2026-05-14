@@ -55,16 +55,24 @@ public final class ElementAtPositionTool {
             let detail = "(\(err.x), \(err.y)) is outside display union " +
                 "[origin=(\(Int(bounds.origin.x)), \(Int(bounds.origin.y))), " +
                 "size=\(Int(bounds.width))x\(Int(bounds.height))]"
-            return errorResult(code: "coordinates_out_of_bounds", message: detail)
+            return MCPErrorResponseBuilder.shared.build(
+                code: "coordinates_out_of_bounds",
+                message: detail,
+                details: [
+                    "display_bounds": [
+                        "x": Int(bounds.origin.x),
+                        "y": Int(bounds.origin.y),
+                        "width": Int(bounds.width),
+                        "height": Int(bounds.height)
+                    ]
+                ]
+            )
         } catch {
             return errorResult(code: "coordinates_out_of_bounds", message: error.localizedDescription)
         }
 
         guard permissionsChecker() else {
-            return errorResult(
-                code: "permission_denied",
-                message: "Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility."
-            )
+            return MacOSControlLib.MCPError.accessibilityPermissionRequired.toStructuredResult()
         }
 
         let ref: AXElementReference?
@@ -72,10 +80,10 @@ public final class ElementAtPositionTool {
             ref = try bridge.copyElementAtPosition(globalX: global.x, globalY: global.y)
         } catch let mcp as MCPError {
             switch mcp {
-            case .permissionDenied(let detail):
-                return errorResult(code: "permission_denied", message: detail)
+            case .permissionDenied:
+                return MacOSControlLib.MCPError.accessibilityPermissionRequired.toStructuredResult()
             default:
-                return mcp.toResult()
+                return mcp.toStructuredResult()
             }
         } catch {
             return errorResult(code: "ax_resolution_failed", message: error.localizedDescription)
@@ -99,7 +107,7 @@ public final class ElementAtPositionTool {
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        .init(content: [.text("\(code): \(message)")], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

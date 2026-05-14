@@ -300,9 +300,9 @@ final class PerformAXActionToolTests: XCTestCase {
         let result = try await tool.execute(params)
 
         XCTAssertEqual(result?.isError, true)
-        let text = extractText(from: result!) ?? ""
-        XCTAssertTrue(text.contains("AX_RESOLUTION_FAILED"),
-                      "expected resolution error code; got: \(text)")
+        let inner = try result!.parseStructuredError()
+        XCTAssertEqual(inner["code"] as? String, "ax_resolution_failed",
+                       "expected resolution error code; got: \(inner)")
         XCTAssertEqual(interactorSpy.performCallCount, 0)
     }
 
@@ -320,9 +320,9 @@ final class PerformAXActionToolTests: XCTestCase {
         let result = try await tool.execute(params)
 
         XCTAssertEqual(result?.isError, true)
-        let text = extractText(from: result!) ?? ""
-        XCTAssertTrue(text.contains("AX_ELEMENT_DISABLED"),
-                      "expected disabled error code; got: \(text)")
+        let inner = try result!.parseStructuredError()
+        XCTAssertEqual(inner["code"] as? String, "ax_element_disabled",
+                       "expected disabled error code; got: \(inner)")
     }
 
     func test_execute_doesNotDispatch_whenEnumeratorThrows() async throws {
@@ -522,8 +522,8 @@ final class PerformAXActionToolTests: XCTestCase {
         let result = try await tool.execute(params)
 
         XCTAssertEqual(result?.isError, true)
-        let text = extractText(from: result!) ?? ""
-        XCTAssertTrue(text.contains("AX_RESOLUTION_FAILED"),
-                      "discovery's AXResolutionError must surface; got: \(text)")
+        let inner = try result!.parseStructuredError()
+        XCTAssertEqual(inner["code"] as? String, "ax_resolution_failed",
+                       "discovery's AXResolutionError must surface; got: \(inner)")
     }
 }

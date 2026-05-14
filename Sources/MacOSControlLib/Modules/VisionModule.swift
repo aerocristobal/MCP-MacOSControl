@@ -96,7 +96,7 @@ public enum VisionModule: ToolModule {
         case "classify_image":
             guard let imageBase64 = args["image_data"]?.stringValue,
                   let imageData = Data(base64Encoded: imageBase64) else {
-                return .init(content: [.text("Invalid parameters: image_data (base64) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "image_data (base64) required")
             }
 
             let topK = args["top_k"]?.intValue ?? 5
@@ -107,13 +107,13 @@ public enum VisionModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Image classifications (top \(topK)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "detect_objects":
             guard let imageBase64 = args["image_data"]?.stringValue,
                   let imageData = Data(base64Encoded: imageBase64) else {
-                return .init(content: [.text("Invalid parameters: image_data (base64) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "image_data (base64) required")
             }
 
             let minConfidence = Float(args["minimum_confidence"]?.doubleValue ?? 0.5)
@@ -124,13 +124,13 @@ public enum VisionModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Detected objects (\(objects.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "detect_rectangles":
             guard let imageBase64 = args["image_data"]?.stringValue,
                   let imageData = Data(base64Encoded: imageBase64) else {
-                return .init(content: [.text("Invalid parameters: image_data (base64) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "image_data (base64) required")
             }
 
             let minConfidence = Float(args["minimum_confidence"]?.doubleValue ?? 0.5)
@@ -141,13 +141,13 @@ public enum VisionModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Detected rectangles (\(rectangles.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "detect_saliency":
             guard let imageBase64 = args["image_data"]?.stringValue,
                   let imageData = Data(base64Encoded: imageBase64) else {
-                return .init(content: [.text("Invalid parameters: image_data (base64) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "image_data (base64) required")
             }
 
             do {
@@ -156,13 +156,13 @@ public enum VisionModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Saliency detection:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "detect_faces":
             guard let imageBase64 = args["image_data"]?.stringValue,
                   let imageData = Data(base64Encoded: imageBase64) else {
-                return .init(content: [.text("Invalid parameters: image_data (base64) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "image_data (base64) required")
             }
 
             do {
@@ -171,7 +171,7 @@ public enum VisionModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Detected faces (\(faces.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

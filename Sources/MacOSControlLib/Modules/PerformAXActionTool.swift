@@ -48,7 +48,7 @@ public final class PerformAXActionTool {
 
         guard role != nil || title != nil || identifier != nil || label != nil || description != nil else {
             return errorResult(
-                code: "INVALID_INPUT",
+                code: "invalid_input",
                 message: "perform_ax_action requires at least one locator (role, title, identifier, label, or description)"
             )
         }
@@ -68,7 +68,7 @@ public final class PerformAXActionTool {
         } catch let notFound as AXNotFoundError {
             return errorResult(code: "element_not_found", message: notFound.searchCriteria)
         } catch let resolution as AXResolutionError {
-            return resolution.toResult()
+            return resolution.toStructuredResult()
         } catch {
             return errorResult(code: "element_not_found", message: error.localizedDescription)
         }
@@ -94,7 +94,7 @@ public final class PerformAXActionTool {
         do {
             supported = try enumerator.actionNames(for: resolved)
         } catch let resolution as AXResolutionError {
-            return resolution.toResult()
+            return resolution.toStructuredResult()
         } catch {
             return errorResult(code: "action_failed", message: error.localizedDescription)
         }
@@ -106,7 +106,7 @@ public final class PerformAXActionTool {
         do {
             try interactor.perform(action, on: resolved)
         } catch let actionErr as AXActionError {
-            return actionErr.toResult()
+            return actionErr.toStructuredResult()
         } catch {
             return errorResult(code: "action_failed", message: error.localizedDescription)
         }
@@ -192,7 +192,7 @@ public final class PerformAXActionTool {
         do {
             supported = try enumerator.actionNames(for: ref)
         } catch let resolution as AXResolutionError {
-            return resolution.toResult()
+            return resolution.toStructuredResult()
         } catch {
             return errorResult(code: "action_failed", message: error.localizedDescription)
         }
@@ -225,19 +225,20 @@ public final class PerformAXActionTool {
         supported: [String],
         reason: String?
     ) -> CallTool.Result {
-        var payload: [String: Any] = [
-            "ok": false,
-            "code": "action_not_supported",
+        var details: [String: Any] = [
             "action": action,
             "supported_actions": supported
         ]
-        if let reason = reason { payload["reason"] = reason }
-        let text = jsonString(payload) ?? "action_not_supported: \(action)"
-        return .init(content: [.text(text)], isError: true)
+        if let reason = reason { details["reason"] = reason }
+        return MCPErrorResponseBuilder.shared.build(
+            code: "action_not_supported",
+            message: reason ?? "action '\(action)' is not in the element's supported_actions list",
+            details: details
+        )
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        .init(content: [.text("\(code): \(message)")], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

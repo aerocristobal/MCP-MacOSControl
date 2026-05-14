@@ -1,4 +1,5 @@
 import Foundation
+import MCP
 
 /// Parsed query parameters for the `find_elements` tool. All fields are optional;
 /// at least one of role / title* / identifier* / label / description must be set
@@ -60,6 +61,21 @@ public enum FindElementsError: Error, Equatable {
         case .invalidRegex(let field, let message):
             return "field '\(field)' contains an invalid regex: \(message)"
         }
+    }
+
+    public var details: [String: Any]? {
+        switch self {
+        case .invalidRegex(let field, _):
+            return ["field": field]
+        default:
+            return nil
+        }
+    }
+}
+
+extension FindElementsError {
+    public func toStructuredResult() -> MCP.CallTool.Result {
+        MCPErrorResponseBuilder.shared.build(code: code, message: message, details: details)
     }
 }
 

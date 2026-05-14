@@ -122,7 +122,7 @@ public enum AccessibilityModule: ToolModule {
 
             do {
                 guard AXIsProcessTrusted() else {
-                    throw MCPError.permissionDenied("Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server.")
+                    throw MCPError.accessibilityPermissionRequired
                 }
 
                 let runningApps = NSWorkspace.shared.runningApplications
@@ -147,9 +147,9 @@ public enum AccessibilityModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Accessibility tree:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "click_element":

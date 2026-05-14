@@ -375,7 +375,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 let (windowID, bounds) = try MirroringWindowDetector.findMirroringWindow()
                 return .init(content: [.text("iPhone Mirroring active (window \(windowID), \(Int(bounds.width))x\(Int(bounds.height)))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_calibrate":
@@ -398,45 +398,45 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Calibration complete:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Tap Gestures
         case "iphone_tap":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             do {
                 try await GestureEngine.tap(x: x, y: y)
                 return .init(content: [.text("Tapped at (\(x), \(y))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_double_tap":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             do {
                 try await GestureEngine.doubleTap(x: x, y: y)
                 return .init(content: [.text("Double-tapped at (\(x), \(y))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_long_press":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             let duration = args["duration"]?.doubleValue ?? 1.0
             do {
                 try await GestureEngine.longPress(x: x, y: y, duration: duration)
                 return .init(content: [.text("Long-pressed at (\(x), \(y)) for \(duration)s")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Swipe & Scroll
@@ -445,14 +445,14 @@ public enum IPhoneMirroringModule: ToolModule {
                   let startY = args["start_y"]?.doubleValue,
                   let endX = args["end_x"]?.doubleValue,
                   let endY = args["end_y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: start_x, start_y, end_x, end_y required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "start_x, start_y, end_x, end_y required")
             }
             let duration = args["duration"]?.doubleValue ?? 0.5
             do {
                 try await GestureEngine.swipe(startX: startX, startY: startY, endX: endX, endY: endY, duration: duration)
                 return .init(content: [.text("Swiped from (\(startX), \(startY)) to (\(endX), \(endY))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_scroll":
@@ -462,19 +462,19 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await GestureEngine.scroll(deltaX: deltaX, deltaY: deltaY)
                 return .init(content: [.text("Scrolled (dx=\(deltaX), dy=\(deltaY))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Text Input
         case "iphone_type_text":
             guard let text = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             do {
                 try await IPhoneTextInput.typeText(text)
                 return .init(content: [.text("Typed: \(text)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_clear_text":
@@ -482,19 +482,19 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IPhoneTextInput.clearText()
                 return .init(content: [.text("Cleared text field")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_press_key":
             guard let key = args["key"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: key required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "key required")
             }
             let modifiers = args["modifiers"]?.arrayValue?.compactMap { $0.stringValue } ?? []
             do {
                 try await IPhoneTextInput.pressKey(key: key, modifiers: modifiers)
                 return .init(content: [.text("Pressed key: \(modifiers.isEmpty ? key : (modifiers.joined(separator: "+") + "+" + key))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Navigation
@@ -503,7 +503,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.home()
                 return .init(content: [.text("Sent Home (Cmd+1)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_app_switcher":
@@ -511,7 +511,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.appSwitcher()
                 return .init(content: [.text("Sent App Switcher (Cmd+2)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_spotlight":
@@ -519,7 +519,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.spotlight()
                 return .init(content: [.text("Sent Spotlight (Cmd+3)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Perception
@@ -532,7 +532,7 @@ public enum IPhoneMirroringModule: ToolModule {
                     isError: false
                 )
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_screenshot_with_ocr":
@@ -581,7 +581,7 @@ public enum IPhoneMirroringModule: ToolModule {
                     isError: false
                 )
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_analyze_screen_now":
@@ -633,13 +633,13 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("iPhone screen analysis:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_analyze_with_llm":
             guard let modelName = args["model_name"]?.stringValue,
                   let instruction = args["instruction"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: model_name and instruction required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "model_name and instruction required")
             }
             let maxTokens = args["max_tokens"]?.intValue ?? 512
 
@@ -670,24 +670,24 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("iPhone LLM analysis:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Convenience
         case "iphone_open_app":
             guard let appName = args["app_name"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: app_name required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "app_name required")
             }
             do {
                 let message = try await IOSNavigation.openApp(name: appName)
                 return .init(content: [.text(message)], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_wait_for_text":
             guard let searchText = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             let timeoutMs = args["timeout_ms"]?.intValue ?? 5000
             let pollIntervalMs = args["poll_interval_ms"]?.intValue ?? 500
@@ -698,7 +698,7 @@ public enum IPhoneMirroringModule: ToolModule {
             while true {
                 let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
                 if elapsed >= timeoutNanos {
-                    return .init(content: [.text("Timeout: '\(searchText)' not found on iPhone within \(timeoutMs)ms")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "wait_timeout", message: "'\(searchText)' not found on iPhone within \(timeoutMs)ms")
                 }
                 do {
                     let imageData = try await captureIPhoneScreen()
@@ -738,7 +738,7 @@ public enum IPhoneMirroringModule: ToolModule {
             while true {
                 let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
                 if elapsed >= timeoutNanos {
-                    return .init(content: [.text("Timeout: iPhone Mirroring did not reconnect within \(timeoutMs)ms")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "timeout", message: "iPhone Mirroring did not reconnect within \(timeoutMs)ms")
                 }
                 MirroringWindowDetector.clearCache()
                 if let (windowID, bounds) = try? MirroringWindowDetector.findMirroringWindow(),

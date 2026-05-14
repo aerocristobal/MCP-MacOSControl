@@ -56,10 +56,7 @@ public final class FindElementsTool {
 
         // 2. Permission gate.
         guard permissionsChecker() else {
-            return errorResult(
-                code: "permission_denied",
-                message: "Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility."
-            )
+            return MCPError.accessibilityPermissionRequired.toStructuredResult()
         }
 
         // 3. Resolve target PID.
@@ -140,7 +137,7 @@ public final class FindElementsTool {
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        .init(content: [.text("\(code): \(message)")], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

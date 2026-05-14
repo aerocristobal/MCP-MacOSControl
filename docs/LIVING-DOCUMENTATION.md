@@ -34,7 +34,7 @@ mapped test.
 - `AXElementResolverTests.test_findElement_byAttribute_throwsNotFound_whenNoMatch`
 - `AXResolverErrorsTests.test_axNotFoundError_descriptionIncludesCriteria`
 - `AXResolverErrorsTests.test_axNotFoundError_localizedDescriptionIncludesCriteria`
-- `AXResolverErrorsTests.test_axNotFoundError_toResultIsErrorTrue`
+- `AXResolverErrorsTests.test_axNotFoundError_toStructuredResult_isErrorTrue`
 
 ### Scenario: Resolve element scoped to a specific application
 
@@ -615,4 +615,79 @@ mapped test.
 - `AXNodeSerializer_StateTests.test_serialize_preservesAllV2Fields_whenStateFieldsAdded`
 - `AXNodeSerializer_StateTests.test_schemaVersion_isIncrementedTo3`
 - `AXNodeSerializer_StateTests.test_serializeRoot_includesSchemaVersion3_atRoot`
+
+
+## Structured Error Response Contract
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-016-structured-errors.feature`*
+
+> In order to enable agents to build reliable retry and recovery logic
+> As an MCP tool author
+> I want every error response to follow a single structured JSON shape with stable codes
+> This project ships errors as a wrapped JSON envelope inside the .text() content
+> block: { "ok": false, "error": { "code", "message", "details"? } }. The wrapped
+> form matches the existing tool helpers (ClickMenuItemTool, RunAppleScriptTool)
+> and lets success responses keep their { "ok": true, ... } symmetry. Codes are
+> snake_case (^[a-z][a-z0-9_]*$, max 64 chars). The ErrorCodeRegistry is bootstrapped
+> at server startup and a collision (same code, different description) terminates
+> the process before any request is accepted.
+
+### Scenario: Error response is structured JSON, not a free-text string
+
+- `MCPErrorResponseBuilderTests.test_build_returnsResultWithIsErrorTrue`
+- `MCPErrorResponseBuilderTests.test_build_emitsCodeMessageAndDetails_asWrappedJSON`
+- `MCPErrorResponseBuilderTests.test_build_envelopeHasOkFalse`
+- `MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsNil`
+- `MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsEmpty`
+
+### Scenario: Error codes follow snake_case convention
+
+- `ErrorCodeRegistryTests.test_register_rejectsUppercaseCode`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeWithDash`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeStartingWithDigit`
+- `ErrorCodeRegistryTests.test_register_rejectsEmptyCode`
+- `ErrorCodeRegistryTests.test_register_acceptsValidSnakeCaseCode`
+- `ErrorCodeRegistryTests.test_register_acceptsCodeAtMaxLength`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeLongerThan64Chars`
+- `ErrorCodeBootstrapTests.test_bootstrap_codesAllValidSnakeCase`
+
+### Scenario: Permission-denied error includes a recovery hint in details
+
+- `PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesRecoveryHintInDetails`
+- `PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesSystemSettingsURIInDetails`
+- `PermissionDeniedDetailsTests.test_automationPermissionRequired_includesTargetApplicationInDetails`
+- `ResourceErrorsTests.test_accessibilityPermissionRequired_detailsCarryRecoveryHintAndSettingsURI`
+
+### Scenario: Coordinate-out-of-bounds error includes the valid bounds in details
+
+- `ElementAtPositionToolTests.test_execute_rejectsCoords_outsideDisplayUnion`
+- `ElementAtPositionToolTests.test_execute_doesNotInvokeBridge_whenOutOfBounds`
+- `CoordinatesOutOfBoundsDetailsTests.test_outOfBounds_responseIncludesDisplayBoundsObjectInDetails`
+
+### Scenario: Two tools cannot register the same error code with conflicting semantics
+
+- `ErrorCodeRegistryTests.test_register_throwsCollisionError_whenCodeAlreadyRegistered`
+- `ErrorCodeRegistryTests.test_collisionError_surfacesBothRegistrationCallSites`
+- `ErrorCodeBootstrapTests.test_bootstrap_throwsCollision_whenCalledTwiceOnSameRegistry`
+
+### Scenario: Unknown internal exception produces a generic structured error
+
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_mapsArbitraryErrorToInternalError`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakUserPaths`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakPrivatePaths`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_setsIsErrorTrue`
+
+### Scenario: Existing MCPError cases map to the new contract without behavioral change
+
+- `MCPErrorMigrationTests.test_permissionDenied_mapsToSnakeCaseCode`
+- `MCPErrorMigrationTests.test_windowNotFound_mapsToSnakeCaseCode`
+- `MCPErrorMigrationTests.test_accessibilityPermissionRequired_mapsToSnakeCase_andCarriesDetails`
+- `MCPErrorMigrationTests.test_everyMCPErrorCase_producesIsErrorTrueAndRegisteredSnakeCaseCode`
+- `MCPErrorMigrationTests.test_descriptionFormat_isSnakeCaseColonMessage_notScreamingSnake`
+- `NoAdhocErrorConstructionAuditTests.test_noAdhocErrorTextConstructionExists`
+
+### Scenario: Unknown tool returns a structured error with isError = true
+
+- `ToolRouterUnknownToolTests.test_unknownTool_returnsIsErrorTrue`
+- `ToolRouterUnknownToolTests.test_unknownTool_returnsStructuredUnknownToolCode`
 

@@ -5,6 +5,13 @@ import MacOSControlLib
 @main
 enum MacOSControlServer {
     static func main() async throws {
+        // STORY-016: trigger lazy bootstrap of the error-code registry so a
+        // bootstrap failure surfaces immediately (via fatalError inside the
+        // singleton) rather than on the first tool call. Then log the contract
+        // change so operators tailing stderr see it on every cold start.
+        let registeredCount = MacOSControlLib.ErrorCodeRegistry.shared.allRegistrations().count
+        MacOSControlLib.MCPLogger.info("Error responses now structured JSON; legacy text format removed (STORY-016). \(registeredCount) codes registered.")
+
         let server = Server(
             name: "mcp-macos-control",
             version: "1.0.0",
@@ -121,11 +128,18 @@ enum MacOSControlServer {
                     .text(text, uri: params.uri, mimeType: "application/json")
                 ])
             } catch let error as MacOSControlLib.MCPError {
+                // STORY-016: resources/read errors use the same wrapped JSON
+                // shape as tool errors so agents can parse both uniformly.
+                var errorObject: [String: Any] = [
+                    "code": error.errorCode,
+                    "message": error.message
+                ]
+                if let details = error.details, !details.isEmpty {
+                    errorObject["details"] = details
+                }
                 let envelope: [String: Any] = [
-                    "error": [
-                        "code": error.errorCode,
-                        "message": error.description
-                    ]
+                    "ok": false,
+                    "error": errorObject
                 ]
                 let data = try JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys])
                 let text = String(data: data, encoding: .utf8) ?? "{}"

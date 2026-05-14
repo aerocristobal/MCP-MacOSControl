@@ -87,7 +87,7 @@ public enum ContinuousCaptureModule: ToolModule {
         switch params.name {
         case "start_continuous_capture":
             guard let captureTypeStr = args["capture_type"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: capture_type required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "capture_type required")
             }
 
             let captureType: ContinuousCaptureManager.CaptureType
@@ -99,7 +99,7 @@ public enum ContinuousCaptureModule: ToolModule {
             case "application", "app":
                 captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
 
             let targetIdentifier = args["target_identifier"]?.stringValue
@@ -116,7 +116,7 @@ public enum ContinuousCaptureModule: ToolModule {
 
                 return .init(content: [.text("Started continuous capture (type: \(captureTypeStr), fps: \(frameRate))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "stop_continuous_capture":
@@ -129,7 +129,7 @@ public enum ContinuousCaptureModule: ToolModule {
                     return .init(content: [.text("No active capture session")], isError: false)
                 }
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "get_capture_frame":
@@ -138,7 +138,7 @@ public enum ContinuousCaptureModule: ToolModule {
                 guard let tiffData = nsImage.tiffRepresentation,
                       let bitmapImage = NSBitmapImageRep(data: tiffData),
                       let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
-                    return .init(content: [.text("Error: Failed to convert frame to PNG")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "backend_error", message: "Failed to convert frame to PNG")
                 }
 
                 let base64 = pngData.base64EncodedString()
@@ -147,7 +147,7 @@ public enum ContinuousCaptureModule: ToolModule {
                     isError: false
                 )
             } else {
-                return .init(content: [.text("No capture frame available. Start continuous capture first.")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "backend_error", message: "No capture frame available. Start continuous capture first.")
             }
 
         case "list_capturable_displays":
@@ -157,7 +157,7 @@ public enum ContinuousCaptureModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Available displays:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "list_capturable_windows":
@@ -167,7 +167,7 @@ public enum ContinuousCaptureModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Capturable windows (\(windows.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "list_capturable_applications":
@@ -177,7 +177,7 @@ public enum ContinuousCaptureModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "[]"
                 return .init(content: [.text("Capturable applications (\(apps.count)):\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:
