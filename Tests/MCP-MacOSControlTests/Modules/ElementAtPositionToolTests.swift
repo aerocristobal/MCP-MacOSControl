@@ -290,7 +290,8 @@ final class ElementAtPositionToolTests: XCTestCase {
 
         XCTAssertEqual(result?.isError, true)
         let text = extractText(from: result!) ?? ""
-        XCTAssertTrue(text.contains("permission_denied"), "got: \(text)")
+        XCTAssertTrue(text.contains("accessibility_permission_required"),
+                      "STORY-016: AX-permission failure must surface accessibility_permission_required; got: \(text)")
         XCTAssertEqual(bridgeSpy.hitTestCallCount, 0)
     }
 }

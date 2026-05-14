@@ -5,11 +5,18 @@ import MacOSControlLib
 @main
 enum MacOSControlServer {
     static func main() async throws {
+        // STORY-016: trigger lazy bootstrap of the error-code registry so a
+        // bootstrap failure surfaces immediately (via fatalError inside the
+        // singleton) rather than on the first tool call. Then log the contract
+        // change so operators tailing stderr see it on every cold start.
+        let registeredCount = MacOSControlLib.ErrorCodeRegistry.shared.allRegistrations().count
+        MacOSControlLib.MCPLogger.info("Error responses now structured JSON; legacy text format removed (STORY-016). \(registeredCount) codes registered.")
+
         let server = Server(
             name: "mcp-macos-control",
             version: "1.0.0",
             instructions: """
-                MCP-MacOSControl: 65 tools for macOS and iPhone automation.
+                MCP-MacOSControl: 65 tools for macOS and iPhone automation, plus ambient-context Resources.
 
                 COORDINATE SYSTEMS:
                 - macOS tools (click_screen, move_mouse, etc.): absolute pixel coordinates
@@ -31,6 +38,8 @@ enum MacOSControlServer {
 
                 5. Accessibility tree: Use accessibility_tree for macOS app UI structure (role, label, position). Does NOT work for iPhone Mirroring content.
 
+                6. Ambient context Resources: subscribe to macos://ui/active-application or macos://ui/active-window-tree for change notifications without invoking accessibility_tree on every turn.
+
                 TOOL CATEGORIES:
                 - Mouse (9): click_screen, double_click, move_mouse, mouse_down/up, drag_mouse, scroll, get_screen_size, list_displays
                 - Keyboard (4): type_text, press_keys, key_down, key_up
@@ -42,9 +51,53 @@ enum MacOSControlServer {
                 - Vision (5), CoreML (8), Realtime (4), Continuous Capture (6)
                 """,
             capabilities: .init(
+                prompts: .init(listChanged: false),
+                resources: .init(subscribe: true, listChanged: false),
                 tools: .init(listChanged: true)
             )
         )
+
+        // Resource wiring (STORY-013).
+        let workspaceProvider = NSWorkspaceProvider()
+        let permissionChecker = SystemAccessibilityPermissionChecker()
+        let axBridge = AXApplicationBridgeImpl()
+        let treeBuilder = AccessibilityTreeBuilder(bridge: axBridge)
+        let serializer = AXNodeSerializer()
+        let appResource = ActiveApplicationResource(workspace: workspaceProvider)
+        let treeResource = ActiveWindowTreeResource(
+            workspace: workspaceProvider,
+            permission: permissionChecker,
+            builder: treeBuilder,
+            serializer: serializer
+        )
+        // active-application listens to NSWorkspace app-activation only.
+        // active-window-tree composes NSWorkspace + AX focused-window
+        // changes so within-app window switches also trigger updates.
+        let nsWorkspaceLifecycle = NSWorkspaceObserverLifecycle()
+        let focusedWindowLifecycle = AXFocusedWindowSignalLifecycle(
+            workspaceLifecycle: NSWorkspaceObserverLifecycle(),
+            workspaceProvider: workspaceProvider,
+            sourceFactory: AXFocusedWindowSourceFactoryImpl()
+        )
+        let treeSignalSource = CompositeEventLifecycle([nsWorkspaceLifecycle, focusedWindowLifecycle])
+
+        let registry = ResourceSubscriptionRegistry(
+            observerLifecycle: nsWorkspaceLifecycle,
+            publishSink: { uri, _ in
+                Task { try? await server.notify(ResourceUpdatedNotification.message(.init(uri: uri))) }
+            }
+        )
+        // The notification payload is just the URI per MCP spec — content
+        // delivery happens via a subsequent `resources/read`. Both producers
+        // return an empty placeholder; the sink ignores the content.
+        registry.registerContentProducer(ResourceURIs.activeApplication) {
+            ["uri": ResourceURIs.activeApplication]
+        }
+        registry.registerContentProducer(ResourceURIs.activeWindowTree) { [weak treeResource] in
+            treeResource?.invalidateCache()
+            return ["uri": ResourceURIs.activeWindowTree]
+        }
+        registry.registerSignalSource(ResourceURIs.activeWindowTree, treeSignalSource)
 
         await server.withMethodHandler(ListTools.self) { _ in
             .init(tools: ToolRouter.allTools)
@@ -52,6 +105,104 @@ enum MacOSControlServer {
 
         await server.withMethodHandler(CallTool.self) { params in
             try await ToolRouter.handle(params)
+        }
+
+        // Prompt wiring (STORY-017). Built once at startup; loading errors are
+        // fatal — a missing prompt file means the binary is mis-bundled and we
+        // would rather refuse to start than serve a half-empty catalog.
+        let promptRegistry: PromptRegistry
+        do {
+            promptRegistry = try PromptRegistry.standardRegistry()
+        } catch {
+            fputs("Failed to load bundled prompt definitions: \(error)\n", stderr)
+            exit(1)
+        }
+
+        await server.withMethodHandler(ListPrompts.self) { _ in
+            .init(prompts: promptRegistry.list())
+        }
+
+        await server.withMethodHandler(GetPrompt.self) { params in
+            do {
+                return try promptRegistry.get(name: params.name, arguments: params.arguments ?? [:])
+            } catch let error as PromptError {
+                // Mirror the resources/read error pattern (Server.swift below):
+                // wrap the structured error in a {ok:false, error:{...}} envelope
+                // and return it as the prompt's single message so agents can parse
+                // it uniformly across tools, resources, and prompts.
+                var errorObject: [String: Any] = [
+                    "code": error.code,
+                    "message": error.message
+                ]
+                if let details = error.details, !details.isEmpty {
+                    errorObject["details"] = details
+                }
+                let envelope: [String: Any] = [
+                    "ok": false,
+                    "error": errorObject
+                ]
+                let data = (try? JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys])) ?? Data()
+                let text = String(data: data, encoding: .utf8) ?? "{}"
+                return .init(
+                    description: "error: \(error.code)",
+                    messages: [.user(.text(text: text))]
+                )
+            }
+        }
+
+        await server.withMethodHandler(ListResources.self) { _ in
+            .init(resources: MCPResourceCatalog.allResources)
+        }
+
+        await server.withMethodHandler(ReadResource.self) { params in
+            let parsed = ResourceURIParser.parse(params.uri)
+            do {
+                let payload: [String: Any]
+                switch parsed.canonicalURI {
+                case ResourceURIs.activeApplication:
+                    payload = try appResource.read()
+                case ResourceURIs.activeWindowTree:
+                    payload = try treeResource.read(maxDepth: parsed.maxDepth())
+                default:
+                    throw MacOSControlLib.MCPError.windowNotFound("Unknown resource URI: \(params.uri)")
+                }
+                let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+                let text = String(data: data, encoding: .utf8) ?? "{}"
+                return .init(contents: [
+                    .text(text, uri: params.uri, mimeType: "application/json")
+                ])
+            } catch let error as MacOSControlLib.MCPError {
+                // STORY-016: resources/read errors use the same wrapped JSON
+                // shape as tool errors so agents can parse both uniformly.
+                var errorObject: [String: Any] = [
+                    "code": error.errorCode,
+                    "message": error.message
+                ]
+                if let details = error.details, !details.isEmpty {
+                    errorObject["details"] = details
+                }
+                let envelope: [String: Any] = [
+                    "ok": false,
+                    "error": errorObject
+                ]
+                let data = try JSONSerialization.data(withJSONObject: envelope, options: [.sortedKeys])
+                let text = String(data: data, encoding: .utf8) ?? "{}"
+                return .init(contents: [
+                    .text(text, uri: params.uri, mimeType: "application/json")
+                ])
+            }
+        }
+
+        await server.withMethodHandler(ResourceSubscribe.self) { params in
+            let canonical = ResourceURIParser.parse(params.uri).canonicalURI
+            registry.subscribe(canonical, clientId: "stdio") { _ in }
+            return Empty()
+        }
+
+        await server.withMethodHandler(ResourceUnsubscribe.self) { params in
+            let canonical = ResourceURIParser.parse(params.uri).canonicalURI
+            registry.unsubscribe(canonical, clientId: "stdio")
+            return Empty()
         }
 
         let transport = StdioTransport()

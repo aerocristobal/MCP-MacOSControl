@@ -116,15 +116,7 @@ public final class ClickMenuItemTool {
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        let payload: [String: Any] = [
-            "ok": false,
-            "error": [
-                "code": code,
-                "message": message
-            ]
-        ]
-        let text = jsonString(payload) ?? "\(code): \(message)"
-        return .init(content: [.text(text)], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func notFoundErrorResult(application: String,
@@ -133,17 +125,11 @@ public final class ClickMenuItemTool {
         let leaf = path.last ?? ""
         let parentLabel = path.count >= 2 ? path[path.count - 2] : "menu bar"
         let message = "menu item \"\(leaf)\" was not found under \"\(parentLabel)\" in \(application)"
-
-        let payload: [String: Any] = [
-            "ok": false,
-            "error": [
-                "code": "menu_item_not_found",
-                "message": message,
-                "alternatives": alternatives
-            ]
-        ]
-        let text = jsonString(payload) ?? "menu_item_not_found: \(message)"
-        return .init(content: [.text(text)], isError: true)
+        return MCPErrorResponseBuilder.shared.build(
+            code: "menu_item_not_found",
+            message: message,
+            details: ["alternatives": alternatives]
+        )
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

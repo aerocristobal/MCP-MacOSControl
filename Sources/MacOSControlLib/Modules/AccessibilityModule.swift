@@ -7,7 +7,7 @@ public enum AccessibilityModule: ToolModule {
         [
             Tool(
                 name: "accessibility_tree",
-                description: "Read the accessibility tree of a macOS application (AXUIElement). Each node includes role, title, description, value, position, size, identifier, actions (per-node AXAction names), enabled, settable (whether AXValue is writable), focused (keyboard focus), selected (for rows / cells / tabs / menu items), expanded (disclosure / popup state), visible_in_viewport (any pixel intersection with containing window), and truncated (set on parents whose children were pruned by max_depth — re-request with a higher max_depth to drill in). AXWindow nodes additionally include is_main, is_minimized, and is_frontmost. Top-level schema_version is 3. Default max_depth is 6 — sufficient for toolbars / dialogs / menubar; pass 3 for smaller responses or 12+ for deeply nested apps. Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
+                description: "Read the accessibility tree of a macOS application (AXUIElement). Each node includes role, title, description, value, position, size, identifier, actions (per-node AXAction names), enabled, settable (whether AXValue is writable), focused (keyboard focus), selected (for rows / cells / tabs / menu items), expanded (disclosure / popup state), visible_in_viewport (any pixel intersection with containing window), and truncated (set on parents whose children were pruned by max_depth — re-request with a higher max_depth to drill in). AXWindow nodes additionally include is_main, is_minimized, and is_frontmost. Top-level schema_version is 3. Default max_depth is 6 — sufficient for toolbars / dialogs / menubar; pass 3 for smaller responses or 12+ for deeply nested apps. For ambient context (knowing which app is frontmost across turns), subscribe to the MCP Resource macos://ui/active-window-tree instead — it shares the same per-node shape and emits notifications/resources/updated on app/window switches. Does NOT work for iPhone Mirroring iOS content — use iphone_screenshot_with_ocr instead.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
@@ -18,7 +18,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
@@ -33,12 +34,13 @@ public enum AccessibilityModule: ToolModule {
                         "label": ["type": "string", "description": "AX accessibility label."],
                         "description": ["type": "string", "description": "AX description / help text."],
                         "application": ["type": "string", "description": "Restrict the search to this app — bundle ID (e.g., com.apple.TextEdit) or name (e.g., TextEdit)."],
-                        "return_state": ["type": "boolean", "description": "If true, re-read the element's value after the press and include it in the response.", "default": false]
+                        "return_state": ["type": "boolean", "description": "If true, re-read the element's value after the press and include it in the response. Defaults to false.", "default": false]
                     ]
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
@@ -59,7 +61,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: false,
-                    destructiveHint: true
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
@@ -78,13 +81,14 @@ public enum AccessibilityModule: ToolModule {
                         "identifier_matches": ["type": "string", "description": "ICU regex matched against AX identifier. Mutually exclusive with identifier."],
                         "label": ["type": "string", "description": "AX accessibility label to match exactly."],
                         "description": ["type": "string", "description": "AX description / help text to match exactly."],
-                        "max_results": ["type": "integer", "description": "Hard cap on returned matches; clamped to [1, 500]. truncated_results=true if predicate matched additional nodes beyond the cap.", "default": 50],
+                        "max_results": ["type": "integer", "description": "Hard cap on returned matches; clamped to [1, 500]. truncated_results=true if predicate matched additional nodes beyond the cap. Default 50.", "default": 50],
                         "max_depth": ["type": "integer", "description": "Maximum tree depth to traverse. Root is depth 0. Default 12 — deeper than accessibility_tree's 6 since payload is bounded by max_results too.", "default": 12]
                     ]
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
@@ -101,7 +105,8 @@ public enum AccessibilityModule: ToolModule {
                 ),
                 annotations: Tool.Annotations(
                     readOnlyHint: true,
-                    destructiveHint: false
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             )
         ]
@@ -117,7 +122,7 @@ public enum AccessibilityModule: ToolModule {
 
             do {
                 guard AXIsProcessTrusted() else {
-                    throw MCPError.permissionDenied("Accessibility permission required. Go to System Settings > Privacy & Security > Accessibility and enable permission for the app running this MCP server.")
+                    throw MCPError.accessibilityPermissionRequired
                 }
 
                 let runningApps = NSWorkspace.shared.runningApplications
@@ -142,9 +147,9 @@ public enum AccessibilityModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Accessibility tree:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "click_element":

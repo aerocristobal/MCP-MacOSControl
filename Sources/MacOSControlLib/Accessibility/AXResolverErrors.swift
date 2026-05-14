@@ -3,7 +3,7 @@ import MCP
 
 public struct AXNotFoundError: Error, CustomStringConvertible, LocalizedError {
     public let searchCriteria: String
-    public let errorCode: String = "AX_NOT_FOUND"
+    public let errorCode: String = "ax_not_found"
 
     public init(searchCriteria: String) {
         self.searchCriteria = searchCriteria
@@ -15,14 +15,18 @@ public struct AXNotFoundError: Error, CustomStringConvertible, LocalizedError {
 
     public var errorDescription: String? { description }
 
-    public func toResult() -> CallTool.Result {
-        .init(content: [.text(description)], isError: true)
+    public func toStructuredResult() -> CallTool.Result {
+        MCPErrorResponseBuilder.shared.build(
+            code: errorCode,
+            message: "No accessibility element matched \(searchCriteria)",
+            details: ["search_criteria": searchCriteria]
+        )
     }
 }
 
 public struct AXResolutionError: Error, CustomStringConvertible, LocalizedError {
     public let detail: String
-    public let errorCode: String = "AX_RESOLUTION_FAILED"
+    public let errorCode: String = "ax_resolution_failed"
     let underlyingCode: Int32
 
     public init(detail: String, underlyingCode: Int32 = 0) {
@@ -36,7 +40,15 @@ public struct AXResolutionError: Error, CustomStringConvertible, LocalizedError 
 
     public var errorDescription: String? { description }
 
-    public func toResult() -> CallTool.Result {
-        .init(content: [.text(description)], isError: true)
+    public func toStructuredResult() -> CallTool.Result {
+        var details: [String: Any] = [:]
+        if underlyingCode != 0 {
+            details["underlying_code"] = Int(underlyingCode)
+        }
+        return MCPErrorResponseBuilder.shared.build(
+            code: errorCode,
+            message: detail,
+            details: details.isEmpty ? nil : details
+        )
     }
 }

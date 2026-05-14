@@ -8,47 +8,75 @@ public enum RealtimeModule: ToolModule {
         [
             Tool(
                 name: "analyze_screen_now",
-                description: "Perform a one-shot screen analysis using Vision framework",
+                description: "Run a one-shot Vision analysis on the screen and return the configured results. Use as a synchronous alternative to start_screen_monitoring when you need a single snapshot of what's on screen. Non-idempotent (live screen). Read-only with respect to the system. Returns a JSON object with the requested analyses.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "capture_type": ["type": "string", "description": "Type of capture: display, window, or application"],
-                        "target_identifier": ["type": "string", "description": "Display ID, window ID/title, or app bundle identifier"],
-                        "include_classification": ["type": "boolean", "description": "Include image classification (default: true)"],
-                        "include_objects": ["type": "boolean", "description": "Include object detection (default: false)"],
-                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection (default: false)"],
-                        "include_faces": ["type": "boolean", "description": "Include face detection (default: false)"],
-                        "include_text": ["type": "boolean", "description": "Include OCR text extraction (default: false)"],
-                        "include_saliency": ["type": "boolean", "description": "Include saliency detection (default: false)"]
+                        "capture_type": [
+                            "type": "string",
+                            "description": "Scope of the screen capture: one of display, window, or application.",
+                            "enum": ["display", "window", "application"]
+                        ],
+                        "target_identifier": ["type": "string", "description": "Display ID, window ID / title, or app bundle identifier — depending on capture_type."],
+                        "include_classification": ["type": "boolean", "description": "Include image classification. Defaults to true.", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection. Defaults to false.", "default": false],
+                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection. Defaults to false.", "default": false],
+                        "include_faces": ["type": "boolean", "description": "Include face detection. Defaults to false.", "default": false],
+                        "include_text": ["type": "boolean", "description": "Include OCR text extraction. Defaults to false.", "default": false],
+                        "include_saliency": ["type": "boolean", "description": "Include saliency detection. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "start_screen_monitoring",
-                description: "Start continuous screen monitoring with real-time Vision analysis",
+                description: "Start a continuous Vision analysis pipeline over a display, window, or application. Use to track on-screen changes asynchronously — pair with get_monitoring_results and stop_screen_monitoring. Returns a confirmation string with the configured frame rate and capture target.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "capture_type": ["type": "string", "description": "Type of capture: display, window, or application"],
-                        "target_identifier": ["type": "string", "description": "Display ID, window ID/title, or app bundle identifier"],
-                        "frame_rate": ["type": "integer", "description": "Analysis frame rate (default: 10)", "default": 10],
-                        "include_classification": ["type": "boolean", "description": "Include image classification (default: true)"],
-                        "include_objects": ["type": "boolean", "description": "Include object detection (default: false)"],
-                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection (default: false)"],
-                        "include_faces": ["type": "boolean", "description": "Include face detection (default: false)"],
-                        "include_text": ["type": "boolean", "description": "Include OCR text extraction (default: false)"]
+                        "capture_type": [
+                            "type": "string",
+                            "description": "Scope of the screen capture: one of display, window, or application.",
+                            "enum": ["display", "window", "application"]
+                        ],
+                        "target_identifier": ["type": "string", "description": "Display ID, window ID / title, or app bundle identifier — depending on capture_type."],
+                        "frame_rate": ["type": "integer", "description": "Analyses per second; lower values reduce CPU load. Defaults to 10.", "default": 10],
+                        "include_classification": ["type": "boolean", "description": "Include image classification. Defaults to true.", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection. Defaults to false.", "default": false],
+                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection. Defaults to false.", "default": false],
+                        "include_faces": ["type": "boolean", "description": "Include face detection. Defaults to false.", "default": false],
+                        "include_text": ["type": "boolean", "description": "Include OCR text extraction. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "get_monitoring_results",
-                description: "Get the latest results from active screen monitoring",
-                inputSchema: jsonSchema(type: "object")
+                description: "Fetch the latest Vision analysis results from an active screen-monitoring session. Use to poll for the most recent classification / OCR / detection output. Read-only with respect to the system; non-idempotent (latest frame changes). Returns a JSON object.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
+                )
             ),
             Tool(
                 name: "stop_screen_monitoring",
-                description: "Stop the active screen monitoring session",
-                inputSchema: jsonSchema(type: "object")
+                description: "Stop the active screen-monitoring session, if any, and release its resources. Idempotent — calling when no session is active returns a benign \"no active monitoring\" message. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
         ]
     }
@@ -64,7 +92,7 @@ public enum RealtimeModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
             let targetIdentifier = args["target_identifier"]?.stringValue
             var analysisTypes: [RealtimeAnalyzer.AnalysisType] = []
@@ -84,7 +112,7 @@ public enum RealtimeModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Screen analysis completed:\n\(jsonString)")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "start_screen_monitoring":
@@ -95,7 +123,7 @@ public enum RealtimeModule: ToolModule {
             case "window": captureType = .window
             case "application", "app": captureType = .application
             default:
-                return .init(content: [.text("Invalid capture_type. Must be: display, window, or application")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "Invalid capture_type. Must be: display, window, or application")
             }
             let targetIdentifier = args["target_identifier"]?.stringValue
             let frameRate = args["frame_rate"]?.intValue ?? 10
@@ -115,7 +143,7 @@ public enum RealtimeModule: ToolModule {
                 )
                 return .init(content: [.text("Started screen monitoring (type: \(captureTypeStr), fps: \(frameRate))")], isError: false)
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         case "get_monitoring_results":
@@ -129,10 +157,10 @@ public enum RealtimeModule: ToolModule {
                     let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                     return .init(content: [.text("Latest monitoring results:\n\(jsonString)")], isError: false)
                 } catch {
-                    return .init(content: [.text("Error serializing results: \(error.localizedDescription)")], isError: true)
+                    return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
                 }
             } else {
-                return .init(content: [.text("No active monitoring session. Use start_screen_monitoring first.")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "backend_error", message: "No active monitoring session. Use start_screen_monitoring first.")
             }
 
         case "stop_screen_monitoring":
@@ -145,7 +173,7 @@ public enum RealtimeModule: ToolModule {
                     return .init(content: [.text("No active monitoring session")], isError: false)
                 }
             } catch {
-                return .init(content: [.text("Error: \(error.localizedDescription)")], isError: true)
+                return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
             }
 
         default:

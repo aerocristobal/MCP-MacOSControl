@@ -29,7 +29,7 @@ public final class ClickElementTool {
 
         guard role != nil || title != nil || identifier != nil || label != nil || description != nil else {
             return errorResult(
-                code: "INVALID_INPUT",
+                code: "invalid_input",
                 message: "click_element requires at least one locator (role, title, identifier, label, or description)"
             )
         }
@@ -52,7 +52,7 @@ public final class ClickElementTool {
                 message: notFound.searchCriteria
             )
         } catch let resolution as AXResolutionError {
-            return resolution.toResult()
+            return resolution.toStructuredResult()
         } catch {
             return errorResult(
                 code: "element_not_found",
@@ -63,7 +63,7 @@ public final class ClickElementTool {
         do {
             try interactor.performPress(resolved)
         } catch let action as AXActionError {
-            return action.toResult()
+            return action.toStructuredResult()
         } catch {
             return errorResult(
                 code: "action_failed",
@@ -165,7 +165,7 @@ public final class ClickElementTool {
     }
 
     private func errorResult(code: String, message: String) -> CallTool.Result {
-        .init(content: [.text("\(code): \(message)")], isError: true)
+        MCPErrorResponseBuilder.shared.build(code: code, message: message)
     }
 
     private func jsonString(_ payload: [String: Any]) -> String? {

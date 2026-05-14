@@ -8,216 +8,328 @@ public enum IPhoneMirroringModule: ToolModule {
             // Status & Control
             Tool(
                 name: "iphone_status",
-                description: "Check if iPhone Mirroring is running and get window information",
-                inputSchema: jsonSchema(type: "object")
+                description: "Report whether iPhone Mirroring is running and, when it is, the mirroring window's ID and bounds. Use as a pre-flight check before issuing iphone_* commands. Read-only and idempotent. Returns a JSON status object.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "iphone_launch",
-                description: "Launch or activate the iPhone Mirroring app",
-                inputSchema: jsonSchema(type: "object")
+                description: "Launch the iPhone Mirroring app if needed and bring its window to the foreground. Use as the first step in any iPhone-automation flow. Idempotent — calling when the window is already focused is a no-op. Returns a confirmation string with the window ID and size.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "iphone_calibrate",
-                description: "Force re-calibration of the iPhone screen content area detection",
-                inputSchema: jsonSchema(type: "object")
+                description: "Force re-detection of the iPhone screen content rectangle within the mirroring window. Use when the window has been resized or the previous calibration produced off-target taps. Idempotent — multiple calls converge to the same rect. Returns a JSON object with the new content rect and insets.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
 
             // Tap Gestures
             Tool(
                 name: "iphone_tap",
-                description: "Tap at normalized coordinates (0-1) on the iPhone screen. Use coordinates from iphone_screenshot_with_ocr results directly.",
+                description: "Tap at normalized (0.0-1.0) coordinates within the iPhone screen content area. Coordinates from iphone_screenshot_with_ocr can be passed directly. DESTRUCTIVE: can activate Send / Delete / Confirm controls — inspect the screen with iphone_screenshot_with_ocr first. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0)"],
-                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0)"]
+                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0) within the iPhone content rect."],
+                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0) within the iPhone content rect."]
                     ],
                     required: ["x", "y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_double_tap",
-                description: "Double-tap at normalized coordinates on the iPhone screen",
+                description: "Double-tap at normalized coordinates within the iPhone screen. Use for double-tap-to-zoom and similar gestures. DESTRUCTIVE: can trigger actions on the underlying control. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0)"],
-                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0)"]
+                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0)."],
+                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0)."]
                     ],
                     required: ["x", "y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_long_press",
-                description: "Long-press at normalized coordinates on the iPhone screen",
+                description: "Press and hold at normalized iPhone coordinates for the given duration. Use to invoke context menus, drag-to-reorder, or 3D-touch-style actions. DESTRUCTIVE: the long-press menu may include destructive actions like Delete. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0)"],
-                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0)"],
-                        "duration": ["type": "number", "description": "Press duration in seconds", "default": 1.0]
+                        "x": ["type": "number", "description": "Normalized X coordinate (0.0-1.0)."],
+                        "y": ["type": "number", "description": "Normalized Y coordinate (0.0-1.0)."],
+                        "duration": ["type": "number", "description": "Press duration in seconds. Defaults to 1.0.", "default": 1.0]
                     ],
                     required: ["x", "y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
 
             // Swipe & Scroll
             Tool(
                 name: "iphone_swipe",
-                description: "Swipe on the iPhone screen with ease-in-out curve",
+                description: "Swipe from one normalized iPhone coordinate to another with an ease-in-out curve. Use for paging, dismissing, and gesture-driven controls. DESTRUCTIVE: can dismiss messages, archive emails, or activate gesture-triggered actions on the underlying view. Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "start_x": ["type": "number", "description": "Start X (0.0-1.0)"],
-                        "start_y": ["type": "number", "description": "Start Y (0.0-1.0)"],
-                        "end_x": ["type": "number", "description": "End X (0.0-1.0)"],
-                        "end_y": ["type": "number", "description": "End Y (0.0-1.0)"],
-                        "duration": ["type": "number", "description": "Swipe duration in seconds", "default": 0.5]
+                        "start_x": ["type": "number", "description": "Start X (0.0-1.0)."],
+                        "start_y": ["type": "number", "description": "Start Y (0.0-1.0)."],
+                        "end_x": ["type": "number", "description": "End X (0.0-1.0)."],
+                        "end_y": ["type": "number", "description": "End Y (0.0-1.0)."],
+                        "duration": ["type": "number", "description": "Swipe duration in seconds. Defaults to 0.5.", "default": 0.5]
                     ],
                     required: ["start_x", "start_y", "end_x", "end_y"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_scroll",
-                description: "Send scroll wheel events to the iPhone Mirroring window",
+                description: "Send scroll-wheel events to the iPhone mirroring window without dragging the content. Use to navigate long lists or pages where a swipe would feel too aggressive. Returns a confirmation string naming the scroll delta.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "delta_x": ["type": "integer", "description": "Horizontal scroll amount", "default": 0],
-                        "delta_y": ["type": "integer", "description": "Vertical scroll amount (positive=down)", "default": 0]
+                        "delta_x": ["type": "integer", "description": "Horizontal scroll delta in lines. Defaults to 0.", "default": 0],
+                        "delta_y": ["type": "integer", "description": "Vertical scroll delta in lines (positive = scroll down). Defaults to 0.", "default": 0]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
 
             // Text Input
             Tool(
                 name: "iphone_type_text",
-                description: "Type text into a focused iOS text field via clipboard paste",
+                description: "Type text into a focused iOS text field via clipboard paste. Use after tapping a text field to fill it. Non-destructive but state-changing. Returns a confirmation string echoing the typed text.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "text": ["type": "string", "description": "Text to type"]
+                        "text": ["type": "string", "description": "Text to type into the focused field."]
                     ],
                     required: ["text"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_clear_text",
-                description: "Clear the focused iOS text field (Cmd+A then Delete)",
-                inputSchema: jsonSchema(type: "object")
+                description: "Clear the focused iOS text field by sending Cmd+A then Delete. DESTRUCTIVE: the field's existing contents are removed without undo. Use only when you intend to replace the field's value. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: true,
+                    idempotentHint: false
+                )
             ),
             Tool(
                 name: "iphone_press_key",
-                description: "Send a key event to the iPhone Mirroring window",
+                description: "Send a key event to the iPhone Mirroring window, optionally with modifier keys. Use for keys without a tap target (return, escape, tab). Modifier vocabulary: cmd, shift, ctrl, alt (alias option). Returns a confirmation string naming the keyboard combination.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "key": ["type": "string", "description": "Key to press (e.g., return, escape, tab)"],
-                        "modifiers": ["type": "array", "description": "Optional modifier keys (cmd, shift, ctrl, alt)"]
+                        "key": ["type": "string", "description": "Key name to press (e.g. \"return\", \"escape\", \"tab\")."],
+                        "modifiers": [
+                            "type": "array",
+                            "description": "Optional modifier keys to hold during the press. Each entry is one of cmd, shift, ctrl, alt (alias option), or fn.",
+                            "items": [
+                                "type": "string",
+                                "enum": ["cmd", "shift", "ctrl", "alt", "option", "fn"]
+                            ]
+                        ]
                     ],
                     required: ["key"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
 
             // Navigation
             Tool(
                 name: "iphone_home",
-                description: "Go to iPhone home screen (Cmd+1)",
-                inputSchema: jsonSchema(type: "object")
+                description: "Send Cmd+1 to the iPhone Mirroring window to go to the iOS home screen. Idempotent — repeated invocations stay on the home screen. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "iphone_app_switcher",
-                description: "Open iPhone App Switcher (Cmd+2)",
-                inputSchema: jsonSchema(type: "object")
+                description: "Send Cmd+2 to the iPhone Mirroring window to open the iOS App Switcher. Idempotent — repeated invocations leave the switcher visible. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
             Tool(
                 name: "iphone_spotlight",
-                description: "Open iPhone Spotlight search (Cmd+3)",
-                inputSchema: jsonSchema(type: "object")
+                description: "Send Cmd+3 to the iPhone Mirroring window to open iOS Spotlight search. Idempotent — repeated invocations keep Spotlight open. Returns a confirmation string.",
+                inputSchema: jsonSchema(type: "object"),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
+                )
             ),
 
             // Perception
             Tool(
                 name: "iphone_screenshot",
-                description: "Capture the iPhone screen content (cropped to phone display area)",
+                description: "Capture the iPhone screen content cropped to the calibrated display area and return it as base64 PNG image content. Read-only and idempotent for a given on-screen state. Optionally also saves a copy to ~/Downloads.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to Downloads", "default": false]
+                        "save_to_downloads": ["type": "boolean", "description": "Also save the captured PNG to ~/Downloads. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "iphone_screenshot_with_ocr",
-                description: "Capture iPhone screen and extract text with OCR. Returns normalized 0-1 coordinates that can be passed directly to iphone_tap. This is the primary perception tool for iPhone automation.",
+                description: "Capture the iPhone screen and run OCR, returning normalized (0-1) coordinates that can be passed directly to iphone_tap. This is the primary perception tool for iPhone automation. Read-only and idempotent for a given on-screen state. Returns a JSON array of [polygon, text, confidence] triples.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "save_to_downloads": ["type": "boolean", "description": "Save screenshot to Downloads", "default": false]
+                        "save_to_downloads": ["type": "boolean", "description": "Also save the captured PNG to ~/Downloads. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
             Tool(
                 name: "iphone_analyze_screen_now",
-                description: "Run Vision analysis on the iPhone screen with normalized coordinates",
+                description: "Run a configurable Vision analysis pipeline (classification / OCR / objects / rectangles / faces / saliency) on the iPhone screen with normalized coordinates. Use as an iPhone analogue of analyze_screen_now. Read-only with respect to the system; non-idempotent (live screen). Returns a JSON object.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "include_classification": ["type": "boolean", "description": "Include scene classification", "default": true],
-                        "include_objects": ["type": "boolean", "description": "Include object detection", "default": false],
-                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection", "default": false],
-                        "include_text": ["type": "boolean", "description": "Include OCR", "default": false],
-                        "include_saliency": ["type": "boolean", "description": "Include saliency detection", "default": false]
+                        "include_classification": ["type": "boolean", "description": "Include scene classification. Defaults to true.", "default": true],
+                        "include_objects": ["type": "boolean", "description": "Include object detection. Defaults to false.", "default": false],
+                        "include_rectangles": ["type": "boolean", "description": "Include rectangle detection. Defaults to false.", "default": false],
+                        "include_text": ["type": "boolean", "description": "Include OCR text extraction. Defaults to false.", "default": false],
+                        "include_saliency": ["type": "boolean", "description": "Include saliency detection. Defaults to false.", "default": false]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_analyze_with_llm",
-                description: "Analyze iPhone screen with on-device CoreML LLM",
+                description: "Capture the iPhone screen and feed Vision + OCR signals to a loaded CoreML LLM with a user instruction. Use for on-device reasoning about iPhone content. Read-only with respect to the system; non-idempotent (live screen + sampling). Returns a JSON object with the LLM response.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "model_name": ["type": "string", "description": "Name of loaded CoreML LLM model"],
-                        "instruction": ["type": "string", "description": "What to analyze on the iPhone screen"],
-                        "max_tokens": ["type": "integer", "description": "Max response tokens", "default": 512]
+                        "model_name": ["type": "string", "description": "Handle of the loaded CoreML LLM model."],
+                        "instruction": ["type": "string", "description": "What the LLM should analyze about the iPhone screen."],
+                        "max_tokens": ["type": "integer", "description": "Maximum response tokens. Defaults to 512.", "default": 512]
                     ],
                     required: ["model_name", "instruction"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
 
             // Convenience
             Tool(
                 name: "iphone_open_app",
-                description: "Open an iOS app by name via Spotlight search. Handles the full sequence: Spotlight, type name, OCR, tap result. Single call replaces 5+ manual tool calls.",
+                description: "Open an iOS app by name via Spotlight: opens Spotlight, types the name, OCRs the results, taps the match. Replaces five manual tool calls with one. Non-idempotent (launches a new app). Returns a confirmation string.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "app_name": ["type": "string", "description": "Name of the iOS app to open"]
+                        "app_name": ["type": "string", "description": "Display name of the iOS app to open."]
                     ],
                     required: ["app_name"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_wait_for_text",
-                description: "Poll iPhone screen OCR until specific text appears. Returns normalized coordinates for immediate use with iphone_tap. Use instead of fixed delays between actions.",
+                description: "Poll iPhone screen OCR until specific text appears, or fail with timeout. Returns normalized coordinates for immediate use with iphone_tap. Use instead of fixed delays between actions. Read-only with respect to the system; non-idempotent (screen state changes over time). Returns a JSON object with the matched text and coordinates.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "text": ["type": "string", "description": "Text to wait for (case-insensitive)"],
-                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 5000],
-                        "poll_interval_ms": ["type": "integer", "description": "Time between polls in milliseconds", "default": 500]
+                        "text": ["type": "string", "description": "Text to wait for (case-insensitive substring match)."],
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds. Defaults to 5000.", "default": 5000],
+                        "poll_interval_ms": ["type": "integer", "description": "Time between OCR polls in milliseconds. Defaults to 500.", "default": 500]
                     ],
                     required: ["text"]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: true,
+                    destructiveHint: false,
+                    idempotentHint: false
                 )
             ),
             Tool(
                 name: "iphone_reconnect",
-                description: "Wait for iPhone Mirroring to reconnect after a disconnect",
+                description: "Wait for iPhone Mirroring to reconnect after a disconnect, by re-probing the mirroring window until it appears or the timeout expires. Use after the iPhone goes to sleep or loses Continuity. Idempotent — invoking again after success is a no-op. Returns a confirmation string with the new window ID and size.",
                 inputSchema: jsonSchema(
                     type: "object",
                     properties: [
-                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds", "default": 30000]
+                        "timeout_ms": ["type": "integer", "description": "Maximum wait time in milliseconds. Defaults to 30000.", "default": 30000]
                     ]
+                ),
+                annotations: Tool.Annotations(
+                    readOnlyHint: false,
+                    destructiveHint: false,
+                    idempotentHint: true
                 )
             ),
         ]
@@ -263,7 +375,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 let (windowID, bounds) = try MirroringWindowDetector.findMirroringWindow()
                 return .init(content: [.text("iPhone Mirroring active (window \(windowID), \(Int(bounds.width))x\(Int(bounds.height)))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_calibrate":
@@ -286,45 +398,45 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("Calibration complete:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Tap Gestures
         case "iphone_tap":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             do {
                 try await GestureEngine.tap(x: x, y: y)
                 return .init(content: [.text("Tapped at (\(x), \(y))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_double_tap":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             do {
                 try await GestureEngine.doubleTap(x: x, y: y)
                 return .init(content: [.text("Double-tapped at (\(x), \(y))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_long_press":
             guard let x = args["x"]?.doubleValue,
                   let y = args["y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: x and y (number) required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "x and y (number) required")
             }
             let duration = args["duration"]?.doubleValue ?? 1.0
             do {
                 try await GestureEngine.longPress(x: x, y: y, duration: duration)
                 return .init(content: [.text("Long-pressed at (\(x), \(y)) for \(duration)s")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Swipe & Scroll
@@ -333,14 +445,14 @@ public enum IPhoneMirroringModule: ToolModule {
                   let startY = args["start_y"]?.doubleValue,
                   let endX = args["end_x"]?.doubleValue,
                   let endY = args["end_y"]?.doubleValue else {
-                return .init(content: [.text("Invalid parameters: start_x, start_y, end_x, end_y required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "start_x, start_y, end_x, end_y required")
             }
             let duration = args["duration"]?.doubleValue ?? 0.5
             do {
                 try await GestureEngine.swipe(startX: startX, startY: startY, endX: endX, endY: endY, duration: duration)
                 return .init(content: [.text("Swiped from (\(startX), \(startY)) to (\(endX), \(endY))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_scroll":
@@ -350,19 +462,19 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await GestureEngine.scroll(deltaX: deltaX, deltaY: deltaY)
                 return .init(content: [.text("Scrolled (dx=\(deltaX), dy=\(deltaY))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Text Input
         case "iphone_type_text":
             guard let text = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             do {
                 try await IPhoneTextInput.typeText(text)
                 return .init(content: [.text("Typed: \(text)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_clear_text":
@@ -370,19 +482,19 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IPhoneTextInput.clearText()
                 return .init(content: [.text("Cleared text field")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_press_key":
             guard let key = args["key"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: key required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "key required")
             }
             let modifiers = args["modifiers"]?.arrayValue?.compactMap { $0.stringValue } ?? []
             do {
                 try await IPhoneTextInput.pressKey(key: key, modifiers: modifiers)
                 return .init(content: [.text("Pressed key: \(modifiers.isEmpty ? key : (modifiers.joined(separator: "+") + "+" + key))")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Navigation
@@ -391,7 +503,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.home()
                 return .init(content: [.text("Sent Home (Cmd+1)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_app_switcher":
@@ -399,7 +511,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.appSwitcher()
                 return .init(content: [.text("Sent App Switcher (Cmd+2)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_spotlight":
@@ -407,7 +519,7 @@ public enum IPhoneMirroringModule: ToolModule {
                 try await IOSNavigation.spotlight()
                 return .init(content: [.text("Sent Spotlight (Cmd+3)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Perception
@@ -420,7 +532,7 @@ public enum IPhoneMirroringModule: ToolModule {
                     isError: false
                 )
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_screenshot_with_ocr":
@@ -469,7 +581,7 @@ public enum IPhoneMirroringModule: ToolModule {
                     isError: false
                 )
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_analyze_screen_now":
@@ -521,13 +633,13 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("iPhone screen analysis:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_analyze_with_llm":
             guard let modelName = args["model_name"]?.stringValue,
                   let instruction = args["instruction"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: model_name and instruction required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "model_name and instruction required")
             }
             let maxTokens = args["max_tokens"]?.intValue ?? 512
 
@@ -558,24 +670,24 @@ public enum IPhoneMirroringModule: ToolModule {
                 let jsonString = String(data: jsonData, encoding: .utf8) ?? "{}"
                 return .init(content: [.text("iPhone LLM analysis:\n\(jsonString)")], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         // MARK: Convenience
         case "iphone_open_app":
             guard let appName = args["app_name"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: app_name required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "app_name required")
             }
             do {
                 let message = try await IOSNavigation.openApp(name: appName)
                 return .init(content: [.text(message)], isError: false)
             } catch let error as MCPError {
-                return error.toResult()
+                return error.toStructuredResult()
             }
 
         case "iphone_wait_for_text":
             guard let searchText = args["text"]?.stringValue else {
-                return .init(content: [.text("Invalid parameters: text required")], isError: true)
+                return MCPErrorResponseBuilder.shared.build(code: "invalid_input", message: "text required")
             }
             let timeoutMs = args["timeout_ms"]?.intValue ?? 5000
             let pollIntervalMs = args["poll_interval_ms"]?.intValue ?? 500
@@ -586,7 +698,7 @@ public enum IPhoneMirroringModule: ToolModule {
             while true {
                 let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
                 if elapsed >= timeoutNanos {
-                    return .init(content: [.text("Timeout: '\(searchText)' not found on iPhone within \(timeoutMs)ms")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "wait_timeout", message: "'\(searchText)' not found on iPhone within \(timeoutMs)ms")
                 }
                 do {
                     let imageData = try await captureIPhoneScreen()
@@ -626,7 +738,7 @@ public enum IPhoneMirroringModule: ToolModule {
             while true {
                 let elapsed = DispatchTime.now().uptimeNanoseconds - startTime.uptimeNanoseconds
                 if elapsed >= timeoutNanos {
-                    return .init(content: [.text("Timeout: iPhone Mirroring did not reconnect within \(timeoutMs)ms")], isError: true)
+                    return MCPErrorResponseBuilder.shared.build(code: "timeout", message: "iPhone Mirroring did not reconnect within \(timeoutMs)ms")
                 }
                 MirroringWindowDetector.clearCache()
                 if let (windowID, bounds) = try? MirroringWindowDetector.findMirroringWindow(),

@@ -34,7 +34,7 @@ mapped test.
 - `AXElementResolverTests.test_findElement_byAttribute_throwsNotFound_whenNoMatch`
 - `AXResolverErrorsTests.test_axNotFoundError_descriptionIncludesCriteria`
 - `AXResolverErrorsTests.test_axNotFoundError_localizedDescriptionIncludesCriteria`
-- `AXResolverErrorsTests.test_axNotFoundError_toResultIsErrorTrue`
+- `AXResolverErrorsTests.test_axNotFoundError_toStructuredResult_isErrorTrue`
 
 ### Scenario: Resolve element scoped to a specific application
 
@@ -350,6 +350,146 @@ mapped test.
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar`
 
 
+## MCP Tool Annotations and Descriptions
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*
+
+> In order to allow AI clients to reason safely about tool invocation
+> As an MCP server author
+> I want every tool definition to include behavioral annotations and a rich description
+
+### Scenario: Read-only tools declare readOnlyHint = true
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `ToolCatalogAuditTests.test_accessibilityTree_descriptionMentionsReadOnlyBehavior`
+
+### Scenario: Destructive tools declare destructiveHint = true
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `ToolCatalogAuditTests.test_runAppleScript_descriptionWarnsAboutSystemModification`
+
+### Scenario: Every registered tool has annotations populated
+
+- `ToolCatalogAuditTests.test_everyRegisteredTool_hasAnnotationsPopulated`
+- `ToolCatalogAuditTests.test_everyTool_hasReadOnlyAndDestructiveHintsSet`
+- `PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool`
+
+### Scenario: All tool descriptions meet the quality bar
+
+- `ToolCatalogAuditTests.test_everyToolDescription_isAtLeast50Chars`
+- `ToolCatalogAuditTests.test_everyToolDescription_hasNoPlaceholderText`
+- `ToolCatalogAuditReportTests.test_writesCatalogAudit_andEveryToolPassesDoDChecks`
+
+### Scenario: Tool schemas declare required vs optional parameters
+
+- `ToolSchemaTests.testClickScreenRequiredParams`
+- `ToolSchemaTests.testRunAppleScriptRequiredParams`
+- `ToolSchemaTests.testTypeTextRequiredParams`
+- `ToolSchemaTests.testWaitMillisecondsRequiredParams`
+
+### Scenario: Enumerated parameter values are constrained in the schema
+
+- `SchemaEnumAuditTests.test_clickScreen_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_mouseDown_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_mouseUp_buttonParam_declaresEnum`
+- `SchemaEnumAuditTests.test_scroll_directionParam_declaresEnum`
+- `SchemaEnumAuditTests.test_startContinuousCapture_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_analyzeScreenNow_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_startScreenMonitoring_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_analyzeScreenWithLlm_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_intelligentScreenSummary_captureType_declaresEnum`
+- `SchemaEnumAuditTests.test_iphonePressKey_modifiersParam_declaresEnumViaItems`
+
+### Scenario: idempotentHint is set for tools that are safe to retry
+
+- `IdempotentHintTests.test_readOnlyTools_haveIdempotentHintTrue`
+- `IdempotentHintTests.test_nonIdempotentTools_haveIdempotentHintFalse`
+
+### Scenario Outline: Correct annotation for each tool category
+
+- `PerToolAnnotationMatrixTests.test_eachTool_hasExpectedAnnotation`
+- `PerToolAnnotationMatrixTests.test_matrixCoversEveryRegisteredTool`
+
+
+## MCP Resources for Ambient Context
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-013-mcp-resources.feature`*
+
+> In order to maintain UI situational awareness without repeated tool calls
+> As an AI agent
+> I want MCP Resources that provide the current AX tree and active app state
+
+### Scenario: Active application resource returns current frontmost app
+
+- `ActiveApplicationResourceTests.test_read_returnsLocalizedName_bundleId_andPID`
+- `ActiveApplicationResourceTests.test_read_includesLocalizedDisplayName`
+- `MCPResourceCatalogTests.test_allResources_containsExpectedURIs`
+- `MCPResourceCatalogTests.test_activeApplication_resourceHasJsonMime`
+
+### Scenario: UI tree resource returns the current AX tree for the active window
+
+- `ActiveWindowTreeResourceTests.test_read_returnsTreeForFrontmostApp_withSerializerSchema`
+- `ActiveWindowTreeResourceTests.test_read_passesMaxDepthToBuilder`
+- `MCPResourceCatalogTests.test_activeWindowTree_descriptionReferencesCurrentSchemaVersion`
+- `MCPResourceCatalogTests.test_activeWindowTree_descriptionMentionsMaxDepthOverride`
+- `ResourceURITests.test_parse_extractsMaxDepthQueryItem`
+- `ResourceURITests.test_maxDepth_returnsDefault_whenQueryAbsent`
+- `ResourceURITests.test_maxDepth_clampsBelowLowerBound`
+- `ResourceURITests.test_maxDepth_clampsAboveUpperBound`
+- `ResourceURITests.test_maxDepth_returnsDefault_whenValueNotAnInteger`
+- `ResourceURITests.test_parse_extractsCanonicalURI_withoutQuery`
+
+### Scenario: Resources update when the active application changes
+
+- `ResourceSubscriptionRegistryTests.test_upstreamActivation_deliversUpdateToSubscribers`
+- `ResourceSubscriptionRegistryTests.test_subscribe_installsObserver_onFirstSubscriber`
+- `ResourceSubscriptionRegistryTests.test_rapidActivations_coalesce_toSingleDelivery`
+
+### Scenario: Active-window-tree resource updates when the user switches windows within the same app
+
+- `AXFocusedWindowSignalLifecycleTests.test_focusedWindowChange_firesHandler`
+- `AXFocusedWindowSignalLifecycleTests.test_subscribe_installsAXSourceForCurrentFrontmostApp`
+- `AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_reTargetsAXSourceToNewPID`
+- `AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_doesNotReTarget_whenPIDUnchanged`
+- `AXFocusedWindowSignalLifecycleTests.test_workspaceActivation_alsoFiresHandler`
+- `AXFocusedWindowSignalLifecycleTests.test_remove_stopsAXSource_andDropsWorkspaceObserver`
+- `AXFocusedWindowSignalLifecycleTests.test_remove_keepsAXSource_whileOtherSubscribersRemain`
+- `CompositeEventLifecycleTests.test_addObserver_installsObserverOnEachUnderlyingSource`
+- `CompositeEventLifecycleTests.test_handlerFires_whenAnyUnderlyingSourceFires`
+- `CompositeEventLifecycleTests.test_remove_dropsObserverFromEachUnderlyingSource`
+- `CompositeEventLifecycleTests.test_remove_isIdempotent`
+- `ResourceSubscriptionRegistryTests.test_registerSignalSource_routesURIToOverrideLifecycle`
+- `ResourceSubscriptionRegistryTests.test_unsubscribeWithOverride_removesFromOverrideLifecycle`
+- `ResourceSubscriptionRegistryTests.test_eventOnOverrideLifecycle_deliversToSubscribers`
+- `ActiveWindowTreeResourceTests.test_invalidateCache_forcesRebuildOnNextRead`
+- `ActiveWindowTreeResourceTests.test_read_rebuildsTree_afterCacheExpires`
+
+### Scenario: Resource read returns no_frontmost_application error when no app has focus
+
+- `ActiveApplicationResourceTests.test_read_returnsNoFrontmostApplicationError_whenWorkspaceReturnsNil`
+- `ActiveWindowTreeResourceTests.test_read_returnsNoFrontmostApplicationError_whenWorkspaceReturnsNil`
+- `ResourceErrorsTests.test_noFrontmostApplication_hasExpectedErrorCode`
+- `ResourceErrorsTests.test_noFrontmostApplication_descriptionIncludesErrorCode`
+- `MCPResourceCatalogTests.test_activeApplication_descriptionMentionsErrorPath`
+
+### Scenario: Resource read returns accessibility_permission_required error when AX permission is denied
+
+- `ActiveWindowTreeResourceTests.test_read_returnsAccessibilityPermissionRequiredError_whenAXNotTrusted`
+- `ResourceErrorsTests.test_accessibilityPermissionRequired_hasExpectedErrorCode`
+- `ResourceErrorsTests.test_accessibilityPermissionRequired_descriptionExplainsHowToGrant`
+
+### Scenario: Subscription unsubscribe stops further update notifications
+
+- `ResourceSubscriptionRegistryTests.test_unsubscribe_stopsFurtherDeliveries`
+- `ResourceSubscriptionRegistryTests.test_unsubscribe_removesUnderlyingObserver_whenLastSubscriberLeaves`
+- `ResourceSubscriptionRegistryTests.test_unsubscribe_keepsObserver_whileOtherSubscribersRemain`
+
+### Scenario: Concurrent subscribers each receive update notifications
+
+- `ResourceSubscriptionRegistryTests.test_publish_deliversIdenticalContent_toAllSubscribers`
+- `ResourceSubscriptionRegistryTests.test_subscribe_doesNotInstallExtraObserver_forSecondSubscriber`
+
+
 ## Find Elements by Query
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-014-find-elements-by-query.feature`*
@@ -475,4 +615,124 @@ mapped test.
 - `AXNodeSerializer_StateTests.test_serialize_preservesAllV2Fields_whenStateFieldsAdded`
 - `AXNodeSerializer_StateTests.test_schemaVersion_isIncrementedTo3`
 - `AXNodeSerializer_StateTests.test_serializeRoot_includesSchemaVersion3_atRoot`
+
+
+## Structured Error Response Contract
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-016-structured-errors.feature`*
+
+> In order to enable agents to build reliable retry and recovery logic
+> As an MCP tool author
+> I want every error response to follow a single structured JSON shape with stable codes
+> This project ships errors as a wrapped JSON envelope inside the .text() content
+> block: { "ok": false, "error": { "code", "message", "details"? } }. The wrapped
+> form matches the existing tool helpers (ClickMenuItemTool, RunAppleScriptTool)
+> and lets success responses keep their { "ok": true, ... } symmetry. Codes are
+> snake_case (^[a-z][a-z0-9_]*$, max 64 chars). The ErrorCodeRegistry is bootstrapped
+> at server startup and a collision (same code, different description) terminates
+> the process before any request is accepted.
+
+### Scenario: Error response is structured JSON, not a free-text string
+
+- `MCPErrorResponseBuilderTests.test_build_returnsResultWithIsErrorTrue`
+- `MCPErrorResponseBuilderTests.test_build_emitsCodeMessageAndDetails_asWrappedJSON`
+- `MCPErrorResponseBuilderTests.test_build_envelopeHasOkFalse`
+- `MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsNil`
+- `MCPErrorResponseBuilderTests.test_build_omitsDetailsKey_whenDetailsEmpty`
+
+### Scenario: Error codes follow snake_case convention
+
+- `ErrorCodeRegistryTests.test_register_rejectsUppercaseCode`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeWithDash`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeStartingWithDigit`
+- `ErrorCodeRegistryTests.test_register_rejectsEmptyCode`
+- `ErrorCodeRegistryTests.test_register_acceptsValidSnakeCaseCode`
+- `ErrorCodeRegistryTests.test_register_acceptsCodeAtMaxLength`
+- `ErrorCodeRegistryTests.test_register_rejectsCodeLongerThan64Chars`
+- `ErrorCodeBootstrapTests.test_bootstrap_codesAllValidSnakeCase`
+
+### Scenario: Permission-denied error includes a recovery hint in details
+
+- `PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesRecoveryHintInDetails`
+- `PermissionDeniedDetailsTests.test_accessibilityPermissionRequired_includesSystemSettingsURIInDetails`
+- `PermissionDeniedDetailsTests.test_automationPermissionRequired_includesTargetApplicationInDetails`
+- `ResourceErrorsTests.test_accessibilityPermissionRequired_detailsCarryRecoveryHintAndSettingsURI`
+
+### Scenario: Coordinate-out-of-bounds error includes the valid bounds in details
+
+- `ElementAtPositionToolTests.test_execute_rejectsCoords_outsideDisplayUnion`
+- `ElementAtPositionToolTests.test_execute_doesNotInvokeBridge_whenOutOfBounds`
+- `CoordinatesOutOfBoundsDetailsTests.test_outOfBounds_responseIncludesDisplayBoundsObjectInDetails`
+
+### Scenario: Two tools cannot register the same error code with conflicting semantics
+
+- `ErrorCodeRegistryTests.test_register_throwsCollisionError_whenCodeAlreadyRegistered`
+- `ErrorCodeRegistryTests.test_collisionError_surfacesBothRegistrationCallSites`
+- `ErrorCodeBootstrapTests.test_bootstrap_throwsCollision_whenCalledTwiceOnSameRegistry`
+
+### Scenario: Unknown internal exception produces a generic structured error
+
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_mapsArbitraryErrorToInternalError`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakUserPaths`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_doesNotLeakPrivatePaths`
+- `MCPErrorResponseBuilderTests.test_buildFromUnknown_setsIsErrorTrue`
+
+### Scenario: Existing MCPError cases map to the new contract without behavioral change
+
+- `MCPErrorMigrationTests.test_permissionDenied_mapsToSnakeCaseCode`
+- `MCPErrorMigrationTests.test_windowNotFound_mapsToSnakeCaseCode`
+- `MCPErrorMigrationTests.test_accessibilityPermissionRequired_mapsToSnakeCase_andCarriesDetails`
+- `MCPErrorMigrationTests.test_everyMCPErrorCase_producesIsErrorTrueAndRegisteredSnakeCaseCode`
+- `MCPErrorMigrationTests.test_descriptionFormat_isSnakeCaseColonMessage_notScreamingSnake`
+- `NoAdhocErrorConstructionAuditTests.test_noAdhocErrorTextConstructionExists`
+
+### Scenario: Unknown tool returns a structured error with isError = true
+
+- `ToolRouterUnknownToolTests.test_unknownTool_returnsIsErrorTrue`
+- `ToolRouterUnknownToolTests.test_unknownTool_returnsStructuredUnknownToolCode`
+
+
+## MCP Prompts for Agent Workflows
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-017-mcp-prompts.feature`*
+
+> In order to publish reusable agent guidance from the server
+> As an MCP server author
+> I want to expose named prompts via the MCP Prompts primitive
+
+### Scenario: Server lists registered prompts
+
+- `PromptRegistryTests.test_list_includesAllThreeBundledPrompts`
+- `PromptRegistryTests.test_list_eachPromptHasDescriptionAtLeast50Chars`
+
+### Scenario: Client retrieves the interaction hierarchy prompt
+
+- `PromptRegistryTests.test_get_interactionHierarchy_namesAllFourLayers`
+- `PromptRegistryTests.test_get_interactionHierarchy_isUserRoleMessage`
+
+### Scenario: Client retrieves the macOS permissions prompt
+
+- `PromptRegistryTests.test_get_permissionsChecklist_describesAllThreePermissions`
+
+### Scenario: Prompt with arguments substitutes them into the resolved content
+
+- `PromptTemplateTests.test_resolve_substitutesNamedPlaceholder`
+- `PromptTemplateTests.test_resolve_leavesNoUnsubstitutedPlaceholders`
+- `PromptTemplateTests.test_resolve_handlesArgumentWithSpecialChars`
+- `PromptRegistryTests.test_get_clickAndVerify_substitutesArguments`
+
+### Scenario: Prompt request with missing required argument returns a structured error
+
+- `PromptTemplateTests.test_resolve_throwsMissingRequiredArgument_whenRequiredArgAbsent`
+- `PromptRegistryTests.test_get_throwsMissingRequiredArgument_whenArgumentAbsent`
+
+### Scenario: Prompt request for an unknown name returns a structured error
+
+- `PromptRegistryTests.test_get_throwsPromptNotFound_whenNameUnregistered`
+
+### Scenario: Prompts are versioned and the version is exposed in metadata
+
+- `PromptDefinitionTests.test_parse_loadsNameDescriptionAndPromptVersionFromFrontMatter`
+- `PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing`
+- `PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata`
 

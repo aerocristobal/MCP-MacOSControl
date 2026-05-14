@@ -3,9 +3,9 @@ import MCP
 
 public struct AXActionError: Error, CustomStringConvertible, LocalizedError {
     public enum Code: String, Sendable {
-        case elementDisabled = "AX_ELEMENT_DISABLED"
-        case actionUnsupported = "AX_ACTION_UNSUPPORTED"
-        case actionFailed = "AX_ACTION_FAILED"
+        case elementDisabled = "ax_element_disabled"
+        case actionUnsupported = "ax_action_unsupported"
+        case actionFailed = "ax_action_failed"
     }
 
     public let code: Code
@@ -28,7 +28,15 @@ public struct AXActionError: Error, CustomStringConvertible, LocalizedError {
 
     public var errorDescription: String? { description }
 
-    public func toResult() -> CallTool.Result {
-        .init(content: [.text(description)], isError: true)
+    public func toStructuredResult() -> CallTool.Result {
+        var details: [String: Any] = ["action": action]
+        if underlyingCode != 0 && code == .actionFailed {
+            details["underlying_code"] = Int(underlyingCode)
+        }
+        return MCPErrorResponseBuilder.shared.build(
+            code: errorCode,
+            message: "action '\(action)' — \(detail)",
+            details: details
+        )
     }
 }

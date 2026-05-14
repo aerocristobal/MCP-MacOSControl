@@ -21,7 +21,10 @@ let package = Package(
             dependencies: [
                 .product(name: "MCP", package: "swift-sdk")
             ],
-            path: "Sources/MacOSControlLib"
+            path: "Sources/MacOSControlLib",
+            resources: [
+                .copy("Prompts/Definitions")
+            ]
         ),
         .executableTarget(
             name: "MCP-MacOSControl",
