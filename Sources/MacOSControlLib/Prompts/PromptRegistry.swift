@@ -63,7 +63,8 @@ public final class PromptRegistry {
     private static let bundledNames: [String] = [
         "interaction_hierarchy",
         "macos_permissions_checklist",
-        "click_and_verify"
+        "click_and_verify",
+        "ax_observer_notifications"
     ]
 
     private static func loadBundledDefinitions() throws -> [PromptDefinition] {

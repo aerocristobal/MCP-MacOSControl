@@ -9,7 +9,7 @@ of Done requires every tool to declare `readOnlyHint` and
 `destructiveHint`, ship an `idempotentHint`, and have a description of
 at least 50 characters.
 
-**Total tools:** 71
+**Total tools:** 72
 
 | Tool | readOnlyHint | destructiveHint | idempotentHint | description length |
 |---|---|---|---|---|
@@ -83,4 +83,5 @@ at least 50 characters.
 | `type_text` | false | false | false | 279 |
 | `unload_coreml_model` | false | false | true | 193 |
 | `wait_for_text` | true | false | false | 294 |
+| `wait_for_ui_event` | true | false | false | 1213 |
 | `wait_milliseconds` | true | false | false | 265 |

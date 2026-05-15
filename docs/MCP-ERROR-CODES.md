@@ -61,10 +61,13 @@ different semantics — the server refuses to start on collision.
 | `rate_limited` | Tool invocation was rate-limited by an internal token bucket. Retry with backoff. | — |
 | `security_policy_violation` | Input violated the server's security policy (e.g., disallowed AppleScript verb). | — |
 | `state_condition_not_met` | Expected post-condition state was not observed after performing the action. | — |
+| `target_application_terminated` | The application named in a wait_for_ui_event subscription terminated before the notification fired. The error details carry the terminated app's pid and (when known) bundle identifier. | `bundle_identifier` (string), `pid` (number) |
 | `timeout` | Generic operation timeout. Domain-specific variants: wait_timeout, execution_timeout. | — |
+| `timeout_exceeds_maximum` | The requested wait_for_ui_event timeout exceeds the server's hard cap of 300 seconds. Use an MCP Resources subscription for longer watches. | `maximum_seconds` (number), `requested_seconds` (number) |
 | `unknown_display_index` | element_at_position was given a display_index that does not map to an active display. | — |
 | `unknown_tool` | No tool matched the requested name in any registered module. | — |
-| `wait_timeout` | A wait_for_text / wait predicate did not become true before the timeout elapsed. | — |
+| `unsupported_notification` | The notification name passed to wait_for_ui_event is not in the closed supported set. The error details echo the rejected name and the full supported list. | `notification` (string), `supported_notifications` (array) |
+| `wait_timeout` | A wait_for_text / wait_for_ui_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event additionally surfaces the AX notification name and elapsed time. | `elapsed_seconds` (number), `notification` (string) |
 | `window_not_found` | Requested window or application could not be located. | — |
 
 ## Adding a New Code

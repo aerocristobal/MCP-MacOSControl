@@ -3,8 +3,8 @@ import MCP
 @testable import MacOSControlLib
 
 final class ToolRouterTests: XCTestCase {
-    func testAllToolsReturns71Tools() {
-        XCTAssertEqual(ToolRouter.allTools.count, 71)
+    func testAllToolsReturns72Tools() {
+        XCTAssertEqual(ToolRouter.allTools.count, 72)
     }
 
     func testAllToolNamesAreUnique() {

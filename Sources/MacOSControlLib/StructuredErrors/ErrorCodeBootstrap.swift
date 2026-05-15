@@ -190,8 +190,11 @@ public enum ErrorCodeBootstrap {
         )
         try registry.register(
             code: "wait_timeout",
-            description: "A wait_for_text / wait predicate did not become true before the timeout elapsed.",
-            detailsSchema: [:]
+            description: "A wait_for_text / wait_for_ui_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event additionally surfaces the AX notification name and elapsed time.",
+            detailsSchema: [
+                "notification": "string",
+                "elapsed_seconds": "number"
+            ]
         )
         try registry.register(
             code: "state_condition_not_met",
@@ -247,6 +250,33 @@ public enum ErrorCodeBootstrap {
             code: "unknown_display_index",
             description: "element_at_position was given a display_index that does not map to an active display.",
             detailsSchema: [:]
+        )
+
+        // MARK: - STORY-008 — Wait For UI Event tool
+
+        try registry.register(
+            code: "target_application_terminated",
+            description: "The application named in a wait_for_ui_event subscription terminated before the notification fired. The error details carry the terminated app's pid and (when known) bundle identifier.",
+            detailsSchema: [
+                "pid": "number",
+                "bundle_identifier": "string"
+            ]
+        )
+        try registry.register(
+            code: "unsupported_notification",
+            description: "The notification name passed to wait_for_ui_event is not in the closed supported set. The error details echo the rejected name and the full supported list.",
+            detailsSchema: [
+                "notification": "string",
+                "supported_notifications": "array"
+            ]
+        )
+        try registry.register(
+            code: "timeout_exceeds_maximum",
+            description: "The requested wait_for_ui_event timeout exceeds the server's hard cap of 300 seconds. Use an MCP Resources subscription for longer watches.",
+            detailsSchema: [
+                "requested_seconds": "number",
+                "maximum_seconds": "number"
+            ]
         )
 
         // MARK: - Prompts (STORY-017)

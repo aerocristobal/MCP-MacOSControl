@@ -565,5 +565,52 @@ enum LivingDocumentationMapping {
             "PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing",
             "PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata",
         ],
+
+        // MARK: STORY-008 — AXObserver Wait for UI Event Tool
+
+        "Wait resolves when a window appears": [
+            "AXObserverManagerTests.test_wait_returnsSuccess_whenNotificationFires",
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse",
+            "WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager",
+        ],
+        "Wait resolves when a sheet is dismissed": [
+            "WaitForUIEventToolTests.test_execute_responseCarriesCachedAttributes_forDestroyedElement",
+            "WaitForUIEventToolTests.test_execute_returnsElementNotFoundError_whenLocatorDoesNotResolve",
+        ],
+        "Wait times out if event does not occur within the specified duration": [
+            "AXObserverManagerTests.test_wait_throwsWaitTimeoutError_whenDeadlineElapses",
+            "AXObserverManagerTests.test_wait_doesNotLeakRunLoopSource_onTimeout",
+            "WaitForUIEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager",
+        ],
+        "Wait resolves when focused element changes": [
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager",
+            "WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse",
+        ],
+        "Observer is unregistered when the target application terminates mid-wait": [
+            "AXObserverManagerTests.test_wait_throwsTargetTerminatedError_whenAppQuitsMidWait",
+            "AXObserverManagerTests.test_wait_doesNotLeakObserver_onTermination",
+            "WaitForUIEventToolTests.test_execute_translatesTargetTerminatedErrorFromManager",
+        ],
+        "Two concurrent waits on the same notification both resolve when it fires": [
+            "AXObserverManagerTests.test_wait_multiplexesTwoCallers_ontoOneUnderlyingObserver",
+            "AXObserverManagerTests.test_wait_unregistersObserver_afterLastWaiterResolves",
+        ],
+        "Permission denied at subscription time returns a structured error": [
+            "AXObserverManagerTests.test_wait_throwsPermissionError_whenAXNotTrusted",
+            "AXObserverManagerTests.test_canSubscribe_proxiesIsProcessTrusted",
+            "WaitForUIEventToolTests.test_execute_returnsAccessibilityPermissionRequired_whenManagerCannotSubscribe",
+        ],
+        "Unsupported notification name returns a structured error": [
+            "WaitForUIEventToolTests.test_execute_rejectsUnknownNotification_withSupportedList",
+            "WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum",
+        ],
+        "Support the documented AX notification set": [
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "AXObserverManagerTests.test_wait_stressTest_noLeakedSubscriptionsAfter100SequentialTimeouts",
+            "WaitForUIEventModuleTests.test_tool_description_namesEveryDoDListedNotification",
+            "WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum",
+        ],
     ]
 }

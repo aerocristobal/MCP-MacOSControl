@@ -4,9 +4,8 @@ import MCP
 
 /// STORY-011 Scenario 8 — per-tool annotation matrix. The expectations array
 /// below is the single source of truth and must mirror the matrix in the
-/// approved plan. Tools listed in the story outline but not yet registered
-/// (`wait_for_ui_event`, `wait_for_element_state` — STORY-008 / STORY-009) are
-/// intentionally omitted.
+/// approved plan. STORY-008 adds `wait_for_ui_event`; `wait_for_element_state`
+/// from STORY-009 remains intentionally omitted until that story lands.
 final class PerToolAnnotationMatrixTests: XCTestCase {
 
     private struct ExpectedAnnotation {
@@ -91,6 +90,9 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         .init(toolName: "check_permissions",           readOnly: true,  destructive: false, idempotent: true),
         .init(toolName: "wait_milliseconds",           readOnly: true,  destructive: false, idempotent: false),
         .init(toolName: "wait_for_text",               readOnly: true,  destructive: false, idempotent: false),
+
+        // Event-driven waiting (STORY-008)
+        .init(toolName: "wait_for_ui_event",           readOnly: true,  destructive: false, idempotent: false),
 
         // IPhoneMirroring (21)
         .init(toolName: "iphone_status",               readOnly: true,  destructive: false, idempotent: true),

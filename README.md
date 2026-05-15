@@ -1,6 +1,6 @@
 # MCP macOS Control
 
-A native macOS MCP (Model Context Protocol) server built in Swift that provides **65 tools** for comprehensive computer control — mouse, keyboard, screen capture, OCR, window management, Vision analysis, CoreML intelligence, accessibility tree reading, and **iPhone Mirroring automation** via macOS Sequoia.
+A native macOS MCP (Model Context Protocol) server built in Swift that provides **72 tools** for comprehensive computer control — mouse, keyboard, screen capture, OCR, window management, Vision analysis, CoreML intelligence, accessibility tree reading, event-driven UI waiting via AXObserver, and **iPhone Mirroring automation** via macOS Sequoia.
 
 [![CI](https://github.com/aerocristobal/MCP-MacOSControl/actions/workflows/ci.yml/badge.svg)](https://github.com/aerocristobal/MCP-MacOSControl/actions/workflows/ci.yml)
 
@@ -58,7 +58,7 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
-## Tools (65 total, 11 modules)
+## Tools (72 total, 13 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)
 
@@ -148,13 +148,25 @@ See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 | `wait_milliseconds` | Pause execution | milliseconds |
 | `wait_for_text` | Poll OCR until text appears | text |
 
-### Accessibility (AccessibilityModule -- 1 tool)
+### Accessibility (AccessibilityModule -- 5 tools)
 
 | Tool | Description | Required Params |
 |------|-------------|----------------|
 | `accessibility_tree` | Read AXUIElement tree of macOS app | -- |
+| `click_element` | Click an element by semantic AX attributes | -- |
+| `perform_ax_action` | Dispatch any standard AX action (AXPress, AXIncrement, AXShowMenu, etc.) | -- |
+| `find_elements` | Find elements matching a semantic predicate | -- |
+| `element_at_position` | Resolve the AX element under a screen coordinate | x, y |
 
-Returns structured JSON with role, title, value, position, size, and children for each UI element. Configurable `max_depth` (default 3). Note: works for macOS apps only -- iPhone Mirroring content requires `iphone_screenshot_with_ocr`.
+Returns structured JSON with role, title, value, position, size, and children for each UI element. Configurable `max_depth` (default 6). Note: works for macOS apps only -- iPhone Mirroring content requires `iphone_screenshot_with_ocr`.
+
+### Event-Driven Waiting (WaitForUIEventModule -- 1 tool)
+
+| Tool | Description | Required Params |
+|------|-------------|----------------|
+| `wait_for_ui_event` | Subscribe to an `AXObserver` notification and block until it fires | notification, application |
+
+Replaces fixed sleeps and screenshot-polling loops with precise event-driven synchronization. Supported notifications: `AXWindowCreated`, `AXUIElementDestroyed`, `AXFocusedUIElementChanged`, `AXValueChanged`, `AXSelectedTextChanged`, `AXTitleChanged`, `AXMainWindowChanged`, `AXFocusedWindowChanged`. Multiple concurrent calls on the same `(application, notification)` pair share a single underlying `AXObserver`. Default timeout 30s, hard cap 300s. See the `ax_observer_notifications` MCP prompt for routing guidance.
 
 ### iPhone Mirroring (IPhoneMirroringModule -- 21 tools)
 

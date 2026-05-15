@@ -350,6 +350,68 @@ mapped test.
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar`
 
 
+## AXObserver Wait for UI Event Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-008-axobserver-wait-for-ui-event.feature`*
+
+> In order to react to UI state changes without polling
+> As an AI agent
+> I want wait_for_ui_event to subscribe to an AXObserver notification and return when it fires
+
+### Scenario: Wait resolves when a window appears
+
+- `AXObserverManagerTests.test_wait_returnsSuccess_whenNotificationFires`
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse`
+- `WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager`
+
+### Scenario: Wait resolves when a sheet is dismissed
+
+- `WaitForUIEventToolTests.test_execute_responseCarriesCachedAttributes_forDestroyedElement`
+- `WaitForUIEventToolTests.test_execute_returnsElementNotFoundError_whenLocatorDoesNotResolve`
+
+### Scenario: Wait times out if event does not occur within the specified duration
+
+- `AXObserverManagerTests.test_wait_throwsWaitTimeoutError_whenDeadlineElapses`
+- `AXObserverManagerTests.test_wait_doesNotLeakRunLoopSource_onTimeout`
+- `WaitForUIEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager`
+
+### Scenario: Wait resolves when focused element changes
+
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager`
+- `WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse`
+
+### Scenario: Observer is unregistered when the target application terminates mid-wait
+
+- `AXObserverManagerTests.test_wait_throwsTargetTerminatedError_whenAppQuitsMidWait`
+- `AXObserverManagerTests.test_wait_doesNotLeakObserver_onTermination`
+- `WaitForUIEventToolTests.test_execute_translatesTargetTerminatedErrorFromManager`
+
+### Scenario: Two concurrent waits on the same notification both resolve when it fires
+
+- `AXObserverManagerTests.test_wait_multiplexesTwoCallers_ontoOneUnderlyingObserver`
+- `AXObserverManagerTests.test_wait_unregistersObserver_afterLastWaiterResolves`
+
+### Scenario: Permission denied at subscription time returns a structured error
+
+- `AXObserverManagerTests.test_wait_throwsPermissionError_whenAXNotTrusted`
+- `AXObserverManagerTests.test_canSubscribe_proxiesIsProcessTrusted`
+- `WaitForUIEventToolTests.test_execute_returnsAccessibilityPermissionRequired_whenManagerCannotSubscribe`
+
+### Scenario: Unsupported notification name returns a structured error
+
+- `WaitForUIEventToolTests.test_execute_rejectsUnknownNotification_withSupportedList`
+- `WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum`
+
+### Scenario Outline: Support the documented AX notification set
+
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `AXObserverManagerTests.test_wait_stressTest_noLeakedSubscriptionsAfter100SequentialTimeouts`
+- `WaitForUIEventModuleTests.test_tool_description_namesEveryDoDListedNotification`
+- `WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum`
+
+
 ## MCP Tool Annotations and Descriptions
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*
