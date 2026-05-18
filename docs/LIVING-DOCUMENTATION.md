@@ -412,6 +412,61 @@ mapped test.
 - `WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum`
 
 
+## Element State Polling Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-009-element-state-polling.feature`*
+
+> In order to wait for UI conditions that AXObserver does not expose
+> As an AI agent
+> I want wait_for_element_state to poll until an element matches a state predicate
+
+### Scenario: Wait resolves when a button becomes enabled
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenPredicateBecomesTrue`
+- `ElementStatePollLoopTests.test_poll_returnsSatisfied_whenPredicateBecomesTrueOnNthPoll`
+- `ConditionPredicateTests.test_booleanField_matchesOnlyWhenNodePropertyEqualsTarget`
+
+### Scenario: Wait resolves when an element appears in the tree
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementAppears_existsTrue`
+- `ConditionPredicateTests.test_exists_true_matchesWhenElementResolved`
+
+### Scenario: Return timeout error if condition is not met
+
+- `WaitForElementStateToolTests.test_execute_returnsStateConditionNotMetError_onTimeout`
+- `ElementStatePollLoopTests.test_poll_returnsTimedOut_withLastStateAndCounts`
+
+### Scenario: Wait resolves when an element becomes focused
+
+- `WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField`
+- `ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty`
+
+### Scenario: Wait resolves when an element disappears from the tree
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementDisappears_existsFalse`
+- `ElementStatePollLoopTests.test_poll_existsFalse_resolvesWhenElementDisappears`
+- `ConditionPredicateTests.test_exists_false_matchesWhenElementGone`
+
+### Scenario: Wait resolves when an element's value matches a target string
+
+- `WaitForElementStateToolTests.test_execute_matchesStringValueEquality_caseSensitive`
+- `ConditionPredicateTests.test_value_exactCaseSensitiveStringMatch`
+- `ConditionExpressionParserTests.test_parse_acceptsValueStringEquality_singleAndDoubleQuotes`
+
+### Scenario: Reject malformed condition expression
+
+- `WaitForElementStateToolTests.test_execute_returnsInvalidConditionExpressionError_onMalformedInput`
+- `ConditionExpressionParserTests.test_parse_rejectsDoubleEqualsChain`
+- `ConditionExpressionParserTests.test_error_listsSupportedFieldsAndOperators`
+
+### Scenario Outline: Support every state field that the serializer emits
+
+- `WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField`
+- `ConditionExpressionParserTests.test_parse_acceptsBooleanFields`
+- `ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty`
+- `WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField`
+
+
 ## MCP Tool Annotations and Descriptions
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*

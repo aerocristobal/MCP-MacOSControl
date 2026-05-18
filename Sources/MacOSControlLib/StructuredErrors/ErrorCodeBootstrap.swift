@@ -198,8 +198,13 @@ public enum ErrorCodeBootstrap {
         )
         try registry.register(
             code: "state_condition_not_met",
-            description: "Expected post-condition state was not observed after performing the action.",
-            detailsSchema: [:]
+            description: "Expected post-condition state was not observed. STORY-009 wait_for_element_state polled until its timeout without the element reaching the requested state; details carry the parsed condition, the last serialized element state (or absence), elapsed seconds, and the number of polls performed.",
+            detailsSchema: [
+                "condition": "string",
+                "current_state": "object",
+                "elapsed_seconds": "number",
+                "polls_performed": "number"
+            ]
         )
         try registry.register(
             code: "invalid_input",
@@ -293,6 +298,19 @@ public enum ErrorCodeBootstrap {
             description: "A prompts/get request named a prompt that is not registered with the server. The error details include the list of available prompt names.",
             detailsSchema: [
                 "available": "array"
+            ]
+        )
+
+        // MARK: - STORY-009 — Element State Polling tool
+        // (state_condition_not_met is registered above with the broader codes.)
+
+        try registry.register(
+            code: "invalid_condition_expression",
+            description: "The condition passed to wait_for_element_state could not be parsed. The error details echo the rejected expression and the closed set of supported fields and operators.",
+            detailsSchema: [
+                "expression": "string",
+                "supported_fields": "array",
+                "supported_operators": "array"
             ]
         )
     }

@@ -612,5 +612,46 @@ enum LivingDocumentationMapping {
             "WaitForUIEventModuleTests.test_tool_description_namesEveryDoDListedNotification",
             "WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum",
         ],
+
+        // MARK: STORY-009 — Element State Polling Tool
+
+        "Wait resolves when a button becomes enabled": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenPredicateBecomesTrue",
+            "ElementStatePollLoopTests.test_poll_returnsSatisfied_whenPredicateBecomesTrueOnNthPoll",
+            "ConditionPredicateTests.test_booleanField_matchesOnlyWhenNodePropertyEqualsTarget",
+        ],
+        "Wait resolves when an element appears in the tree": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementAppears_existsTrue",
+            "ConditionPredicateTests.test_exists_true_matchesWhenElementResolved",
+        ],
+        "Return timeout error if condition is not met": [
+            "WaitForElementStateToolTests.test_execute_returnsStateConditionNotMetError_onTimeout",
+            "ElementStatePollLoopTests.test_poll_returnsTimedOut_withLastStateAndCounts",
+        ],
+        "Wait resolves when an element becomes focused": [
+            "WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField",
+            "ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty",
+        ],
+        "Wait resolves when an element disappears from the tree": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementDisappears_existsFalse",
+            "ElementStatePollLoopTests.test_poll_existsFalse_resolvesWhenElementDisappears",
+            "ConditionPredicateTests.test_exists_false_matchesWhenElementGone",
+        ],
+        "Wait resolves when an element's value matches a target string": [
+            "WaitForElementStateToolTests.test_execute_matchesStringValueEquality_caseSensitive",
+            "ConditionPredicateTests.test_value_exactCaseSensitiveStringMatch",
+            "ConditionExpressionParserTests.test_parse_acceptsValueStringEquality_singleAndDoubleQuotes",
+        ],
+        "Reject malformed condition expression": [
+            "WaitForElementStateToolTests.test_execute_returnsInvalidConditionExpressionError_onMalformedInput",
+            "ConditionExpressionParserTests.test_parse_rejectsDoubleEqualsChain",
+            "ConditionExpressionParserTests.test_error_listsSupportedFieldsAndOperators",
+        ],
+        "Support every state field that the serializer emits": [
+            "WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField",
+            "ConditionExpressionParserTests.test_parse_acceptsBooleanFields",
+            "ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty",
+            "WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField",
+        ],
     ]
 }

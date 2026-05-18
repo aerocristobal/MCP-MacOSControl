@@ -4,8 +4,8 @@ import MCP
 
 /// STORY-011 Scenario 8 — per-tool annotation matrix. The expectations array
 /// below is the single source of truth and must mirror the matrix in the
-/// approved plan. STORY-008 adds `wait_for_ui_event`; `wait_for_element_state`
-/// from STORY-009 remains intentionally omitted until that story lands.
+/// approved plan. STORY-008 adds `wait_for_ui_event`; STORY-009 adds
+/// `wait_for_element_state` (read-only, idempotent in intent).
 final class PerToolAnnotationMatrixTests: XCTestCase {
 
     private struct ExpectedAnnotation {
@@ -15,7 +15,7 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         let idempotent: Bool
     }
 
-    /// Source of truth for the 71 currently-registered tools. Adding a tool to
+    /// Source of truth for the 72 currently-registered tools. Adding a tool to
     /// `ToolRouter` without a row here will make `test_matrixCoversEveryRegisteredTool`
     /// fail — that is the intended TDD signal for new contributors.
     private static let expectations: [ExpectedAnnotation] = [
@@ -93,6 +93,9 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
 
         // Event-driven waiting (STORY-008)
         .init(toolName: "wait_for_ui_event",           readOnly: true,  destructive: false, idempotent: false),
+
+        // Element-state polling (STORY-009)
+        .init(toolName: "wait_for_element_state",      readOnly: true,  destructive: false, idempotent: true),
 
         // IPhoneMirroring (21)
         .init(toolName: "iphone_status",               readOnly: true,  destructive: false, idempotent: true),

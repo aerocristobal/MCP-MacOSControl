@@ -168,6 +168,14 @@ Returns structured JSON with role, title, value, position, size, and children fo
 
 Replaces fixed sleeps and screenshot-polling loops with precise event-driven synchronization. Supported notifications: `AXWindowCreated`, `AXUIElementDestroyed`, `AXFocusedUIElementChanged`, `AXValueChanged`, `AXSelectedTextChanged`, `AXTitleChanged`, `AXMainWindowChanged`, `AXFocusedWindowChanged`. Multiple concurrent calls on the same `(application, notification)` pair share a single underlying `AXObserver`. Default timeout 30s, hard cap 300s. See the `ax_observer_notifications` MCP prompt for routing guidance.
 
+### Element-State Polling (WaitForElementStateModule -- 1 tool)
+
+| Tool | Description | Required Params |
+|------|-------------|----------------|
+| `wait_for_element_state` | Poll the AX tree until an element matches a state condition | condition, application |
+
+The documented fallback to `wait_for_ui_event` for transitions that have no `AXObserver` notification (a button becoming enabled, a spinner disappearing, a row becoming selected). Condition syntax is `"<field> = <value>"`. Boolean fields: `enabled`, `exists`, `focused`, `selected`, `expanded`, `visible_in_viewport`, `is_main`, `is_minimized`, `is_frontmost` (e.g. `enabled = true`, `exists = false`). String field: `value` (exact, case-sensitive, quoted — e.g. `value = 'Connected'`). Fixed 100ms poll cadence (override with `MCP_MACOS_CONTROL_POLL_INTERVAL_MS`). Default timeout 30s, hard cap 120s — for long event-driven waits prefer `wait_for_ui_event`.
+
 ### iPhone Mirroring (IPhoneMirroringModule -- 21 tools)
 
 Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates use normalized 0.0-1.0 range relative to the iPhone screen content area.
