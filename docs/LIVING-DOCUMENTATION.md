@@ -853,3 +853,57 @@ mapped test.
 - `PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing`
 - `PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata`
 
+
+## Wait for Application Lifecycle Event Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-018-wait-for-app-event.feature`*
+
+> In order to react to macOS application lifecycle changes without polling
+> As an AI agent
+> I want wait_for_app_event to subscribe to an NSWorkspace notification and return when it fires
+
+### Scenario: Wait resolves when a named application launches
+
+- `NSWorkspaceEventBridgeTests.test_wait_resolvesWhenLaunchNotificationFires`
+- `WaitForAppEventToolTests.test_execute_returnsSuccessResponse_includingInteractionMethod`
+- `WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager`
+
+### Scenario: Wait resolves when an application becomes frontmost
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `NSWorkspaceEventBridgeTests.test_wait_activated_registersExactlyOneObserver_noDoubleSubscription`
+
+### Scenario: Wait resolves when an application terminates
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager`
+
+### Scenario: Wait resolves on the next launch when no bundle_id filter is given
+
+- `NSWorkspaceEventBridgeTests.test_wait_resolvesOnWildcard_whenBundleIdFilterIsNil`
+- `WaitForAppEventToolTests.test_execute_wildcard_passesNilFilterToManager`
+
+### Scenario: Wait times out if the lifecycle event never fires
+
+- `NSWorkspaceEventBridgeTests.test_wait_throwsWaitTimeoutError_whenNoEventFires`
+- `NSWorkspaceEventBridgeTests.test_wait_unregistersObserver_onTimeout`
+- `NSWorkspaceEventBridgeTests.test_wait_stressTest_noLeakedObserversAfter100SequentialTimeouts`
+- `WaitForAppEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager`
+
+### Scenario: Reject unsupported event name
+
+- `WaitForAppEventToolTests.test_execute_rejectsUnsupportedEventName_withSupportedList`
+- `WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum`
+
+### Scenario: Reject malformed bundle identifier
+
+- `WaitForAppEventToolTests.test_execute_rejectsMalformedBundleIdentifier`
+- `BundleIdentifierValidatorTests.test_validate_rejectsSpaces`
+- `BundleIdentifierValidatorTests.test_validate_rejectsInvalidChars`
+
+### Scenario Outline: Support every NSWorkspace lifecycle notification
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum`
+- `WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent`
+

@@ -17,6 +17,7 @@ public enum ToolRouter {
         AppleScriptModule.self,
         WaitForUIEventModule.self,
         WaitForElementStateModule.self,
+        WaitForAppEventModule.self,
     ]
 
     public static var allTools: [Tool] {

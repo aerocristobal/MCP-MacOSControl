@@ -39,3 +39,22 @@ above; only descend when the higher layer cannot identify the target.
 not name the target, try `run_applescript`. If neither applies, use
 `element_at_position` to resolve a coordinate to AX, then `click_element`.
 Only invoke `click_screen` when every higher layer has been ruled out.
+
+---
+
+**Synchronizing before you interact — choose the right wait primitive:**
+
+- **`wait_for_app_event`** — when you need an *application lifecycle*
+  transition: an app launching, activating, terminating, hiding. It is
+  pre-launch capable and needs no accessibility permission, so it is the
+  correct way to bridge "I issued `run_applescript` to open Safari" → "Safari
+  is now running and ready for AX queries." Prefer it over `wait_milliseconds`
+  or screenshot-polling for any "open app → app ready" step.
+- **`wait_for_ui_event`** — once the app is already running and you need an
+  *in-app AX transition* (a window created, a sheet dismissed, focus moved).
+  Requires the target to be AX-queryable.
+- **`wait_for_element_state`** — fallback when the transition has no AX
+  notification (a button becoming enabled, a spinner disappearing).
+
+Typical chain: `wait_for_app_event launched bundle_identifier=com.apple.TextEdit`,
+then `wait_for_ui_event AXWindowCreated`, then `click_element`.

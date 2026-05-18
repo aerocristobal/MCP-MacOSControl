@@ -190,9 +190,11 @@ public enum ErrorCodeBootstrap {
         )
         try registry.register(
             code: "wait_timeout",
-            description: "A wait_for_text / wait_for_ui_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event additionally surfaces the AX notification name and elapsed time.",
+            description: "A wait_for_text / wait_for_ui_event / wait_for_app_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event surfaces the AX notification name; STORY-018 wait_for_app_event surfaces the app event name and bundle_id filter; both include elapsed time.",
             detailsSchema: [
                 "notification": "string",
+                "event": "string",
+                "bundle_id_filter": "string",
                 "elapsed_seconds": "number"
             ]
         )
@@ -311,6 +313,25 @@ public enum ErrorCodeBootstrap {
                 "expression": "string",
                 "supported_fields": "array",
                 "supported_operators": "array"
+            ]
+        )
+
+        // MARK: - STORY-018 — Wait For Application Lifecycle Event tool
+
+        try registry.register(
+            code: "unsupported_app_event",
+            description: "The event name passed to wait_for_app_event is not in the closed supported set. The error details echo the rejected name and the full supported list.",
+            detailsSchema: [
+                "event": "string",
+                "supported_events": "array"
+            ]
+        )
+        try registry.register(
+            code: "invalid_bundle_identifier",
+            description: "The bundle_identifier passed to wait_for_app_event is not a valid Apple reverse-DNS bundle identifier. The error details echo the rejected value and the expected pattern.",
+            detailsSchema: [
+                "bundle_identifier": "string",
+                "bundle_identifier_pattern": "string"
             ]
         )
     }

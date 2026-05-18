@@ -1,6 +1,6 @@
 # MCP macOS Control
 
-A native macOS MCP (Model Context Protocol) server built in Swift that provides **72 tools** for comprehensive computer control — mouse, keyboard, screen capture, OCR, window management, Vision analysis, CoreML intelligence, accessibility tree reading, event-driven UI waiting via AXObserver, and **iPhone Mirroring automation** via macOS Sequoia.
+A native macOS MCP (Model Context Protocol) server built in Swift that provides **74 tools** for comprehensive computer control — mouse, keyboard, screen capture, OCR, window management, Vision analysis, CoreML intelligence, accessibility tree reading, event-driven UI waiting via AXObserver, application lifecycle event waiting via NSWorkspace, and **iPhone Mirroring automation** via macOS Sequoia.
 
 [![CI](https://github.com/aerocristobal/MCP-MacOSControl/actions/workflows/ci.yml/badge.svg)](https://github.com/aerocristobal/MCP-MacOSControl/actions/workflows/ci.yml)
 
@@ -58,7 +58,7 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
-## Tools (72 total, 13 modules)
+## Tools (74 total, 15 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)
 
@@ -175,6 +175,14 @@ Replaces fixed sleeps and screenshot-polling loops with precise event-driven syn
 | `wait_for_element_state` | Poll the AX tree until an element matches a state condition | condition, application |
 
 The documented fallback to `wait_for_ui_event` for transitions that have no `AXObserver` notification (a button becoming enabled, a spinner disappearing, a row becoming selected). Condition syntax is `"<field> = <value>"`. Boolean fields: `enabled`, `exists`, `focused`, `selected`, `expanded`, `visible_in_viewport`, `is_main`, `is_minimized`, `is_frontmost` (e.g. `enabled = true`, `exists = false`). String field: `value` (exact, case-sensitive, quoted — e.g. `value = 'Connected'`). Fixed 100ms poll cadence (override with `MCP_MACOS_CONTROL_POLL_INTERVAL_MS`). Default timeout 30s, hard cap 120s — for long event-driven waits prefer `wait_for_ui_event`.
+
+### Application Lifecycle Events (WaitForAppEventModule -- 1 tool)
+
+| Tool | Description | Required Params |
+|------|-------------|----------------|
+| `wait_for_app_event` | Subscribe to an NSWorkspace application-lifecycle notification and block until it fires | event |
+
+The event-driven way to sequence "open app → app is ready → interact" workflows. Unlike `wait_for_ui_event` (AXObserver, requires an already-running AX-queryable target), this is pre-launch capable and needs no accessibility permission. Supported events: `launched`, `activated`, `terminated`, `deactivated`, `hidden`, `unhidden`. Optional `bundle_identifier` (reverse-DNS, e.g. `com.apple.TextEdit`) filters to one app; omit it to resolve on the next matching event from any application. Resolves only on the *next* transition, never the current state. Multiple concurrent calls on the same `(event, bundle_identifier)` share one underlying observer. Default timeout 30s, hard cap 300s. See the `interaction_hierarchy` MCP prompt for when to prefer it over `wait_for_ui_event`.
 
 ### iPhone Mirroring (IPhoneMirroringModule -- 21 tools)
 

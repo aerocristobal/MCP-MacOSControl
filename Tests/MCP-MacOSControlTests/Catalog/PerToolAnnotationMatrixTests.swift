@@ -97,6 +97,9 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         // Element-state polling (STORY-009)
         .init(toolName: "wait_for_element_state",      readOnly: true,  destructive: false, idempotent: true),
 
+        // Application lifecycle events (STORY-018)
+        .init(toolName: "wait_for_app_event",          readOnly: true,  destructive: false, idempotent: false),
+
         // IPhoneMirroring (21)
         .init(toolName: "iphone_status",               readOnly: true,  destructive: false, idempotent: true),
         .init(toolName: "iphone_launch",               readOnly: false, destructive: false, idempotent: true),

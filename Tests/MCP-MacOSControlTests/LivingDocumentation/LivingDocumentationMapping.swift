@@ -653,5 +653,45 @@ enum LivingDocumentationMapping {
             "ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty",
             "WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField",
         ],
+
+        // MARK: STORY-018 — Wait for Application Lifecycle Event Tool
+
+        "Wait resolves when a named application launches": [
+            "NSWorkspaceEventBridgeTests.test_wait_resolvesWhenLaunchNotificationFires",
+            "WaitForAppEventToolTests.test_execute_returnsSuccessResponse_includingInteractionMethod",
+            "WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager",
+        ],
+        "Wait resolves when an application becomes frontmost": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "NSWorkspaceEventBridgeTests.test_wait_activated_registersExactlyOneObserver_noDoubleSubscription",
+        ],
+        "Wait resolves when an application terminates": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager",
+        ],
+        "Wait resolves on the next launch when no bundle_id filter is given": [
+            "NSWorkspaceEventBridgeTests.test_wait_resolvesOnWildcard_whenBundleIdFilterIsNil",
+            "WaitForAppEventToolTests.test_execute_wildcard_passesNilFilterToManager",
+        ],
+        "Wait times out if the lifecycle event never fires": [
+            "NSWorkspaceEventBridgeTests.test_wait_throwsWaitTimeoutError_whenNoEventFires",
+            "NSWorkspaceEventBridgeTests.test_wait_unregistersObserver_onTimeout",
+            "NSWorkspaceEventBridgeTests.test_wait_stressTest_noLeakedObserversAfter100SequentialTimeouts",
+            "WaitForAppEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager",
+        ],
+        "Reject unsupported event name": [
+            "WaitForAppEventToolTests.test_execute_rejectsUnsupportedEventName_withSupportedList",
+            "WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum",
+        ],
+        "Reject malformed bundle identifier": [
+            "WaitForAppEventToolTests.test_execute_rejectsMalformedBundleIdentifier",
+            "BundleIdentifierValidatorTests.test_validate_rejectsSpaces",
+            "BundleIdentifierValidatorTests.test_validate_rejectsInvalidChars",
+        ],
+        "Support every NSWorkspace lifecycle notification": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum",
+            "WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent",
+        ],
     ]
 }
