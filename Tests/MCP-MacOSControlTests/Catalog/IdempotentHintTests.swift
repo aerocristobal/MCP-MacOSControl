@@ -66,10 +66,11 @@ final class IdempotentHintTests: XCTestCase {
             "perform_ax_action",
             "run_applescript",
             "click_menu_item",
-            // Polling tools — outcome depends on time-varying screen state
+            // Polling / event-driven tools — outcome depends on time-varying screen state
             "wait_for_text",
             "wait_milliseconds",
             "iphone_wait_for_text",
+            "wait_for_ui_event",
             // Frame advances on each call
             "get_capture_frame",
         ]

@@ -21,6 +21,23 @@ final class PromptRegistryTests: XCTestCase {
         XCTAssertTrue(names.contains("click_and_verify"))
     }
 
+    // STORY-008 — `ax_observer_notifications` is bundled so agents can
+    // discover the closed set of notifications `wait_for_ui_event` accepts
+    // without guessing.
+    func test_list_includesAXObserverNotificationsPrompt() {
+        let names = Set(registry.list().map(\.name))
+        XCTAssertTrue(names.contains("ax_observer_notifications"))
+    }
+
+    func test_get_axObserverNotifications_namesEverySupportedNotification() throws {
+        let resolved = try registry.get(name: "ax_observer_notifications", arguments: [:])
+        let body = Self.joinedText(resolved.messages)
+        for name in AXObserverNotification.supported {
+            XCTAssertTrue(body.contains(name),
+                          "ax_observer_notifications prompt must name \(name)")
+        }
+    }
+
     func test_list_eachPromptHasDescriptionAtLeast50Chars() {
         for prompt in registry.list() {
             let description = prompt.description ?? ""

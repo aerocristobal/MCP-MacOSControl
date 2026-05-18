@@ -190,13 +190,23 @@ public enum ErrorCodeBootstrap {
         )
         try registry.register(
             code: "wait_timeout",
-            description: "A wait_for_text / wait predicate did not become true before the timeout elapsed.",
-            detailsSchema: [:]
+            description: "A wait_for_text / wait_for_ui_event / wait_for_app_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event surfaces the AX notification name; STORY-018 wait_for_app_event surfaces the app event name and bundle_id filter; both include elapsed time.",
+            detailsSchema: [
+                "notification": "string",
+                "event": "string",
+                "bundle_id_filter": "string",
+                "elapsed_seconds": "number"
+            ]
         )
         try registry.register(
             code: "state_condition_not_met",
-            description: "Expected post-condition state was not observed after performing the action.",
-            detailsSchema: [:]
+            description: "Expected post-condition state was not observed. STORY-009 wait_for_element_state polled until its timeout without the element reaching the requested state; details carry the parsed condition, the last serialized element state (or absence), elapsed seconds, and the number of polls performed.",
+            detailsSchema: [
+                "condition": "string",
+                "current_state": "object",
+                "elapsed_seconds": "number",
+                "polls_performed": "number"
+            ]
         )
         try registry.register(
             code: "invalid_input",
@@ -249,6 +259,33 @@ public enum ErrorCodeBootstrap {
             detailsSchema: [:]
         )
 
+        // MARK: - STORY-008 — Wait For UI Event tool
+
+        try registry.register(
+            code: "target_application_terminated",
+            description: "The application named in a wait_for_ui_event subscription terminated before the notification fired. The error details carry the terminated app's pid and (when known) bundle identifier.",
+            detailsSchema: [
+                "pid": "number",
+                "bundle_identifier": "string"
+            ]
+        )
+        try registry.register(
+            code: "unsupported_notification",
+            description: "The notification name passed to wait_for_ui_event is not in the closed supported set. The error details echo the rejected name and the full supported list.",
+            detailsSchema: [
+                "notification": "string",
+                "supported_notifications": "array"
+            ]
+        )
+        try registry.register(
+            code: "timeout_exceeds_maximum",
+            description: "The requested wait_for_ui_event timeout exceeds the server's hard cap of 300 seconds. Use an MCP Resources subscription for longer watches.",
+            detailsSchema: [
+                "requested_seconds": "number",
+                "maximum_seconds": "number"
+            ]
+        )
+
         // MARK: - Prompts (STORY-017)
 
         try registry.register(
@@ -263,6 +300,38 @@ public enum ErrorCodeBootstrap {
             description: "A prompts/get request named a prompt that is not registered with the server. The error details include the list of available prompt names.",
             detailsSchema: [
                 "available": "array"
+            ]
+        )
+
+        // MARK: - STORY-009 — Element State Polling tool
+        // (state_condition_not_met is registered above with the broader codes.)
+
+        try registry.register(
+            code: "invalid_condition_expression",
+            description: "The condition passed to wait_for_element_state could not be parsed. The error details echo the rejected expression and the closed set of supported fields and operators.",
+            detailsSchema: [
+                "expression": "string",
+                "supported_fields": "array",
+                "supported_operators": "array"
+            ]
+        )
+
+        // MARK: - STORY-018 — Wait For Application Lifecycle Event tool
+
+        try registry.register(
+            code: "unsupported_app_event",
+            description: "The event name passed to wait_for_app_event is not in the closed supported set. The error details echo the rejected name and the full supported list.",
+            detailsSchema: [
+                "event": "string",
+                "supported_events": "array"
+            ]
+        )
+        try registry.register(
+            code: "invalid_bundle_identifier",
+            description: "The bundle_identifier passed to wait_for_app_event is not a valid Apple reverse-DNS bundle identifier. The error details echo the rejected value and the expected pattern.",
+            detailsSchema: [
+                "bundle_identifier": "string",
+                "bundle_identifier_pattern": "string"
             ]
         )
     }

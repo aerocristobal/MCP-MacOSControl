@@ -15,6 +15,9 @@ public enum ToolRouter {
         IPhoneMirroringModule.self,
         AccessibilityModule.self,
         AppleScriptModule.self,
+        WaitForUIEventModule.self,
+        WaitForElementStateModule.self,
+        WaitForAppEventModule.self,
     ]
 
     public static var allTools: [Tool] {

@@ -51,6 +51,14 @@ final class ToolRegistrationTests: XCTestCase {
         XCTAssertEqual(IPhoneMirroringModule.tools.count, 21)
     }
 
+    func testWaitForUIEventModuleHas1Tool() {
+        XCTAssertEqual(WaitForUIEventModule.tools.count, 1)
+    }
+
+    func testWaitForElementStateModuleHas1Tool() {
+        XCTAssertEqual(WaitForElementStateModule.tools.count, 1)
+    }
+
     func testMouseModuleToolNames() {
         let names = Set(MouseModule.tools.map(\.name))
         XCTAssertEqual(names, ["click_screen", "get_screen_size", "move_mouse", "mouse_down", "mouse_up", "drag_mouse", "double_click", "scroll", "list_displays"])
@@ -79,7 +87,8 @@ final class ToolRegistrationTests: XCTestCase {
             "iphone_screenshot_with_ocr", "iphone_analyze_screen_now",
             "iphone_analyze_with_llm",
             "list_displays",
-            "iphone_open_app", "iphone_wait_for_text", "iphone_reconnect"
+            "iphone_open_app", "iphone_wait_for_text", "iphone_reconnect",
+            "wait_for_ui_event", "wait_for_element_state", "wait_for_app_event"
         ]
         let actual = Set(ToolRouter.allTools.map(\.name))
         XCTAssertEqual(actual, expected)

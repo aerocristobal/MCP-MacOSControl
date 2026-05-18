@@ -44,6 +44,8 @@ different semantics — the server refuses to start on collision.
 | `execution_timeout` | An AppleScript or menu-click execution exceeded its configured timeout. | — |
 | `input_failed` | Synthesizing a keyboard or mouse input event failed. | — |
 | `internal_error` | An unexpected Swift error reached the MCP response boundary. The originating type is reported via swift_error_type; file paths are scrubbed. | `swift_error_type` (string) |
+| `invalid_bundle_identifier` | The bundle_identifier passed to wait_for_app_event is not a valid Apple reverse-DNS bundle identifier. The error details echo the rejected value and the expected pattern. | `bundle_identifier` (string), `bundle_identifier_pattern` (string) |
+| `invalid_condition_expression` | The condition passed to wait_for_element_state could not be parsed. The error details echo the rejected expression and the closed set of supported fields and operators. | `expression` (string), `supported_fields` (array), `supported_operators` (array) |
 | `invalid_coordinates` | Coordinates failed validation (e.g., NaN, infinity, or otherwise malformed). | — |
 | `invalid_input` | Tool input failed validation (missing required field, wrong type, out-of-range, etc.). | — |
 | `invalid_regex` | Regex predicate failed to compile. | `field` (string) |
@@ -60,11 +62,15 @@ different semantics — the server refuses to start on collision.
 | `prompt_not_found` | A prompts/get request named a prompt that is not registered with the server. The error details include the list of available prompt names. | `available` (array) |
 | `rate_limited` | Tool invocation was rate-limited by an internal token bucket. Retry with backoff. | — |
 | `security_policy_violation` | Input violated the server's security policy (e.g., disallowed AppleScript verb). | — |
-| `state_condition_not_met` | Expected post-condition state was not observed after performing the action. | — |
+| `state_condition_not_met` | Expected post-condition state was not observed. STORY-009 wait_for_element_state polled until its timeout without the element reaching the requested state; details carry the parsed condition, the last serialized element state (or absence), elapsed seconds, and the number of polls performed. | `condition` (string), `current_state` (object), `elapsed_seconds` (number), `polls_performed` (number) |
+| `target_application_terminated` | The application named in a wait_for_ui_event subscription terminated before the notification fired. The error details carry the terminated app's pid and (when known) bundle identifier. | `bundle_identifier` (string), `pid` (number) |
 | `timeout` | Generic operation timeout. Domain-specific variants: wait_timeout, execution_timeout. | — |
+| `timeout_exceeds_maximum` | The requested wait_for_ui_event timeout exceeds the server's hard cap of 300 seconds. Use an MCP Resources subscription for longer watches. | `maximum_seconds` (number), `requested_seconds` (number) |
 | `unknown_display_index` | element_at_position was given a display_index that does not map to an active display. | — |
 | `unknown_tool` | No tool matched the requested name in any registered module. | — |
-| `wait_timeout` | A wait_for_text / wait predicate did not become true before the timeout elapsed. | — |
+| `unsupported_app_event` | The event name passed to wait_for_app_event is not in the closed supported set. The error details echo the rejected name and the full supported list. | `event` (string), `supported_events` (array) |
+| `unsupported_notification` | The notification name passed to wait_for_ui_event is not in the closed supported set. The error details echo the rejected name and the full supported list. | `notification` (string), `supported_notifications` (array) |
+| `wait_timeout` | A wait_for_text / wait_for_ui_event / wait_for_app_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event surfaces the AX notification name; STORY-018 wait_for_app_event surfaces the app event name and bundle_id filter; both include elapsed time. | `bundle_id_filter` (string), `elapsed_seconds` (number), `event` (string), `notification` (string) |
 | `window_not_found` | Requested window or application could not be located. | — |
 
 ## Adding a New Code

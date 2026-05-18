@@ -565,5 +565,133 @@ enum LivingDocumentationMapping {
             "PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing",
             "PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata",
         ],
+
+        // MARK: STORY-008 — AXObserver Wait for UI Event Tool
+
+        "Wait resolves when a window appears": [
+            "AXObserverManagerTests.test_wait_returnsSuccess_whenNotificationFires",
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse",
+            "WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager",
+        ],
+        "Wait resolves when a sheet is dismissed": [
+            "WaitForUIEventToolTests.test_execute_responseCarriesCachedAttributes_forDestroyedElement",
+            "WaitForUIEventToolTests.test_execute_returnsElementNotFoundError_whenLocatorDoesNotResolve",
+        ],
+        "Wait times out if event does not occur within the specified duration": [
+            "AXObserverManagerTests.test_wait_throwsWaitTimeoutError_whenDeadlineElapses",
+            "AXObserverManagerTests.test_wait_doesNotLeakRunLoopSource_onTimeout",
+            "WaitForUIEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager",
+        ],
+        "Wait resolves when focused element changes": [
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager",
+            "WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse",
+        ],
+        "Observer is unregistered when the target application terminates mid-wait": [
+            "AXObserverManagerTests.test_wait_throwsTargetTerminatedError_whenAppQuitsMidWait",
+            "AXObserverManagerTests.test_wait_doesNotLeakObserver_onTermination",
+            "WaitForUIEventToolTests.test_execute_translatesTargetTerminatedErrorFromManager",
+        ],
+        "Two concurrent waits on the same notification both resolve when it fires": [
+            "AXObserverManagerTests.test_wait_multiplexesTwoCallers_ontoOneUnderlyingObserver",
+            "AXObserverManagerTests.test_wait_unregistersObserver_afterLastWaiterResolves",
+        ],
+        "Permission denied at subscription time returns a structured error": [
+            "AXObserverManagerTests.test_wait_throwsPermissionError_whenAXNotTrusted",
+            "AXObserverManagerTests.test_canSubscribe_proxiesIsProcessTrusted",
+            "WaitForUIEventToolTests.test_execute_returnsAccessibilityPermissionRequired_whenManagerCannotSubscribe",
+        ],
+        "Unsupported notification name returns a structured error": [
+            "WaitForUIEventToolTests.test_execute_rejectsUnknownNotification_withSupportedList",
+            "WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum",
+        ],
+        "Support the documented AX notification set": [
+            "AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant",
+            "AXObserverManagerTests.test_wait_stressTest_noLeakedSubscriptionsAfter100SequentialTimeouts",
+            "WaitForUIEventModuleTests.test_tool_description_namesEveryDoDListedNotification",
+            "WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum",
+        ],
+
+        // MARK: STORY-009 — Element State Polling Tool
+
+        "Wait resolves when a button becomes enabled": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenPredicateBecomesTrue",
+            "ElementStatePollLoopTests.test_poll_returnsSatisfied_whenPredicateBecomesTrueOnNthPoll",
+            "ConditionPredicateTests.test_booleanField_matchesOnlyWhenNodePropertyEqualsTarget",
+        ],
+        "Wait resolves when an element appears in the tree": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementAppears_existsTrue",
+            "ConditionPredicateTests.test_exists_true_matchesWhenElementResolved",
+        ],
+        "Return timeout error if condition is not met": [
+            "WaitForElementStateToolTests.test_execute_returnsStateConditionNotMetError_onTimeout",
+            "ElementStatePollLoopTests.test_poll_returnsTimedOut_withLastStateAndCounts",
+        ],
+        "Wait resolves when an element becomes focused": [
+            "WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField",
+            "ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty",
+        ],
+        "Wait resolves when an element disappears from the tree": [
+            "WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementDisappears_existsFalse",
+            "ElementStatePollLoopTests.test_poll_existsFalse_resolvesWhenElementDisappears",
+            "ConditionPredicateTests.test_exists_false_matchesWhenElementGone",
+        ],
+        "Wait resolves when an element's value matches a target string": [
+            "WaitForElementStateToolTests.test_execute_matchesStringValueEquality_caseSensitive",
+            "ConditionPredicateTests.test_value_exactCaseSensitiveStringMatch",
+            "ConditionExpressionParserTests.test_parse_acceptsValueStringEquality_singleAndDoubleQuotes",
+        ],
+        "Reject malformed condition expression": [
+            "WaitForElementStateToolTests.test_execute_returnsInvalidConditionExpressionError_onMalformedInput",
+            "ConditionExpressionParserTests.test_parse_rejectsDoubleEqualsChain",
+            "ConditionExpressionParserTests.test_error_listsSupportedFieldsAndOperators",
+        ],
+        "Support every state field that the serializer emits": [
+            "WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField",
+            "ConditionExpressionParserTests.test_parse_acceptsBooleanFields",
+            "ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty",
+            "WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField",
+        ],
+
+        // MARK: STORY-018 — Wait for Application Lifecycle Event Tool
+
+        "Wait resolves when a named application launches": [
+            "NSWorkspaceEventBridgeTests.test_wait_resolvesWhenLaunchNotificationFires",
+            "WaitForAppEventToolTests.test_execute_returnsSuccessResponse_includingInteractionMethod",
+            "WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager",
+        ],
+        "Wait resolves when an application becomes frontmost": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "NSWorkspaceEventBridgeTests.test_wait_activated_registersExactlyOneObserver_noDoubleSubscription",
+        ],
+        "Wait resolves when an application terminates": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager",
+        ],
+        "Wait resolves on the next launch when no bundle_id filter is given": [
+            "NSWorkspaceEventBridgeTests.test_wait_resolvesOnWildcard_whenBundleIdFilterIsNil",
+            "WaitForAppEventToolTests.test_execute_wildcard_passesNilFilterToManager",
+        ],
+        "Wait times out if the lifecycle event never fires": [
+            "NSWorkspaceEventBridgeTests.test_wait_throwsWaitTimeoutError_whenNoEventFires",
+            "NSWorkspaceEventBridgeTests.test_wait_unregistersObserver_onTimeout",
+            "NSWorkspaceEventBridgeTests.test_wait_stressTest_noLeakedObserversAfter100SequentialTimeouts",
+            "WaitForAppEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager",
+        ],
+        "Reject unsupported event name": [
+            "WaitForAppEventToolTests.test_execute_rejectsUnsupportedEventName_withSupportedList",
+            "WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum",
+        ],
+        "Reject malformed bundle identifier": [
+            "WaitForAppEventToolTests.test_execute_rejectsMalformedBundleIdentifier",
+            "BundleIdentifierValidatorTests.test_validate_rejectsSpaces",
+            "BundleIdentifierValidatorTests.test_validate_rejectsInvalidChars",
+        ],
+        "Support every NSWorkspace lifecycle notification": [
+            "NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant",
+            "WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum",
+            "WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent",
+        ],
     ]
 }

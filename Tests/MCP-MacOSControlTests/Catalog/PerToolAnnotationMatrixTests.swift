@@ -4,9 +4,8 @@ import MCP
 
 /// STORY-011 Scenario 8 — per-tool annotation matrix. The expectations array
 /// below is the single source of truth and must mirror the matrix in the
-/// approved plan. Tools listed in the story outline but not yet registered
-/// (`wait_for_ui_event`, `wait_for_element_state` — STORY-008 / STORY-009) are
-/// intentionally omitted.
+/// approved plan. STORY-008 adds `wait_for_ui_event`; STORY-009 adds
+/// `wait_for_element_state` (read-only, idempotent in intent).
 final class PerToolAnnotationMatrixTests: XCTestCase {
 
     private struct ExpectedAnnotation {
@@ -16,7 +15,7 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         let idempotent: Bool
     }
 
-    /// Source of truth for the 71 currently-registered tools. Adding a tool to
+    /// Source of truth for the 72 currently-registered tools. Adding a tool to
     /// `ToolRouter` without a row here will make `test_matrixCoversEveryRegisteredTool`
     /// fail — that is the intended TDD signal for new contributors.
     private static let expectations: [ExpectedAnnotation] = [
@@ -91,6 +90,15 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         .init(toolName: "check_permissions",           readOnly: true,  destructive: false, idempotent: true),
         .init(toolName: "wait_milliseconds",           readOnly: true,  destructive: false, idempotent: false),
         .init(toolName: "wait_for_text",               readOnly: true,  destructive: false, idempotent: false),
+
+        // Event-driven waiting (STORY-008)
+        .init(toolName: "wait_for_ui_event",           readOnly: true,  destructive: false, idempotent: false),
+
+        // Element-state polling (STORY-009)
+        .init(toolName: "wait_for_element_state",      readOnly: true,  destructive: false, idempotent: true),
+
+        // Application lifecycle events (STORY-018)
+        .init(toolName: "wait_for_app_event",          readOnly: true,  destructive: false, idempotent: false),
 
         // IPhoneMirroring (21)
         .init(toolName: "iphone_status",               readOnly: true,  destructive: false, idempotent: true),

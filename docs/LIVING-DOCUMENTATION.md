@@ -350,6 +350,123 @@ mapped test.
 - `AppleScriptMenuClickBackendTests.test_alternativesScript_singleElementPathEnumeratesMenuBar`
 
 
+## AXObserver Wait for UI Event Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-008-axobserver-wait-for-ui-event.feature`*
+
+> In order to react to UI state changes without polling
+> As an AI agent
+> I want wait_for_ui_event to subscribe to an AXObserver notification and return when it fires
+
+### Scenario: Wait resolves when a window appears
+
+- `AXObserverManagerTests.test_wait_returnsSuccess_whenNotificationFires`
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse`
+- `WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager`
+
+### Scenario: Wait resolves when a sheet is dismissed
+
+- `WaitForUIEventToolTests.test_execute_responseCarriesCachedAttributes_forDestroyedElement`
+- `WaitForUIEventToolTests.test_execute_returnsElementNotFoundError_whenLocatorDoesNotResolve`
+
+### Scenario: Wait times out if event does not occur within the specified duration
+
+- `AXObserverManagerTests.test_wait_throwsWaitTimeoutError_whenDeadlineElapses`
+- `AXObserverManagerTests.test_wait_doesNotLeakRunLoopSource_onTimeout`
+- `WaitForUIEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager`
+
+### Scenario: Wait resolves when focused element changes
+
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `WaitForUIEventToolTests.test_execute_passesNotificationAndPIDToManager`
+- `WaitForUIEventToolTests.test_execute_returnsSchemaVersion3_inSuccessResponse`
+
+### Scenario: Observer is unregistered when the target application terminates mid-wait
+
+- `AXObserverManagerTests.test_wait_throwsTargetTerminatedError_whenAppQuitsMidWait`
+- `AXObserverManagerTests.test_wait_doesNotLeakObserver_onTermination`
+- `WaitForUIEventToolTests.test_execute_translatesTargetTerminatedErrorFromManager`
+
+### Scenario: Two concurrent waits on the same notification both resolve when it fires
+
+- `AXObserverManagerTests.test_wait_multiplexesTwoCallers_ontoOneUnderlyingObserver`
+- `AXObserverManagerTests.test_wait_unregistersObserver_afterLastWaiterResolves`
+
+### Scenario: Permission denied at subscription time returns a structured error
+
+- `AXObserverManagerTests.test_wait_throwsPermissionError_whenAXNotTrusted`
+- `AXObserverManagerTests.test_canSubscribe_proxiesIsProcessTrusted`
+- `WaitForUIEventToolTests.test_execute_returnsAccessibilityPermissionRequired_whenManagerCannotSubscribe`
+
+### Scenario: Unsupported notification name returns a structured error
+
+- `WaitForUIEventToolTests.test_execute_rejectsUnknownNotification_withSupportedList`
+- `WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum`
+
+### Scenario Outline: Support the documented AX notification set
+
+- `AXObserverManagerTests.test_wait_dispatchesEachSupportedNotificationConstant`
+- `AXObserverManagerTests.test_wait_stressTest_noLeakedSubscriptionsAfter100SequentialTimeouts`
+- `WaitForUIEventModuleTests.test_tool_description_namesEveryDoDListedNotification`
+- `WaitForUIEventModuleTests.test_tool_inputSchema_constrainsNotificationToSupportedEnum`
+
+
+## Element State Polling Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-009-element-state-polling.feature`*
+
+> In order to wait for UI conditions that AXObserver does not expose
+> As an AI agent
+> I want wait_for_element_state to poll until an element matches a state predicate
+
+### Scenario: Wait resolves when a button becomes enabled
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenPredicateBecomesTrue`
+- `ElementStatePollLoopTests.test_poll_returnsSatisfied_whenPredicateBecomesTrueOnNthPoll`
+- `ConditionPredicateTests.test_booleanField_matchesOnlyWhenNodePropertyEqualsTarget`
+
+### Scenario: Wait resolves when an element appears in the tree
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementAppears_existsTrue`
+- `ConditionPredicateTests.test_exists_true_matchesWhenElementResolved`
+
+### Scenario: Return timeout error if condition is not met
+
+- `WaitForElementStateToolTests.test_execute_returnsStateConditionNotMetError_onTimeout`
+- `ElementStatePollLoopTests.test_poll_returnsTimedOut_withLastStateAndCounts`
+
+### Scenario: Wait resolves when an element becomes focused
+
+- `WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField`
+- `ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty`
+
+### Scenario: Wait resolves when an element disappears from the tree
+
+- `WaitForElementStateToolTests.test_execute_returnsSuccess_whenElementDisappears_existsFalse`
+- `ElementStatePollLoopTests.test_poll_existsFalse_resolvesWhenElementDisappears`
+- `ConditionPredicateTests.test_exists_false_matchesWhenElementGone`
+
+### Scenario: Wait resolves when an element's value matches a target string
+
+- `WaitForElementStateToolTests.test_execute_matchesStringValueEquality_caseSensitive`
+- `ConditionPredicateTests.test_value_exactCaseSensitiveStringMatch`
+- `ConditionExpressionParserTests.test_parse_acceptsValueStringEquality_singleAndDoubleQuotes`
+
+### Scenario: Reject malformed condition expression
+
+- `WaitForElementStateToolTests.test_execute_returnsInvalidConditionExpressionError_onMalformedInput`
+- `ConditionExpressionParserTests.test_parse_rejectsDoubleEqualsChain`
+- `ConditionExpressionParserTests.test_error_listsSupportedFieldsAndOperators`
+
+### Scenario Outline: Support every state field that the serializer emits
+
+- `WaitForElementStateToolTests.test_execute_handlesEveryStory015BooleanField`
+- `ConditionExpressionParserTests.test_parse_acceptsBooleanFields`
+- `ConditionPredicateTests.test_eachStory015Field_isReadFromItsOwnProperty`
+- `WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField`
+
+
 ## MCP Tool Annotations and Descriptions
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*
@@ -735,4 +852,58 @@ mapped test.
 - `PromptDefinitionTests.test_parse_loadsNameDescriptionAndPromptVersionFromFrontMatter`
 - `PromptDefinitionTests.test_parse_throwsLoadTimeError_whenPromptVersionMissing`
 - `PromptRegistryTests.test_list_eachPromptCarriesPromptVersionInMetadata`
+
+
+## Wait for Application Lifecycle Event Tool
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-018-wait-for-app-event.feature`*
+
+> In order to react to macOS application lifecycle changes without polling
+> As an AI agent
+> I want wait_for_app_event to subscribe to an NSWorkspace notification and return when it fires
+
+### Scenario: Wait resolves when a named application launches
+
+- `NSWorkspaceEventBridgeTests.test_wait_resolvesWhenLaunchNotificationFires`
+- `WaitForAppEventToolTests.test_execute_returnsSuccessResponse_includingInteractionMethod`
+- `WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager`
+
+### Scenario: Wait resolves when an application becomes frontmost
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `NSWorkspaceEventBridgeTests.test_wait_activated_registersExactlyOneObserver_noDoubleSubscription`
+
+### Scenario: Wait resolves when an application terminates
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `WaitForAppEventToolTests.test_execute_passesEventAndFilterAndTimeoutToManager`
+
+### Scenario: Wait resolves on the next launch when no bundle_id filter is given
+
+- `NSWorkspaceEventBridgeTests.test_wait_resolvesOnWildcard_whenBundleIdFilterIsNil`
+- `WaitForAppEventToolTests.test_execute_wildcard_passesNilFilterToManager`
+
+### Scenario: Wait times out if the lifecycle event never fires
+
+- `NSWorkspaceEventBridgeTests.test_wait_throwsWaitTimeoutError_whenNoEventFires`
+- `NSWorkspaceEventBridgeTests.test_wait_unregistersObserver_onTimeout`
+- `NSWorkspaceEventBridgeTests.test_wait_stressTest_noLeakedObserversAfter100SequentialTimeouts`
+- `WaitForAppEventToolTests.test_execute_translatesWaitTimeoutErrorFromManager`
+
+### Scenario: Reject unsupported event name
+
+- `WaitForAppEventToolTests.test_execute_rejectsUnsupportedEventName_withSupportedList`
+- `WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum`
+
+### Scenario: Reject malformed bundle identifier
+
+- `WaitForAppEventToolTests.test_execute_rejectsMalformedBundleIdentifier`
+- `BundleIdentifierValidatorTests.test_validate_rejectsSpaces`
+- `BundleIdentifierValidatorTests.test_validate_rejectsInvalidChars`
+
+### Scenario Outline: Support every NSWorkspace lifecycle notification
+
+- `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
+- `WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum`
+- `WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent`
 
