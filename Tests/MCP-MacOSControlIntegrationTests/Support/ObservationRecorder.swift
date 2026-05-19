@@ -1,12 +1,19 @@
 // STORY-012 — End-to-End Integration Validation Suite
 // COMPONENT: Empirical interaction_method recorder + registry-expectation guard.
 //
+// STORY-020 migrated this recorder onto the canonical `CompatibilityObservation`
+// schema (bundle_identifier / interaction_method / macOS_version / timestamp /
+// scenario_name) and switched the default sink to `docs/compatibility-observations.json`
+// so the integration suite writes directly into the committed living-data file
+// that the catalog generator consumes. CI may still redirect via the
+// `STORY_012_OBSERVATIONS_JSON` env var when it wants to capture an artifact
+// without touching the repo checkout (e.g. read-only checkouts on hosted runners).
+//
 // DoD (STORY-020 feed): each scenario that observes an `interaction_method`
-// records it to a JSON artifact, and — when the per-app capability registry has
-// a definite expectation for that app — fails the scenario with a clear diff if
-// the observed method contradicts it. STORY-012 produces observations;
-// STORY-020 aggregates them into a maintained catalog. The two are deliberately
-// decoupled: this just appends rows and enforces the local invariant.
+// records it to the shared JSON file, and — when the per-app capability
+// registry has a definite expectation for that app — fails the scenario with a
+// clear diff if the observed method contradicts it. STORY-020 then aggregates
+// these rows into the maintained catalog (`docs/APP-COMPATIBILITY.md`).
 
 import Foundation
 import XCTest
@@ -14,24 +21,29 @@ import XCTest
 
 enum ObservationRecorder {
 
-    /// Where rows are appended. CI sets `STORY_012_OBSERVATIONS_JSON`;
-    /// otherwise a stable path under the temp dir so local runs still produce
-    /// the artifact.
+    /// Where rows are appended. CI may override via `STORY_012_OBSERVATIONS_JSON`
+    /// (e.g. point at an artifact path). Otherwise we resolve the repo's
+    /// committed `docs/compatibility-observations.json` from `#filePath` —
+    /// works whether the integration tests are running from a fresh checkout
+    /// or a developer's clone, with no env-var configuration required.
     static var artifactURL: URL {
         if let p = ProcessInfo.processInfo.environment["STORY_012_OBSERVATIONS_JSON"], !p.isEmpty {
             return URL(fileURLWithPath: (p as NSString).expandingTildeInPath)
         }
-        return FileManager.default.temporaryDirectory
-            .appendingPathComponent("story-012-interaction-observations.json")
+        return repoCanonicalObservationsURL()
     }
 
-    struct Row: Codable {
-        let scenario: String
-        let tool: String
-        let application: String
-        let observed_interaction_method: String
-        let registry_expectation: String?
-        let recorded_at: String
+    /// Resolve `<repo-root>/docs/compatibility-observations.json` by walking
+    /// up from this source file. Layout-stable for as long as this file lives
+    /// under `Tests/MCP-MacOSControlIntegrationTests/Support/`.
+    private static func repoCanonicalObservationsURL(filePath: String = #filePath) -> URL {
+        URL(fileURLWithPath: filePath)
+            .deletingLastPathComponent() // Support
+            .deletingLastPathComponent() // MCP-MacOSControlIntegrationTests
+            .deletingLastPathComponent() // Tests
+            .deletingLastPathComponent() // <repo-root>
+            .appendingPathComponent("docs")
+            .appendingPathComponent("compatibility-observations.json")
     }
 
     private static let lock = NSLock()
@@ -48,7 +60,7 @@ enum ObservationRecorder {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let expectation = expectedMethod(for: application, registry: registry)
+        let expectation = DiscrepancyDetector.expectedMethod(for: application, registry: registry)
 
         if let expectation, expectation != observed {
             XCTFail(
@@ -62,47 +74,33 @@ enum ObservationRecorder {
             )
         }
 
-        let row = Row(
-            scenario: scenario,
+        let observation = CompatibilityObservation(
+            bundleIdentifier: application,
+            interactionMethod: observed,
+            macOSVersion: currentMacOSVersion(),
+            timestamp: ISO8601DateFormatter().string(from: Date()),
+            scenarioName: scenario,
             tool: tool,
-            application: application,
-            observed_interaction_method: observed,
-            registry_expectation: expectation,
-            recorded_at: ISO8601DateFormatter().string(from: Date())
+            registryExpectation: expectation
         )
-        append(row)
+        append(observation)
     }
 
-    /// Maps the registry's per-layer flags to the method the router should pick
-    /// first. Only `ax_supported == .yes` yields a hard expectation; anything
-    /// the registry doesn't positively assert is left unconstrained (returns
-    /// nil) so optimistic-fallback apps don't produce false regressions.
-    static func expectedMethod(
-        for bundleId: String,
-        registry: AppCapabilityRegistry
-    ) -> String? {
-        let caps = registry.capabilities(for: bundleId)
-        guard caps.source != .unknown else { return nil }
-        if caps.axSupported == .yes { return "ax_semantic" }
-        return nil
+    /// "<major>.<minor>" — coarser than `operatingSystemVersionString` (which
+    /// carries the patch + build) so version-matrix groupings stay stable across
+    /// patch-level CI runners.
+    private static func currentMacOSVersion() -> String {
+        let v = ProcessInfo.processInfo.operatingSystemVersion
+        return "\(v.majorVersion).\(v.minorVersion)"
     }
 
-    private static func append(_ row: Row) {
+    private static func append(_ observation: CompatibilityObservation) {
         lock.lock()
         defer { lock.unlock() }
-
-        var rows: [Row] = []
-        let url = artifactURL
-        if let data = try? Data(contentsOf: url),
-           let existing = try? JSONDecoder().decode([Row].self, from: data) {
-            rows = existing
-        }
-        rows.append(row)
-
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        if let data = try? encoder.encode(rows) {
-            try? data.write(to: url, options: .atomic)
+        do {
+            try CompatibilityObservationStore.append(observation, to: artifactURL)
+        } catch {
+            XCTFail("ObservationRecorder failed to append: \(error)")
         }
     }
 }

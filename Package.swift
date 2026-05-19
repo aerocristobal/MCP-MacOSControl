@@ -10,6 +10,14 @@ let package = Package(
         .executable(
             name: "mcp-macos-control",
             targets: ["MCP-MacOSControl"]
+        ),
+        // STORY-020 — App Compatibility Catalog generator. Reads
+        // docs/compatibility-observations.json + the registry JSON and emits
+        // docs/APP-COMPATIBILITY.md. Used by CI and maintainers locally; not
+        // part of the MCP server runtime.
+        .executable(
+            name: "mcp-macos-control-catalog",
+            targets: ["MCP-MacOSControlCatalog"]
         )
     ],
     dependencies: [
@@ -44,6 +52,13 @@ let package = Package(
             name: "AXDegradedHarness",
             path: "Sources/AXDegradedHarness"
         ),
+        // STORY-020 — Catalog generator CLI. Library does the real work; this
+        // target is a thin argv parser.
+        .executableTarget(
+            name: "MCP-MacOSControlCatalog",
+            dependencies: ["MacOSControlLib"],
+            path: "Sources/MCP-MacOSControlCatalog"
+        ),
         .testTarget(
             name: "MCP-MacOSControlTests",
             dependencies: [
@@ -52,7 +67,8 @@ let package = Package(
             ],
             path: "Tests/MCP-MacOSControlTests",
             resources: [
-                .copy("Features")
+                .copy("Features"),
+                .copy("AppCompatibilityFixtures")
             ]
         ),
         // STORY-012 — End-to-End Integration Validation Suite. Separate target:

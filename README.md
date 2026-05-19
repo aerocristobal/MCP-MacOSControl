@@ -351,6 +351,7 @@ See [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md) and
 - [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md)
 - [CoreML Integration](docs/COREML_INTEGRATION.md)
 - [Product Requirements](docs/PRD-MCP-MacOSControl.md)
+- [App Compatibility Catalog](docs/APP-COMPATIBILITY.md) — evidence-based catalog regenerated from integration test observations (STORY-020)
 
 ## License
 

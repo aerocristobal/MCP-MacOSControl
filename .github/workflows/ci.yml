@@ -28,3 +28,15 @@ jobs:
 
       - name: Verify living documentation is up to date
         run: git diff --exit-code docs/LIVING-DOCUMENTATION.md
+
+      # STORY-020 smoke — proves the catalog CLI builds and runs end-to-end on
+      # every PR using the in-tree test fixtures (no integration runners needed).
+      # The ci-integration.yml workflow exercises the CLI against real
+      # observations; this one guards against shipping a broken CLI.
+      - name: Catalog generator smoke test (STORY-020)
+        run: |
+          swift run mcp-macos-control-catalog \
+            --observations Tests/MCP-MacOSControlTests/AppCompatibilityFixtures/aligned-observations.json \
+            --registry Tests/MCP-MacOSControlTests/AppCompatibilityFixtures/default-app-capabilities.json \
+            --output "${RUNNER_TEMP:-/tmp}/STORY-020-smoke.md"
+          test -s "${RUNNER_TEMP:-/tmp}/STORY-020-smoke.md"

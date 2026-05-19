@@ -1015,3 +1015,57 @@ mapped test.
 
 - `AppCapabilityRegistryTests.test_defaults_match_Round7_outline_table`
 
+
+## App Compatibility Catalog & Living Document
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-020-app-compatibility-catalog.feature`*
+
+> In order to maintain evidence-based compatibility claims
+> As a maintainer of MCP-MacOSControl
+> I want a generated catalog regenerated from integration test observations
+
+### Scenario: Catalog generator produces a Markdown document from integration observations
+
+- `CompatibilityCatalogGeneratorTests.test_generate_producesMarkdownTableWithExpectedColumns`
+- `CompatibilityCatalogGeneratorTests.test_generate_listsEveryObservedApplication`
+- `CatalogGeneratorCLITests.test_writesMarkdownToOutputPath_evenWhenAligned`
+
+### Scenario: Catalog flags discrepancies between registry expectations and observed reality
+
+- `CompatibilityCatalogGeneratorTests.test_detectsDiscrepancy_whenRegistryExpectsAxButObservedIsAppleScript`
+- `CompatibilityCatalogGeneratorTests.test_noDiscrepancy_whenObservedMatchesRegistry`
+- `CompatibilityCatalogGeneratorTests.test_summarySectionListsAllDiscrepancies`
+- `DiscrepancyDetectorTests.test_singleMismatch_inMostRecentRow_classifiesSingleRun`
+- `DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent`
+
+### Scenario: Catalog is regenerated on every successful integration run
+
+- `CatalogGeneratorCLITests.test_writesMarkdownToOutputPath_evenWhenAligned`
+- `CatalogGeneratorCLITests.test_exit_returnsZero_whenAllObservationsAlignWithRegistry`
+
+### Scenario: Catalog includes macOS version coverage matrix
+
+- `CompatibilityCatalogGeneratorTests.test_buildVersionMatrix_includesEveryObservedMacOSVersion`
+- `CompatibilityCatalogGeneratorTests.test_generate_marksUntestedVersions_inMatrix`
+
+### Scenario: Catalog provides input-source data to the registry maintainer
+
+- `CompatibilityCatalogGeneratorTests.test_appSection_includesLastObservedDateAndMacOSVersion`
+
+### Scenario: Catalog handles applications removed from integration coverage gracefully
+
+- `CompatibilityCatalogGeneratorTests.test_staleRowReport_marksRowsWithObservationsOlderThan90Days`
+- `CompatibilityCatalogGeneratorTests.test_archiveRows_movesToArchivedSectionAfter180Days`
+- `CompatibilityCatalogGeneratorTests.test_archiveRows_doesNotDeleteHistoricalObservations`
+
+### Scenario: Single-run discrepancies are warnings, not build failures
+
+- `CatalogGeneratorCLITests.test_exit_returnsZero_whenSingleRunDiscrepancyOnly`
+- `DiscrepancyDetectorTests.test_singleMismatch_inMostRecentRow_classifiesSingleRun`
+- `DiscrepancyDetectorTests.test_mismatchInterruptedByAlignedRun_classifiesSingleRun`
+
+### Scenario: Persistent discrepancies fail the build
+
+- `CatalogGeneratorCLITests.test_exit_returnsNonZero_whenPersistentDiscrepancyPresent`
+- `DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent`
+

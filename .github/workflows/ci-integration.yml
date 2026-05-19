@@ -23,7 +23,11 @@ jobs:
     timeout-minutes: 15
     env:
       CI_MACOS_INTEGRATION: "true"
-      STORY_012_OBSERVATIONS_JSON: ${{ github.workspace }}/story-012-observations.json
+      # STORY-020 — write directly to the canonical committed file so the post-
+      # test diff gate (below) can detect new observations against the
+      # repository's last-committed state. Pre-STORY-020 this pointed at an
+      # ephemeral artifact path; the diff gate replaces that workflow.
+      STORY_012_OBSERVATIONS_JSON: ${{ github.workspace }}/docs/compatibility-observations.json
     steps:
       - uses: actions/checkout@v4
 
@@ -66,4 +70,42 @@ jobs:
         with:
           name: story-012-interaction-observations
           path: ${{ env.STORY_012_OBSERVATIONS_JSON }}
+          if-no-files-found: ignore
+
+      # STORY-020 — regenerate the published catalog from the (now updated)
+      # observations file. Persistent registry-vs-reality discrepancies (≥ 3
+      # consecutive runs) fail this step via the CLI's exit code; single-run
+      # mismatches print a warning but pass. Always runs so a failed integration
+      # run still gives operators the regenerated diff to inspect.
+      - name: Regenerate APP-COMPATIBILITY.md (STORY-020)
+        if: always()
+        run: |
+          swift run mcp-macos-control-catalog \
+            --observations docs/compatibility-observations.json \
+            --registry Sources/MacOSControlLib/Router/Defaults/default-app-capabilities.json \
+            --output docs/APP-COMPATIBILITY.md
+
+      # STORY-020 — fail the job if the integration run produced observations
+      # that have not been committed, or if the regenerated catalog Markdown
+      # differs from the committed version. The maintainer's job is to commit
+      # the diff (auto-PR is deferred to a follow-on story).
+      - name: Verify catalog & observations are committed
+        if: always()
+        run: |
+          if ! git diff --exit-code -- docs/APP-COMPATIBILITY.md docs/compatibility-observations.json; then
+            echo "::error::Integration run produced uncommitted catalog changes. \
+            Run \`swift run mcp-macos-control-catalog --observations docs/compatibility-observations.json \
+            --registry Sources/MacOSControlLib/Router/Defaults/default-app-capabilities.json \
+            --output docs/APP-COMPATIBILITY.md\` locally, commit the diff, and re-push."
+            exit 1
+          fi
+
+      - name: Upload regenerated catalog (when diff gate fails)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-compatibility-regenerated
+          path: |
+            docs/APP-COMPATIBILITY.md
+            docs/compatibility-observations.json
           if-no-files-found: ignore
