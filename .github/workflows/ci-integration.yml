@@ -1,0 +1,69 @@
+name: CI Integration (STORY-012)
+
+# End-to-End Integration Validation Suite. NOT run per-PR: macOS runners are
+# ~10× Linux cost and the suite needs a logged-in GUI session + Accessibility
+# permission, which is flaky on shared per-PR runners. Unit tests catch ≥95% of
+# regressions on every PR (ci.yml); this is the safety net on merge + nightly.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 7 * * *"   # nightly 07:00 UTC
+  workflow_dispatch: {}
+
+concurrency:
+  group: ci-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  integration:
+    runs-on: macos-15
+    # §6 DoD: 15-minute hard cap. A hung wait or runaway loop must fail CI
+    # rather than block it.
+    timeout-minutes: 15
+    env:
+      CI_MACOS_INTEGRATION: "true"
+      STORY_012_OBSERVATIONS_JSON: ${{ github.workspace }}/story-012-observations.json
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Swift build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-swift-integration-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-integration-
+            ${{ runner.os }}-swift-
+
+      # Provision Accessibility for the test runner. See
+      # docs/INTEGRATION-CI-SETUP.md for the full rationale and the
+      # signed-helper path required on macOS 13+ (TCC cannot be granted by a
+      # bare `tccutil` on modern macOS — the reset gives a clean slate and the
+      # provisioned image / signed helper supplies the grant).
+      - name: Reset Accessibility TCC (clean slate)
+        run: sudo tccutil reset Accessibility || true
+
+      - name: Provision Accessibility grant
+        run: |
+          if [ -x /usr/local/bin/mcp-tcc-grant ]; then
+            sudo /usr/local/bin/mcp-tcc-grant Accessibility
+          else
+            echo "::warning::No signed TCC grant helper on this runner; \
+            permission-dependent scenarios will skip with a structured reason. \
+            See docs/INTEGRATION-CI-SETUP.md."
+          fi
+
+      - name: Build (tests)
+        run: swift build --build-tests
+
+      - name: Run integration suite
+        run: swift test --filter MCP_MacOSControlIntegrationTests
+
+      - name: Upload interaction-method observations (STORY-020 feed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: story-012-interaction-observations
+          path: ${{ env.STORY_012_OBSERVATIONS_JSON }}
+          if-no-files-found: ignore

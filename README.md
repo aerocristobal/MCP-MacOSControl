@@ -318,16 +318,37 @@ Tests/
 ```bash
 swift build           # Debug build
 swift build -c release # Release build
-swift test            # Run 178 unit tests
+swift test            # Run the unit suite (integration suite auto-skips)
 ```
 
 CI runs on every push via GitHub Actions (macOS 15, build + test).
+
+### Integration Suite (STORY-012)
+
+A separate, opt-in end-to-end suite (`MCP-MacOSControlIntegrationTests`)
+exercises full agent workflows against **real** macOS apps through the real
+`ToolRouter` — open/type/save, NSWorkspace launch flow, `smart_interact`
+routing + fallback, coordinate-tool backward compatibility, the structured-error
+contract across every registered code, and an iPhone Mirroring smoke test. It
+needs a logged-in GUI session and Accessibility permission, so it is gated
+behind `CI_MACOS_INTEGRATION` and runs on merge to `main` + nightly, not
+per-PR. Without the flag every scenario skips, so a plain `swift test` stays
+green.
+
+```bash
+# Grant Accessibility to the process running swift test first, then:
+CI_MACOS_INTEGRATION=true swift test --filter MCP_MacOSControlIntegrationTests
+```
+
+See [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
 - [Quick Start Guide](docs/QUICKSTART.md)
 - [Permissions Guide](docs/PERMISSIONS.md)
 - [Testing Checklist](docs/TESTING.md)
+- [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md)
 - [CoreML Integration](docs/COREML_INTEGRATION.md)
 - [Product Requirements](docs/PRD-MCP-MacOSControl.md)
 
