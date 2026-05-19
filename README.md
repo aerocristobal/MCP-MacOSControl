@@ -58,7 +58,7 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
-## Tools (74 total, 15 modules)
+## Tools (75 total, 16 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)
 
@@ -183,6 +183,14 @@ The documented fallback to `wait_for_ui_event` for transitions that have no `AXO
 | `wait_for_app_event` | Subscribe to an NSWorkspace application-lifecycle notification and block until it fires | event |
 
 The event-driven way to sequence "open app → app is ready → interact" workflows. Unlike `wait_for_ui_event` (AXObserver, requires an already-running AX-queryable target), this is pre-launch capable and needs no accessibility permission. Supported events: `launched`, `activated`, `terminated`, `deactivated`, `hidden`, `unhidden`. Optional `bundle_identifier` (reverse-DNS, e.g. `com.apple.TextEdit`) filters to one app; omit it to resolve on the next matching event from any application. Resolves only on the *next* transition, never the current state. Multiple concurrent calls on the same `(event, bundle_identifier)` share one underlying observer. Default timeout 30s, hard cap 300s. See the `interaction_hierarchy` MCP prompt for when to prefer it over `wait_for_ui_event`.
+
+### Interaction Router (SmartInteractModule -- 1 tool) — **recommended for AI agents**
+
+| Tool | Description | Required Params |
+|------|-------------|----------------|
+| `smart_interact` | State an intent (`click`/`type`) and a target; the router auto-selects and falls through AX semantic → AppleScript → hit-test → coordinate layers | intent |
+
+**The recommended entry point for UI interaction.** Instead of choosing between `click_element`, `run_applescript`, `element_at_position`, and `click_screen` yourself, state your *intent* and let the router pick the most reliable available layer. It consults the per-app capability registry to skip layers known to fail for the target app, and returns a `decision_log` documenting every layer attempted, skipped, or failed (with reasons), plus `interaction_method` and `confidence`. On exhaustion it returns the structured error `all_layers_failed` with retry suggestions. The router only knows the action *dispatched*, not its effect — verify after acting with `wait_for_ui_event` / `wait_for_element_state`. See the `interaction_hierarchy` MCP prompt.
 
 ### iPhone Mirroring (IPhoneMirroringModule -- 21 tools)
 

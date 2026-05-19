@@ -184,9 +184,16 @@ public protocol CapabilityRegistryReading: AnyObject {
     var lastModified: Date { get }
 }
 
+/// Query seam consumed by the STORY-010 `InteractionRouter` so it can be tested
+/// against a stub without loading the bundled defaults. `AppCapabilityRegistry`
+/// already implements `capabilities(for:)`; the conformance is declarative only.
+public protocol CapabilityQuerying: AnyObject {
+    func capabilities(for bundleId: String) -> CapabilitiesResult
+}
+
 // MARK: - Registry
 
-public final class AppCapabilityRegistry: @unchecked Sendable, CapabilityRegistryReading {
+public final class AppCapabilityRegistry: @unchecked Sendable, CapabilityRegistryReading, CapabilityQuerying {
 
     public static let overrideErrorCode = "invalid_capability_registry_override"
 

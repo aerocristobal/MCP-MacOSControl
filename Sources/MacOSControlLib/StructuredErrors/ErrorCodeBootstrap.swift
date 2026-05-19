@@ -345,5 +345,31 @@ public enum ErrorCodeBootstrap {
                 "line": "number"
             ]
         )
+
+        // MARK: - STORY-010 — Agent Interaction Hierarchy Router (smart_interact)
+
+        try registry.register(
+            code: "all_layers_failed",
+            description: "smart_interact exhausted every eligible interaction layer (AX semantic, AppleScript, hit-test, coordinate) without a success. The error details carry the full ordered decision_log of attempts and skip/fail reasons plus retry_suggestions.",
+            detailsSchema: [
+                "decision_log": "array",
+                "retry_suggestions": "array"
+            ]
+        )
+        try registry.register(
+            code: "unsupported_intent",
+            description: "The intent passed to smart_interact is not in the supported set. v1 supports click and type. The error details echo the rejected intent and the full supported list.",
+            detailsSchema: [
+                "intent": "string",
+                "supported": "array"
+            ]
+        )
+        try registry.register(
+            code: "missing_required_field",
+            description: "A required smart_interact input field was absent (intent is always required; value is required when intent=type). The error details name the missing field.",
+            detailsSchema: [
+                "field": "string"
+            ]
+        )
     }
 }

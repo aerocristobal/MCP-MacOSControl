@@ -467,6 +467,66 @@ mapped test.
 - `WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField`
 
 
+## Agent Interaction Hierarchy Router
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-010-agent-interaction-hierarchy-router.feature`*
+
+> In order to use the most reliable interaction method automatically
+> As an AI agent
+> I want smart_interact to route through AX → AppleScript → hit-test → coordinate layers in order
+
+### Scenario: Route to AX semantic layer when element is accessible
+
+- `InteractionRouterTests.test_route_returnsFirstLayerSuccess`
+- `AXSemanticLayerTests.test_attempt_click_dispatchesPressOnResolvedElement`
+
+### Scenario: Fall back to AppleScript when AX layer fails
+
+- `InteractionRouterTests.test_route_fallsThroughToNextLayer_onSkipped`
+- `InteractionRouterTests.test_route_fallsThroughToNextLayer_onFailed`
+- `AppleScriptLayerTests.test_attempt_click_dispatchesActivateScript`
+- `AXSemanticLayerTests.test_attempt_returnsFailed_whenElementNotFound`
+
+### Scenario: Fall back to coordinate click as last resort
+
+- `InteractionRouterTests.test_route_typeIntent_fallsBackToKeyboardSimulation`
+- `CoordinateLayerTests.test_attempt_click_dispatchesToMouseClick`
+- `SmartInteractToolTests.test_execute_addsCoordinateReliabilityWarning`
+
+### Scenario: Record interaction layer and confidence in every response
+
+- `InteractionRouterTests.test_route_returnsFirstLayerSuccess`
+- `SmartInteractToolTests.test_execute_includesDecisionLogInResponse`
+
+### Scenario: Fall back to visual hit-test layer when AX-by-name fails but visual coordinates are provided
+
+- `InteractionRouterTests.test_route_usesHitTestLayer_whenAXByNameFailsAndCoordinatesProvided`
+- `HitTestLayerTests.test_attempt_click_resolvesElementAtPositionThenPresses`
+
+### Scenario: Type intent uses its own three-layer hierarchy
+
+- `InteractionRouterTests.test_route_typeIntent_usesTypeSpecificHierarchy`
+- `InteractionRouterTests.test_route_typeIntent_fallsBackToKeyboardSimulation`
+- `AXSemanticLayerTests.test_attempt_type_dispatchesAXSetValueActionNotPress`
+- `CoordinateLayerTests.test_attempt_type_focusesThenTypes`
+
+### Scenario: All layers fail — return structured all_layers_failed error
+
+- `InteractionRouterTests.test_route_returnsAllLayersFailedError_whenEveryLayerFails`
+- `SmartInteractToolTests.test_execute_propagatesAllLayersFailedError`
+
+### Scenario: Capability registry skips layers known to fail for the target app
+
+- `InteractionRouterTests.test_route_skipsLayer_whenRegistryDisallows`
+
+### Scenario: Decision audit log is always present, ordered, and structured
+
+- `InteractionRouterTests.test_decisionLog_isAlwaysNonEmpty_evenOnFirstLayerSuccess`
+- `InteractionRouterTests.test_decisionLog_entriesAreOrderedByAttemptTime`
+- `InteractionRouterTests.test_decisionLog_everyEntryHasRequiredStructuredFields`
+- `SmartInteractToolTests.test_execute_includesDecisionLogInResponse`
+
+
 ## MCP Tool Annotations and Descriptions
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*

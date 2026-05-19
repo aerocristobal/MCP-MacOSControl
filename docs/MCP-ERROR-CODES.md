@@ -27,6 +27,7 @@ different semantics — the server refuses to start on collision.
 | `accessibility_permission_required` | Accessibility permission required. Grant in System Settings > Privacy & Security > Accessibility. | `recovery_hint` (string), `system_settings_uri` (string) |
 | `action_failed` | An AX action dispatched by click_element or perform_ax_action reported a generic failure not captured by ax_action_failed. | — |
 | `action_not_supported` | perform_ax_action discovery (no action supplied) or dispatch determined the action is not in the element's supported_actions list. | `action` (string), `reason` (string), `supported_actions` (array) |
+| `all_layers_failed` | smart_interact exhausted every eligible interaction layer (AX semantic, AppleScript, hit-test, coordinate) without a success. The error details carry the full ordered decision_log of attempts and skip/fail reasons plus retry_suggestions. | `decision_log` (array), `retry_suggestions` (array) |
 | `applescript_error` | AppleScript compilation or execution returned an error. | — |
 | `application_not_found` | Tool could not locate the requested application by bundle id or name. | — |
 | `automation_permission_required` | Cross-application Automation (Apple Events) permission required for the named target application. | `recovery_hint` (string), `target_application` (string) |
@@ -56,6 +57,7 @@ different semantics — the server refuses to start on collision.
 | `mirroring_not_available` | iPhone Mirroring is not available on this Mac or for this Apple ID. | — |
 | `mirroring_not_running` | iPhone Mirroring is not running. Launch iphone_launch first. | — |
 | `missing_required_argument` | A prompts/get request omitted an argument declared as required by the prompt definition, or the prompt body referenced a placeholder for which no argument was supplied. | `argument` (string) |
+| `missing_required_field` | A required smart_interact input field was absent (intent is always required; value is required when intent=type). The error details name the missing field. | `field` (string) |
 | `no_frontmost_application` | No application currently has frontmost status (e.g., system is in Mission Control or the login screen). | — |
 | `permission_denied` | A required system permission was denied. Generic permission failure; see accessibility_permission_required or automation_permission_required for kind-specific variants. | — |
 | `predicate_compile_failed` | find_elements predicate compilation failed before traversal began (catch-all sibling of predicate_too_broad / invalid_regex). | — |
@@ -70,6 +72,7 @@ different semantics — the server refuses to start on collision.
 | `unknown_display_index` | element_at_position was given a display_index that does not map to an active display. | — |
 | `unknown_tool` | No tool matched the requested name in any registered module. | — |
 | `unsupported_app_event` | The event name passed to wait_for_app_event is not in the closed supported set. The error details echo the rejected name and the full supported list. | `event` (string), `supported_events` (array) |
+| `unsupported_intent` | The intent passed to smart_interact is not in the supported set. v1 supports click and type. The error details echo the rejected intent and the full supported list. | `intent` (string), `supported` (array) |
 | `unsupported_notification` | The notification name passed to wait_for_ui_event is not in the closed supported set. The error details echo the rejected name and the full supported list. | `notification` (string), `supported_notifications` (array) |
 | `wait_timeout` | A wait_for_text / wait_for_ui_event / wait_for_app_event predicate did not become true before the timeout elapsed. STORY-008 wait_for_ui_event surfaces the AX notification name; STORY-018 wait_for_app_event surfaces the app event name and bundle_id filter; both include elapsed time. | `bundle_id_filter` (string), `elapsed_seconds` (number), `event` (string), `notification` (string) |
 | `window_not_found` | Requested window or application could not be located. | — |

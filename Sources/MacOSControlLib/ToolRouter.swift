@@ -18,6 +18,7 @@ public enum ToolRouter {
         WaitForUIEventModule.self,
         WaitForElementStateModule.self,
         WaitForAppEventModule.self,
+        SmartInteractModule.self,
     ]
 
     public static var allTools: [Tool] {
