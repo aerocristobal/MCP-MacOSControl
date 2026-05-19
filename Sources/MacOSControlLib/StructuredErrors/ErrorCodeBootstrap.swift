@@ -334,5 +334,16 @@ public enum ErrorCodeBootstrap {
                 "bundle_identifier_pattern": "string"
             ]
         )
+
+        // MARK: - STORY-019 — Per-Application Capability Registry
+
+        try registry.register(
+            code: "invalid_capability_registry_override",
+            description: "The user app-capabilities override file could not be parsed. Malformed entries are skipped and the server starts using only the shipped defaults. The error details identify the offending file path and, when available, the line number.",
+            detailsSchema: [
+                "file_path": "string",
+                "line": "number"
+            ]
+        )
     }
 }

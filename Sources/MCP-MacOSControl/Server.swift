@@ -12,6 +12,21 @@ enum MacOSControlServer {
         let registeredCount = MacOSControlLib.ErrorCodeRegistry.shared.allRegistrations().count
         MacOSControlLib.MCPLogger.info("Error responses now structured JSON; legacy text format removed (STORY-016). \(registeredCount) codes registered.")
 
+        // STORY-019: load the per-app capability registry. Bundled defaults are
+        // required infrastructure — a missing/malformed default file is fatal
+        // (same posture as the prompt registry below). A malformed *user
+        // override* is non-fatal: load() logs a structured error and continues
+        // with defaults only.
+        let capabilityRegistry = AppCapabilityRegistry.standardRegistry()
+        do {
+            try capabilityRegistry.load()
+            MacOSControlLib.MCPLogger.info("Per-app capability registry loaded: \(capabilityRegistry.allEntries.count) entries (STORY-019).")
+        } catch {
+            fputs("Failed to load default app-capabilities registry: \(error)\n", stderr)
+            exit(1)
+        }
+        let capabilityResource = CapabilityRegistryResource(registry: capabilityRegistry)
+
         let server = Server(
             name: "mcp-macos-control",
             version: "1.0.0",
@@ -163,6 +178,8 @@ enum MacOSControlServer {
                     payload = try appResource.read()
                 case ResourceURIs.activeWindowTree:
                     payload = try treeResource.read(maxDepth: parsed.maxDepth())
+                case ResourceURIs.capabilityRegistryContents:
+                    payload = capabilityResource.read()
                 default:
                     throw MacOSControlLib.MCPError.windowNotFound("Unknown resource URI: \(params.uri)")
                 }

@@ -45,6 +45,7 @@ different semantics — the server refuses to start on collision.
 | `input_failed` | Synthesizing a keyboard or mouse input event failed. | — |
 | `internal_error` | An unexpected Swift error reached the MCP response boundary. The originating type is reported via swift_error_type; file paths are scrubbed. | `swift_error_type` (string) |
 | `invalid_bundle_identifier` | The bundle_identifier passed to wait_for_app_event is not a valid Apple reverse-DNS bundle identifier. The error details echo the rejected value and the expected pattern. | `bundle_identifier` (string), `bundle_identifier_pattern` (string) |
+| `invalid_capability_registry_override` | The user app-capabilities override file could not be parsed. Malformed entries are skipped and the server starts using only the shipped defaults. The error details identify the offending file path and, when available, the line number. | `file_path` (string), `line` (number) |
 | `invalid_condition_expression` | The condition passed to wait_for_element_state could not be parsed. The error details echo the rejected expression and the closed set of supported fields and operators. | `expression` (string), `supported_fields` (array), `supported_operators` (array) |
 | `invalid_coordinates` | Coordinates failed validation (e.g., NaN, infinity, or otherwise malformed). | — |
 | `invalid_input` | Tool input failed validation (missing required field, wrong type, out-of-range, etc.). | — |

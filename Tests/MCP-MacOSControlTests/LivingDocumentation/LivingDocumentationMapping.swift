@@ -693,5 +693,39 @@ enum LivingDocumentationMapping {
             "WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum",
             "WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent",
         ],
+
+        // MARK: STORY-019 — Per-Application Capability Registry
+
+        "Registry loads default entries at server startup": [
+            "AppCapabilityRegistryTests.test_loadDefaults_returnsAtLeast20Entries",
+            "AppCapabilityRegistryTests.test_loadDefaults_completesWithin200ms",
+            "AppCapabilityRegistryTests.test_loadDefaults_recordsBooleanFlagsPerEntry",
+            "AppCapabilityRegistryTests.test_defaults_shippedFile_hasAtLeast20Entries",
+        ],
+        "Lookup returns layer capabilities for a known bundle identifier": [
+            "AppCapabilityRegistryTests.test_capabilities_returnsRegisteredEntry_forKnownBundleId",
+        ],
+        "Lookup returns \"unknown\" for unregistered bundle identifiers": [
+            "AppCapabilityRegistryTests.test_capabilities_returnsUnknown_forUnregisteredBundleId",
+        ],
+        "User overrides shadow default entries": [
+            "AppCapabilityRegistryTests.test_applyOverrides_userOverrideShadowsDefault",
+            "AppCapabilityRegistryTests.test_applyOverrides_originalDefaultStillAccessibleViaDefaultEntry",
+        ],
+        "Reject malformed override file with a clear error": [
+            "AppCapabilityRegistryTests.test_load_skipsMalformedOverrideEntries_andLogsStructuredError",
+        ],
+        "Registry exposes its contents via an MCP Resource": [
+            "CapabilityRegistryResourceTests.test_resourceCatalog_includesCapabilityRegistry",
+            "CapabilityRegistryResourceTests.test_read_returnsCompleteJsonDocument",
+            "MCPResourceCatalogTests.test_allResources_containsExpectedURIs",
+        ],
+        "Capability fields are extensible without breaking existing consumers": [
+            "AppCapabilityRegistryTests.test_decode_acceptsUnknownFutureFields_withoutError",
+            "CapabilityRegistryResourceTests.test_read_reflectsSchemaVersionAndOverrideSource",
+        ],
+        "Known macOS apps have sensible default capabilities": [
+            "AppCapabilityRegistryTests.test_defaults_match_Round7_outline_table",
+        ],
     ]
 }

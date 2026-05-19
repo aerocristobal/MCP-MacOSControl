@@ -1,0 +1,33 @@
+{
+  "_doc": "STORY-019 Per-Application Capability Registry. Schema v1. Top-level: { schema_version: int, entries: [Entry] }. Entry: { bundle_id: string (Apple reverse-DNS), ax_supported: bool, applescript_supported: bool, hit_test_supported: bool }. Unknown/extra keys are ignored by the decoder (forward-compatible). Native Cocoa apps have good AX trees and AppleScript dictionaries; Electron/web-based apps have technically-present-but-unreliable AX and rarely a useful AppleScript dictionary, but coordinate (hit-test) clicks still work. STORY-020 owns keeping this list current against observed reality. User overrides: ~/Library/Application Support/mcp-macos-control/app-overrides.json (redirect via MCP_MACOS_CONTROL_OVERRIDES_PATH).",
+  "schema_version": 1,
+  "entries": [
+    { "bundle_id": "com.apple.TextEdit", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.finder", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.Safari", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.ScriptEditor2", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.mail", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.iCal", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.Notes", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.reminders", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.MobileSMS", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.FaceTime", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.apple.Photos", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.apple.iWork.Pages", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.iWork.Keynote", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.iWork.Numbers", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.Preview", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.Terminal", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.ActivityMonitor", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.apple.systempreferences", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.apple.calculator", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.apple.AppStore", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.microsoft.VSCode", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.tinyspeck.slackmacgap", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.spotify.client", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.google.Chrome", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "org.mozilla.firefox", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.hnc.Discord", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "us.zoom.xos", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true }
+  ]
+}

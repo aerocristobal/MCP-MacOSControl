@@ -25,6 +25,10 @@ public struct ParsedResourceURI: Equatable {
 public enum ResourceURIs {
     public static let activeApplication = "macos://ui/active-application"
     public static let activeWindowTree = "macos://ui/active-window-tree"
+    /// STORY-019 — per-app capability registry contents (read-only, static
+    /// post-load). Distinct `mcp://` scheme by design; the hand-rolled
+    /// `ResourceURIParser` is scheme-agnostic.
+    public static let capabilityRegistryContents = "mcp://capability-registry/contents"
 }
 
 public enum ResourceURIParser {

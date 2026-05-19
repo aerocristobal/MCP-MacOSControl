@@ -23,7 +23,8 @@ let package = Package(
             ],
             path: "Sources/MacOSControlLib",
             resources: [
-                .copy("Prompts/Definitions")
+                .copy("Prompts/Definitions"),
+                .copy("Router/Defaults")
             ]
         ),
         .executableTarget(

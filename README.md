@@ -220,6 +220,43 @@ Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates us
 |----------|---------|-------------|
 | `MCP_MACOS_CONTROL_LOG_LEVEL` | `warn` | Log level: error, warn, info, debug, trace |
 | `MCP_MACOS_CONTROL_MAX_INPUT_RATE` | `10` | Maximum input events per second |
+| `MCP_MACOS_CONTROL_OVERRIDES_PATH` | _(see below)_ | Path to the per-app capability override file |
+
+## Per-App Capability Overrides
+
+The server ships a registry of per-application interaction-layer capabilities
+(`ax_supported`, `applescript_supported`, `hit_test_supported`) so smart routing
+can skip layers known to fail for a given app (e.g. Electron apps with unusable
+accessibility trees). The shipped defaults live in the package bundle
+(`Sources/MacOSControlLib/Router/Defaults/default-app-capabilities.json`, ~27
+well-known apps) and are exposed read-only via the MCP Resource
+`mcp://capability-registry/contents` (JSON: `schema_version` + `entries[]`, each
+entry carrying a `source` of `defaults` or `user_override`).
+
+Power users can shadow individual entries without rebuilding. Create:
+
+```
+~/Library/Application Support/mcp-macos-control/app-overrides.json
+```
+
+(or point `MCP_MACOS_CONTROL_OVERRIDES_PATH` at any path) using the same schema:
+
+```json
+{
+  "schema_version": 1,
+  "entries": [
+    { "bundle_id": "com.example.app", "ax_supported": true,
+      "applescript_supported": false, "hit_test_supported": true }
+  ]
+}
+```
+
+Override loading is **fail-soft**: a malformed override file is skipped (the
+server logs a structured `invalid_capability_registry_override` error and starts
+normally using the shipped defaults). Unknown JSON fields are ignored, so the
+schema is forward-compatible. Override changes take effect on server restart
+(no hot-reload). The bundled default file is kept current by the STORY-020
+compatibility-catalog work.
 
 ## Architecture
 
