@@ -8,7 +8,11 @@ final class MCPResourceCatalogTests: XCTestCase {
 
     func test_allResources_containsExpectedURIs() {
         let uris = Set(MCPResourceCatalog.allResources.map { $0.uri })
-        XCTAssertEqual(uris, [ResourceURIs.activeApplication, ResourceURIs.activeWindowTree])
+        XCTAssertEqual(uris, [
+            ResourceURIs.activeApplication,
+            ResourceURIs.activeWindowTree,
+            ResourceURIs.capabilityRegistryContents
+        ])
     }
 
     func test_activeApplication_resourceHasJsonMime() {

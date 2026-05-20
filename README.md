@@ -58,7 +58,7 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
-## Tools (74 total, 15 modules)
+## Tools (75 total, 16 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)
 
@@ -184,6 +184,14 @@ The documented fallback to `wait_for_ui_event` for transitions that have no `AXO
 
 The event-driven way to sequence "open app → app is ready → interact" workflows. Unlike `wait_for_ui_event` (AXObserver, requires an already-running AX-queryable target), this is pre-launch capable and needs no accessibility permission. Supported events: `launched`, `activated`, `terminated`, `deactivated`, `hidden`, `unhidden`. Optional `bundle_identifier` (reverse-DNS, e.g. `com.apple.TextEdit`) filters to one app; omit it to resolve on the next matching event from any application. Resolves only on the *next* transition, never the current state. Multiple concurrent calls on the same `(event, bundle_identifier)` share one underlying observer. Default timeout 30s, hard cap 300s. See the `interaction_hierarchy` MCP prompt for when to prefer it over `wait_for_ui_event`.
 
+### Interaction Router (SmartInteractModule -- 1 tool) — **recommended for AI agents**
+
+| Tool | Description | Required Params |
+|------|-------------|----------------|
+| `smart_interact` | State an intent (`click`/`type`) and a target; the router auto-selects and falls through AX semantic → AppleScript → hit-test → coordinate layers | intent |
+
+**The recommended entry point for UI interaction.** Instead of choosing between `click_element`, `run_applescript`, `element_at_position`, and `click_screen` yourself, state your *intent* and let the router pick the most reliable available layer. It consults the per-app capability registry to skip layers known to fail for the target app, and returns a `decision_log` documenting every layer attempted, skipped, or failed (with reasons), plus `interaction_method` and `confidence`. On exhaustion it returns the structured error `all_layers_failed` with retry suggestions. The router only knows the action *dispatched*, not its effect — verify after acting with `wait_for_ui_event` / `wait_for_element_state`. See the `interaction_hierarchy` MCP prompt.
+
 ### iPhone Mirroring (IPhoneMirroringModule -- 21 tools)
 
 Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates use normalized 0.0-1.0 range relative to the iPhone screen content area.
@@ -220,6 +228,43 @@ Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates us
 |----------|---------|-------------|
 | `MCP_MACOS_CONTROL_LOG_LEVEL` | `warn` | Log level: error, warn, info, debug, trace |
 | `MCP_MACOS_CONTROL_MAX_INPUT_RATE` | `10` | Maximum input events per second |
+| `MCP_MACOS_CONTROL_OVERRIDES_PATH` | _(see below)_ | Path to the per-app capability override file |
+
+## Per-App Capability Overrides
+
+The server ships a registry of per-application interaction-layer capabilities
+(`ax_supported`, `applescript_supported`, `hit_test_supported`) so smart routing
+can skip layers known to fail for a given app (e.g. Electron apps with unusable
+accessibility trees). The shipped defaults live in the package bundle
+(`Sources/MacOSControlLib/Router/Defaults/default-app-capabilities.json`, ~27
+well-known apps) and are exposed read-only via the MCP Resource
+`mcp://capability-registry/contents` (JSON: `schema_version` + `entries[]`, each
+entry carrying a `source` of `defaults` or `user_override`).
+
+Power users can shadow individual entries without rebuilding. Create:
+
+```
+~/Library/Application Support/mcp-macos-control/app-overrides.json
+```
+
+(or point `MCP_MACOS_CONTROL_OVERRIDES_PATH` at any path) using the same schema:
+
+```json
+{
+  "schema_version": 1,
+  "entries": [
+    { "bundle_id": "com.example.app", "ax_supported": true,
+      "applescript_supported": false, "hit_test_supported": true }
+  ]
+}
+```
+
+Override loading is **fail-soft**: a malformed override file is skipped (the
+server logs a structured `invalid_capability_registry_override` error and starts
+normally using the shipped defaults). Unknown JSON fields are ignored, so the
+schema is forward-compatible. Override changes take effect on server restart
+(no hot-reload). The bundled default file is kept current by the STORY-020
+compatibility-catalog work.
 
 ## Architecture
 
@@ -273,18 +318,40 @@ Tests/
 ```bash
 swift build           # Debug build
 swift build -c release # Release build
-swift test            # Run 178 unit tests
+swift test            # Run the unit suite (integration suite auto-skips)
 ```
 
 CI runs on every push via GitHub Actions (macOS 15, build + test).
+
+### Integration Suite (STORY-012)
+
+A separate, opt-in end-to-end suite (`MCP-MacOSControlIntegrationTests`)
+exercises full agent workflows against **real** macOS apps through the real
+`ToolRouter` — open/type/save, NSWorkspace launch flow, `smart_interact`
+routing + fallback, coordinate-tool backward compatibility, the structured-error
+contract across every registered code, and an iPhone Mirroring smoke test. It
+needs a logged-in GUI session and Accessibility permission, so it is gated
+behind `CI_MACOS_INTEGRATION` and runs on merge to `main` + nightly, not
+per-PR. Without the flag every scenario skips, so a plain `swift test` stays
+green.
+
+```bash
+# Grant Accessibility to the process running swift test first, then:
+CI_MACOS_INTEGRATION=true swift test --filter MCP_MacOSControlIntegrationTests
+```
+
+See [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md) and
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Documentation
 
 - [Quick Start Guide](docs/QUICKSTART.md)
 - [Permissions Guide](docs/PERMISSIONS.md)
 - [Testing Checklist](docs/TESTING.md)
+- [Integration CI Setup](docs/INTEGRATION-CI-SETUP.md)
 - [CoreML Integration](docs/COREML_INTEGRATION.md)
 - [Product Requirements](docs/PRD-MCP-MacOSControl.md)
+- [App Compatibility Catalog](docs/APP-COMPATIBILITY.md) — evidence-based catalog regenerated from integration test observations (STORY-020)
 
 ## License
 

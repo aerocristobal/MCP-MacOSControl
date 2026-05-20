@@ -467,6 +467,66 @@ mapped test.
 - `WaitForElementStateModuleTests.test_tool_description_namesEverySupportedField`
 
 
+## Agent Interaction Hierarchy Router
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-010-agent-interaction-hierarchy-router.feature`*
+
+> In order to use the most reliable interaction method automatically
+> As an AI agent
+> I want smart_interact to route through AX → AppleScript → hit-test → coordinate layers in order
+
+### Scenario: Route to AX semantic layer when element is accessible
+
+- `InteractionRouterTests.test_route_returnsFirstLayerSuccess`
+- `AXSemanticLayerTests.test_attempt_click_dispatchesPressOnResolvedElement`
+
+### Scenario: Fall back to AppleScript when AX layer fails
+
+- `InteractionRouterTests.test_route_fallsThroughToNextLayer_onSkipped`
+- `InteractionRouterTests.test_route_fallsThroughToNextLayer_onFailed`
+- `AppleScriptLayerTests.test_attempt_click_dispatchesActivateScript`
+- `AXSemanticLayerTests.test_attempt_returnsFailed_whenElementNotFound`
+
+### Scenario: Fall back to coordinate click as last resort
+
+- `InteractionRouterTests.test_route_typeIntent_fallsBackToKeyboardSimulation`
+- `CoordinateLayerTests.test_attempt_click_dispatchesToMouseClick`
+- `SmartInteractToolTests.test_execute_addsCoordinateReliabilityWarning`
+
+### Scenario: Record interaction layer and confidence in every response
+
+- `InteractionRouterTests.test_route_returnsFirstLayerSuccess`
+- `SmartInteractToolTests.test_execute_includesDecisionLogInResponse`
+
+### Scenario: Fall back to visual hit-test layer when AX-by-name fails but visual coordinates are provided
+
+- `InteractionRouterTests.test_route_usesHitTestLayer_whenAXByNameFailsAndCoordinatesProvided`
+- `HitTestLayerTests.test_attempt_click_resolvesElementAtPositionThenPresses`
+
+### Scenario: Type intent uses its own three-layer hierarchy
+
+- `InteractionRouterTests.test_route_typeIntent_usesTypeSpecificHierarchy`
+- `InteractionRouterTests.test_route_typeIntent_fallsBackToKeyboardSimulation`
+- `AXSemanticLayerTests.test_attempt_type_dispatchesAXSetValueActionNotPress`
+- `CoordinateLayerTests.test_attempt_type_focusesThenTypes`
+
+### Scenario: All layers fail — return structured all_layers_failed error
+
+- `InteractionRouterTests.test_route_returnsAllLayersFailedError_whenEveryLayerFails`
+- `SmartInteractToolTests.test_execute_propagatesAllLayersFailedError`
+
+### Scenario: Capability registry skips layers known to fail for the target app
+
+- `InteractionRouterTests.test_route_skipsLayer_whenRegistryDisallows`
+
+### Scenario: Decision audit log is always present, ordered, and structured
+
+- `InteractionRouterTests.test_decisionLog_isAlwaysNonEmpty_evenOnFirstLayerSuccess`
+- `InteractionRouterTests.test_decisionLog_entriesAreOrderedByAttemptTime`
+- `InteractionRouterTests.test_decisionLog_everyEntryHasRequiredStructuredFields`
+- `SmartInteractToolTests.test_execute_includesDecisionLogInResponse`
+
+
 ## MCP Tool Annotations and Descriptions
 
 *Source: `Tests/MCP-MacOSControlTests/Features/story-011-mcp-tool-annotations.feature`*
@@ -906,4 +966,106 @@ mapped test.
 - `NSWorkspaceEventBridgeTests.test_wait_dispatchesEachSupportedEventVariant`
 - `WaitForAppEventModuleTests.test_tool_inputSchema_constrainsEventToSupportedEnum`
 - `WaitForAppEventModuleTests.test_tool_description_namesEverySupportedEvent`
+
+
+## Per-Application Capability Registry
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-019-per-app-capability-registry.feature`*
+
+> In order to make smart routing decisions data-driven
+> As the smart_interact router (and operators inspecting routing decisions)
+> I want a registry of per-app layer capabilities loaded at server startup
+
+### Scenario: Registry loads default entries at server startup
+
+- `AppCapabilityRegistryTests.test_loadDefaults_returnsAtLeast20Entries`
+- `AppCapabilityRegistryTests.test_loadDefaults_completesWithin200ms`
+- `AppCapabilityRegistryTests.test_loadDefaults_recordsBooleanFlagsPerEntry`
+- `AppCapabilityRegistryTests.test_defaults_shippedFile_hasAtLeast20Entries`
+
+### Scenario: Lookup returns layer capabilities for a known bundle identifier
+
+- `AppCapabilityRegistryTests.test_capabilities_returnsRegisteredEntry_forKnownBundleId`
+
+### Scenario: Lookup returns "unknown" for unregistered bundle identifiers
+
+- `AppCapabilityRegistryTests.test_capabilities_returnsUnknown_forUnregisteredBundleId`
+
+### Scenario: User overrides shadow default entries
+
+- `AppCapabilityRegistryTests.test_applyOverrides_userOverrideShadowsDefault`
+- `AppCapabilityRegistryTests.test_applyOverrides_originalDefaultStillAccessibleViaDefaultEntry`
+
+### Scenario: Reject malformed override file with a clear error
+
+- `AppCapabilityRegistryTests.test_load_skipsMalformedOverrideEntries_andLogsStructuredError`
+
+### Scenario: Registry exposes its contents via an MCP Resource
+
+- `CapabilityRegistryResourceTests.test_resourceCatalog_includesCapabilityRegistry`
+- `CapabilityRegistryResourceTests.test_read_returnsCompleteJsonDocument`
+- `MCPResourceCatalogTests.test_allResources_containsExpectedURIs`
+
+### Scenario: Capability fields are extensible without breaking existing consumers
+
+- `AppCapabilityRegistryTests.test_decode_acceptsUnknownFutureFields_withoutError`
+- `CapabilityRegistryResourceTests.test_read_reflectsSchemaVersionAndOverrideSource`
+
+### Scenario Outline: Known macOS apps have sensible default capabilities
+
+- `AppCapabilityRegistryTests.test_defaults_match_Round7_outline_table`
+
+
+## App Compatibility Catalog & Living Document
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-020-app-compatibility-catalog.feature`*
+
+> In order to maintain evidence-based compatibility claims
+> As a maintainer of MCP-MacOSControl
+> I want a generated catalog regenerated from integration test observations
+
+### Scenario: Catalog generator produces a Markdown document from integration observations
+
+- `CompatibilityCatalogGeneratorTests.test_generate_producesMarkdownTableWithExpectedColumns`
+- `CompatibilityCatalogGeneratorTests.test_generate_listsEveryObservedApplication`
+- `CatalogGeneratorCLITests.test_writesMarkdownToOutputPath_evenWhenAligned`
+
+### Scenario: Catalog flags discrepancies between registry expectations and observed reality
+
+- `CompatibilityCatalogGeneratorTests.test_detectsDiscrepancy_whenRegistryExpectsAxButObservedIsAppleScript`
+- `CompatibilityCatalogGeneratorTests.test_noDiscrepancy_whenObservedMatchesRegistry`
+- `CompatibilityCatalogGeneratorTests.test_summarySectionListsAllDiscrepancies`
+- `DiscrepancyDetectorTests.test_singleMismatch_inMostRecentRow_classifiesSingleRun`
+- `DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent`
+
+### Scenario: Catalog is regenerated on every successful integration run
+
+- `CatalogGeneratorCLITests.test_writesMarkdownToOutputPath_evenWhenAligned`
+- `CatalogGeneratorCLITests.test_exit_returnsZero_whenAllObservationsAlignWithRegistry`
+
+### Scenario: Catalog includes macOS version coverage matrix
+
+- `CompatibilityCatalogGeneratorTests.test_buildVersionMatrix_includesEveryObservedMacOSVersion`
+- `CompatibilityCatalogGeneratorTests.test_generate_marksUntestedVersions_inMatrix`
+
+### Scenario: Catalog provides input-source data to the registry maintainer
+
+- `CompatibilityCatalogGeneratorTests.test_appSection_includesLastObservedDateAndMacOSVersion`
+
+### Scenario: Catalog handles applications removed from integration coverage gracefully
+
+- `CompatibilityCatalogGeneratorTests.test_staleRowReport_marksRowsWithObservationsOlderThan90Days`
+- `CompatibilityCatalogGeneratorTests.test_archiveRows_movesToArchivedSectionAfter180Days`
+- `CompatibilityCatalogGeneratorTests.test_archiveRows_doesNotDeleteHistoricalObservations`
+
+### Scenario: Single-run discrepancies are warnings, not build failures
+
+- `CatalogGeneratorCLITests.test_exit_returnsZero_whenSingleRunDiscrepancyOnly`
+- `DiscrepancyDetectorTests.test_singleMismatch_inMostRecentRow_classifiesSingleRun`
+- `DiscrepancyDetectorTests.test_mismatchInterruptedByAlignedRun_classifiesSingleRun`
+
+### Scenario: Persistent discrepancies fail the build
+
+- `CatalogGeneratorCLITests.test_exit_returnsNonZero_whenPersistentDiscrepancyPresent`
+- `DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent`
 

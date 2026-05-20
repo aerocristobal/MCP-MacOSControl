@@ -1,0 +1,9 @@
+{
+  "_doc": "Minimal fixture registry for STORY-020 catalog generator tests. Decoupled from the shipped registry so registry data tweaks don't disturb generator tests.",
+  "schema_version": 1,
+  "entries": [
+    { "bundle_id": "com.apple.TextEdit", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true },
+    { "bundle_id": "com.apple.calculator", "ax_supported": true, "applescript_supported": false, "hit_test_supported": true },
+    { "bundle_id": "com.example.legacyapp", "ax_supported": true, "applescript_supported": true, "hit_test_supported": true }
+  ]
+}

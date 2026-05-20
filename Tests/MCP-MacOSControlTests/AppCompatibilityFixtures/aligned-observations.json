@@ -1,0 +1,26 @@
+[
+  {
+    "bundle_identifier": "com.apple.TextEdit",
+    "interaction_method": "ax_semantic",
+    "macOS_version": "14.5",
+    "timestamp": "2026-05-15T10:00:00Z",
+    "scenario_name": "Validate interaction method selection across app types",
+    "tool": "smart_interact"
+  },
+  {
+    "bundle_identifier": "com.apple.TextEdit",
+    "interaction_method": "ax_semantic",
+    "macOS_version": "14.5",
+    "timestamp": "2026-05-16T10:00:00Z",
+    "scenario_name": "Validate interaction method selection across app types",
+    "tool": "smart_interact"
+  },
+  {
+    "bundle_identifier": "com.apple.calculator",
+    "interaction_method": "ax_semantic",
+    "macOS_version": "14.5",
+    "timestamp": "2026-05-16T10:05:00Z",
+    "scenario_name": "NSWorkspace launch flow",
+    "tool": "smart_interact"
+  }
+]

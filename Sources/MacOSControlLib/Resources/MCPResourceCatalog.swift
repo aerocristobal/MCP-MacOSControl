@@ -34,6 +34,20 @@ public enum MCPResourceCatalog {
                 has not been granted Accessibility permission in System Settings.
                 """,
                 mimeType: "application/json"
+            ),
+            Resource(
+                name: "capability-registry",
+                uri: ResourceURIs.capabilityRegistryContents,
+                description: """
+                STORY-019 per-application interaction-layer capability registry. Returns a JSON \
+                document { schema_version, entries[] } where each entry records bundle_id and \
+                boolean ax_supported / applescript_supported / hit_test_supported flags plus a \
+                source field ("defaults" or "user_override"). Operators can read this to see why \
+                smart routing skipped a layer for a given app. Static after server startup; user \
+                overrides live in ~/Library/Application Support/mcp-macos-control/app-overrides.json \
+                (redirect via MCP_MACOS_CONTROL_OVERRIDES_PATH).
+                """,
+                mimeType: "application/json"
             )
         ]
     }
