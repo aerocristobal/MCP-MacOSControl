@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload interaction-method observations (STORY-020 feed)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: story-012-interaction-observations
           path: ${{ env.STORY_012_OBSERVATIONS_JSON }}
@@ -110,7 +110,7 @@ jobs:
 
       - name: Upload regenerated catalog (when diff gate fails)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: app-compatibility-regenerated
           path: |

@@ -126,7 +126,7 @@ jobs:
           upload-artifact: false
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-cyclonedx
           path: sbom-cyclonedx.json
@@ -174,7 +174,7 @@ jobs:
       # download for offline triage and the OSCAL evidence trail).
       - name: Upload Grype SARIF as workflow artifact
         if: always() && steps.grype.outputs.sarif != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: grype-sca-report
           path: ${{ steps.grype.outputs.sarif }}
