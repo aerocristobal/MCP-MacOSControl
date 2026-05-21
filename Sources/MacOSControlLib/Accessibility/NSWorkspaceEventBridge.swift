@@ -52,17 +52,31 @@ public actor NSWorkspaceEventBridge {
 
     /// Suspend until `event` fires for an application matching
     /// `bundleIdentifierFilter` (or any application when nil), or `timeout`
-    /// seconds elapse — whichever happens first.
+    /// seconds elapse — whichever happens first. STORY-027 — also races a
+    /// caller-driven cancellation.
     public func wait(
         event: AppEventType,
         bundleIdentifierFilter: String?,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        cancellation: CancellationToken?
     ) async throws -> AppLifecycleEvent {
+        // Fast-path: pre-cancelled token never attaches.
+        if cancellation?.isCancelled == true {
+            throw CancellationError()
+        }
+
         let key = Key(event: event, bundleIdentifierFilter: bundleIdentifierFilter)
         let waiterID = UUID()
         let start = Date()
 
         return try await withCheckedThrowingContinuation { continuation in
+            // Register cancellation BEFORE the attach task so a cancel that
+            // arrives mid-attach collapses to attach-then-remove via the
+            // actor's serialised state.
+            cancellation?.onCancel { [weak self] in
+                guard let self else { return }
+                Task { await self.cancelWaiter(key: key, waiterID: waiterID) }
+            }
             Task {
                 await self.attach(
                     key: key,
@@ -142,6 +156,21 @@ public actor NSWorkspaceEventBridge {
             bundleIdentifierFilter: key.bundleIdentifierFilter,
             elapsedSeconds: elapsedSeconds
         ))
+
+        if state.waiters.isEmpty {
+            tearDown(key: key)
+        }
+    }
+
+    /// STORY-027 — remove a single waiter due to caller cancellation. Shared
+    /// observers stay alive while other waiters remain (their continuations
+    /// keep waiting); the underlying NSWorkspace observer is torn down only
+    /// when the last waiter on this key leaves.
+    private func cancelWaiter(key: Key, waiterID: UUID) {
+        guard let state = subscriptions[key],
+              let record = state.waiters.removeValue(forKey: waiterID) else { return }
+
+        record.continuation.resume(throwing: CancellationError())
 
         if state.waiters.isEmpty {
             tearDown(key: key)

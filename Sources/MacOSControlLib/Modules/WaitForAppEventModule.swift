@@ -56,6 +56,6 @@ public enum WaitForAppEventModule: ToolModule {
     public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         guard params.name == "wait_for_app_event" else { return nil }
         let tool = WaitForAppEventTool(manager: sharedManager)
-        return await tool.execute(params)
+        return await tool.execute(params, context: context)
     }
 }
