@@ -144,9 +144,17 @@ jobs:
       # SBOM-based scan via Grype. severity-cutoff:critical aligns with
       # sbom-policy.yml's `block: critical` gate. SARIF goes to the
       # repo's Security → Code scanning tab.
+      #
+      # Pinned to v7 (originally v3) because v3 pre-bundles a vulnerability
+      # database that Grype now refuses to scan against (DB ≥ 5 days old);
+      # v7 fetches a fresh DB on every run. GRYPE_DB_AUTO_UPDATE is also
+      # set explicitly as belt-and-braces in case the action's pinned DB
+      # ages past 5 days again.
       - name: SCA scan (Grype, STORY-021)
         id: grype
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v7
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
         with:
           sbom: sbom-cyclonedx.json
           severity-cutoff: critical
