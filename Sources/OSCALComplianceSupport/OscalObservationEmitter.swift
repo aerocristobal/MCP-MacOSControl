@@ -212,8 +212,71 @@ public struct OscalObservationEmitter {
         parts.append("record_hash: \(record.recordHash) (prev_hash: \(record.prevHash)).")
         if entry.elevated {
             parts.append("ELEVATED severity: hash-chain integrity failure — see AU-9 control statement and POA&M item au-9-chain-break for follow-up.")
+            // BDD §2 "Hash-chain breaks generate a higher-severity
+            // observation" requires the chain offset and mismatch detail
+            // in remarks. AuditChainVerifier writes that detail into the
+            // chain_verification_failure record's rejection_reason
+            // (e.g. "chain break detected at offset 42; prev_hash
+            // mismatch"); surface it verbatim.
+            if let reason = record.rejectionReason, !reason.isEmpty {
+                parts.append("Chain-break detail: \(reason).")
+            }
         }
         return parts.joined(separator: " ")
+    }
+
+    /// Returns the subset of observations that are elevated (i.e. chain-
+    /// break observations carrying the chain-break risk UUID in
+    /// related-risks). Callers use this to wire the POA&M ↔ AR
+    /// cross-reference.
+    public func elevatedObservations(in observations: [OscalObservation]) -> [OscalObservation] {
+        observations.filter { obs in
+            (obs.relatedRisks ?? []).contains { $0.riskUuid == Self.chainBreakRiskUuid }
+        }
+    }
+
+    /// Updates the chain-break POA&M item with related-observation
+    /// references for any new elevated observations. Idempotent —
+    /// existing observation UUIDs are not duplicated. If the POA&M does
+    /// NOT contain the chain-break item, no-op (caller is responsible for
+    /// pre-allocating the item; this method does not synthesize one
+    /// because the UUID, owner, and milestones are author-curated).
+    public func autoOpenChainBreakItems(
+        in poam: OscalPoamDocument,
+        forElevatedObservations elevatedObs: [OscalObservation],
+        now: Date = Date()
+    ) -> OscalPoamDocument {
+        guard !elevatedObs.isEmpty else { return poam }
+        var body = poam.planOfActionAndMilestones
+        guard let chainBreakIdx = body.poamItems.firstIndex(where: { $0.uuid.lowercased() == Self.chainBreakRiskUuid.lowercased() }) else {
+            return poam
+        }
+        var item = body.poamItems[chainBreakIdx]
+        let existing = Set((item.relatedObservations ?? []).map { $0.observationUuid.lowercased() })
+        var refs = item.relatedObservations ?? []
+        for obs in elevatedObs where !existing.contains(obs.uuid.lowercased()) {
+            refs.append(OscalPoamRelatedObservation(observationUuid: obs.uuid))
+        }
+        item = OscalPoamItem(
+            uuid: item.uuid,
+            title: item.title,
+            description: item.description,
+            props: item.props,
+            links: item.links,
+            relatedControls: item.relatedControls,
+            relatedObservations: refs,
+            milestones: item.milestones,
+            remarks: item.remarks
+        )
+        body.poamItems[chainBreakIdx] = item
+        body.metadata = OscalMetadata(
+            title: body.metadata.title,
+            lastModified: OscalAssessmentResultsDocument.iso8601(now),
+            version: body.metadata.version,
+            oscalVersion: body.metadata.oscalVersion,
+            parties: body.metadata.parties
+        )
+        return OscalPoamDocument(planOfActionAndMilestones: body)
     }
 }
 

@@ -150,12 +150,12 @@ public struct OscalImportSsp: Codable, Equatable {
 }
 
 public struct OscalPoamBody: Codable, Equatable {
-    public let uuid: String
-    public let metadata: OscalMetadata
-    public let importSsp: OscalImportSsp?
-    public let systemId: OscalPoamSystemId
-    public let poamItems: [OscalPoamItem]
-    public let observations: [OscalObservation]?
+    public var uuid: String
+    public var metadata: OscalMetadata
+    public var importSsp: OscalImportSsp?
+    public var systemId: OscalPoamSystemId
+    public var poamItems: [OscalPoamItem]
+    public var observations: [OscalObservation]?
 
     public init(
         uuid: String,

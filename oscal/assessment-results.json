@@ -665,7 +665,7 @@
                 "href" : "audit-records://2026-05-20T12:07:00.000Z/88888888-8888-4888-8888-888888888888"
               }
             ],
-            "remarks" : "Source AuditRecord: 88888888-8888-4888-8888-888888888888. record_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa8 (prev_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7). ELEVATED severity: hash-chain integrity failure — see AU-9 control statement and POA&M item au-9-chain-break for follow-up.",
+            "remarks" : "Source AuditRecord: 88888888-8888-4888-8888-888888888888. record_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa8 (prev_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7). ELEVATED severity: hash-chain integrity failure — see AU-9 control statement and POA&M item au-9-chain-break for follow-up. Chain-break detail: chain break detected at offset 42; prev_hash mismatch.",
             "subjects" : [
               {
                 "subject-uuid" : "f4e02f1b-dc5b-4442-a20f-c2d27996885f",

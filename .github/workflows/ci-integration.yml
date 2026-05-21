@@ -153,6 +153,7 @@ jobs:
           fi
           swift run oscal-emit \
             --retention-days 90 \
+            --poam oscal/plan-of-action-and-milestones.json \
             "${INPUT}" \
             oscal/assessment-results.json
 
@@ -160,13 +161,13 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
         run: |
           set -euo pipefail
-          if git diff --quiet oscal/assessment-results.json; then
-            echo "No new observations to commit."
+          if git diff --quiet oscal/assessment-results.json oscal/plan-of-action-and-milestones.json; then
+            echo "No new observations or POA&M cross-links to commit."
             exit 0
           fi
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add oscal/assessment-results.json
+          git add oscal/assessment-results.json oscal/plan-of-action-and-milestones.json
           git commit -m "chore(oscal): nightly observations append (STORY-037)"
           # Push back to the same ref the workflow is running against.
           git push origin HEAD:"${GITHUB_REF_NAME}"

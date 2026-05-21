@@ -24,13 +24,15 @@ import OSCALComplianceSupport
 struct OscalEmitOptions {
     var inputPath: String
     var outputPath: String
-    var retentionDays: Int? = nil       // nil = no pruning
+    var poamPath: String? = nil          // nil = don't update a POA&M
+    var retentionDays: Int? = nil        // nil = no pruning
     var emitterVersion: String = "1.0.0"
 }
 
 func parseOptions(_ argv: [String]) -> OscalEmitOptions? {
     var positional: [String] = []
     var retentionDays: Int? = nil
+    var poamPath: String? = nil
 
     var i = 1
     while i < argv.count {
@@ -40,6 +42,10 @@ func parseOptions(_ argv: [String]) -> OscalEmitOptions? {
             if i >= argv.count { return nil }
             retentionDays = Int(argv[i])
             if retentionDays == nil { return nil }
+        } else if arg == "--poam" {
+            i += 1
+            if i >= argv.count { return nil }
+            poamPath = argv[i]
         } else if arg == "-h" || arg == "--help" {
             return nil
         } else {
@@ -49,12 +55,17 @@ func parseOptions(_ argv: [String]) -> OscalEmitOptions? {
     }
 
     guard positional.count == 2 else { return nil }
-    return OscalEmitOptions(inputPath: positional[0], outputPath: positional[1], retentionDays: retentionDays)
+    return OscalEmitOptions(
+        inputPath: positional[0],
+        outputPath: positional[1],
+        poamPath: poamPath,
+        retentionDays: retentionDays
+    )
 }
 
 func usage() {
     let msg = """
-    Usage: oscal-emit [--retention-days N] <audit-records.jsonl> <assessment-results.json>
+    Usage: oscal-emit [--retention-days N] [--poam <poam.json>] <audit-records.jsonl> <assessment-results.json>
 
     Appends one OSCAL Observation per AuditRecord in the input JSONL to the
     output Assessment Results document. The output is created if missing.
@@ -63,6 +74,10 @@ func usage() {
                          from the output document. Default: no pruning
                          (STORY-037 §9 calls out the 90-day rolling window
                          as the system-wide default, configured in CI).
+    --poam <path>        Cross-link elevated (chain-break) observations
+                         into the POA&M at <path> by appending their UUIDs
+                         to the chain-break item's related-observations.
+                         Idempotent — re-runs do not duplicate references.
 
     Exit codes: 0 success, 2 usage, 3 input read error, 4 output write
     error, 5 AuditRecord parse error.
@@ -133,10 +148,33 @@ func emit(_ opts: OscalEmitOptions) -> Int32 {
         return 4
     }
 
+    // STORY-037 §2: "Hash-chain breaks ... a POA&M item is auto-opened
+    // with status 'open' referencing the observation." Wire the elevated
+    // observations' UUIDs into the chain-break POA&M item's
+    // related-observations, so the POA&M ↔ AR cross-reference is two-way.
+    var poamLinkCount = 0
+    if let poamPath = opts.poamPath {
+        let poamURL = URL(fileURLWithPath: poamPath)
+        do {
+            let priorPoam = try OscalPoamDocument.load(from: poamURL)
+            let elevated = emitter.elevatedObservations(in: appended.observations)
+            let updated = emitter.autoOpenChainBreakItems(in: priorPoam, forElevatedObservations: elevated, now: now)
+            if updated != priorPoam {
+                try updated.write(to: poamURL)
+                if let item = updated.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() }) {
+                    let before = priorPoam.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
+                    poamLinkCount = (item.relatedObservations?.count ?? 0) - before
+                }
+            }
+        } catch {
+            FileHandle.standardError.write("oscal-emit: warning — could not update POA&M at \(poamPath): \(error)\n".data(using: .utf8)!)
+        }
+    }
+
     // Stable, machine-greppable success line for CI.
     let appendedCount = appended.observations.count - doc.observations.count
     let observationCount = appended.observations.count
-    print("oscal-emit: ok  records=\(records.count)  appended=\(max(appendedCount, 0))  observations_total=\(observationCount)  output=\(opts.outputPath)")
+    print("oscal-emit: ok  records=\(records.count)  appended=\(max(appendedCount, 0))  observations_total=\(observationCount)  poam_chain_break_links_added=\(poamLinkCount)  output=\(opts.outputPath)")
 
     return hadParseError ? 5 : 0
 }

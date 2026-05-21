@@ -63,6 +63,19 @@ final class OscalObservationEmitterTests: XCTestCase {
         XCTAssertTrue((obs.remarks ?? "").contains("ELEVATED"), "Chain-break remarks should mark severity")
     }
 
+    func test_chainBreak_remarksIncludeChainOffsetAndMismatchDetail() throws {
+        // STORY-037 §2 Scenario "Hash-chain breaks generate a higher-severity observation":
+        //   "observation's 'remarks' field includes the chain offset and detected mismatch"
+        let record = AuditRecord.fixture(
+            eventType: .chainVerificationFailure,
+            rejectionReason: "chain break detected at offset 42; prev_hash mismatch"
+        )
+        guard let obs = OscalObservationEmitter().observations(from: [record]).first else { return XCTFail() }
+        let remarks = obs.remarks ?? ""
+        XCTAssertTrue(remarks.contains("offset 42"), "Chain-break remarks must surface chain offset; got: \(remarks)")
+        XCTAssertTrue(remarks.contains("prev_hash mismatch"), "Chain-break remarks must surface the mismatch detail; got: \(remarks)")
+    }
+
     func test_chainBreakRiskUuid_matchesCommittedPoamItem() throws {
         let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             .appendingPathComponent("oscal/plan-of-action-and-milestones.json")
@@ -118,6 +131,52 @@ final class OscalObservationEmitterTests: XCTestCase {
         let doc1 = emitter.append(observationsFrom: [record], into: .empty)
         let doc2 = emitter.append(observationsFrom: [record], into: doc1)
         XCTAssertEqual(doc2.observations.count, 1, "Re-running the emitter on the same record must be idempotent")
+    }
+
+    // MARK: - POA&M ↔ AR cross-reference (auto-open on chain-break)
+
+    func test_autoOpenChainBreakItems_appendsObservationUuidsToChainBreakItem() throws {
+        let record = AuditRecord.fixture(eventType: .chainVerificationFailure)
+        let emitter = OscalObservationEmitter()
+        let obs = emitter.observations(from: [record])
+        let elevated = emitter.elevatedObservations(in: obs)
+        XCTAssertEqual(elevated.count, 1, "Chain-break record must produce exactly one elevated observation")
+
+        let poamUrl = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("oscal/plan-of-action-and-milestones.json")
+        let prior = try OscalPoamDocument.load(from: poamUrl)
+        let updated = emitter.autoOpenChainBreakItems(in: prior, forElevatedObservations: elevated)
+
+        guard let updatedItem = updated.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() }) else {
+            return XCTFail("Chain-break POA&M item must exist for auto-open to land")
+        }
+        let refs = updatedItem.relatedObservations ?? []
+        XCTAssertTrue(refs.contains { $0.observationUuid == elevated[0].uuid },
+                      "Chain-break POA&M item's related-observations must reference the new elevated observation")
+    }
+
+    func test_autoOpenChainBreakItems_isIdempotent() throws {
+        let record = AuditRecord.fixture(eventType: .chainVerificationFailure)
+        let emitter = OscalObservationEmitter()
+        let elevated = emitter.elevatedObservations(in: emitter.observations(from: [record]))
+
+        let poamUrl = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("oscal/plan-of-action-and-milestones.json")
+        let prior = try OscalPoamDocument.load(from: poamUrl)
+        let first = emitter.autoOpenChainBreakItems(in: prior, forElevatedObservations: elevated)
+        let second = emitter.autoOpenChainBreakItems(in: first, forElevatedObservations: elevated)
+
+        let firstRefs = first.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
+        let secondRefs = second.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
+        XCTAssertEqual(firstRefs, secondRefs, "Re-running auto-open must not duplicate related-observations")
+    }
+
+    func test_autoOpenChainBreakItems_noOpsWhenNoElevatedObservations() throws {
+        let poamUrl = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("oscal/plan-of-action-and-milestones.json")
+        let prior = try OscalPoamDocument.load(from: poamUrl)
+        let updated = OscalObservationEmitter().autoOpenChainBreakItems(in: prior, forElevatedObservations: [])
+        XCTAssertEqual(updated, prior, "No elevated observations → POA&M must be byte-equal to prior")
     }
 
     func test_appender_updatesLastModified() throws {
