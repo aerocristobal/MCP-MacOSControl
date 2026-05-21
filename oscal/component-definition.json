@@ -3,8 +3,8 @@
     "uuid": "17c5db22-7c4b-416d-84aa-3adae6b6fe35",
     "metadata": {
       "title": "MCP-MacOSControl Component Definition",
-      "last-modified": "2026-05-20T00:00:00Z",
-      "version": "1.0.0",
+      "last-modified": "2026-05-21T00:00:00Z",
+      "version": "1.1.0",
       "oscal-version": "1.1.2",
       "parties": [
         {
@@ -98,22 +98,45 @@
               {
                 "uuid": "3de426b5-687d-4a84-9ccf-67f7e2290050",
                 "control-id": "au-9",
-                "description": "Protection of Audit Information. The AuditRecording protocol seam is committed; a production sink with append-only semantics is deferred. The in-memory recorder shipped today does not survive process restart and is not tamper-evident — adequate for development and CI but not for production deployments. Deployers are instructed in docs/SECURITY.md §9.2 to provide a production sink before deployment.",
+                "description": "Protection of Audit Information. STORY-024 closes the previously deferred production-sink gap. Records are hash-chained (per-install genesis → prev_hash → record_hash), append-only at the storage layer (audit_log_immutability_violation on duplicate record_id), and shipped off-host to the configured sink (OSLog default, HTTP/syslog optional). AuditChainVerifier walks the chain on server start, on every retention sweep, and on operator demand via the verify_audit_chain MCP tool. The on-disk JSONL stream is never rewritten after write; delivery acks are kept in a sibling ack-ledger so the immutable forensic core stays hash-stable.",
                 "props": [
-                  { "name": "implementation-status", "value": "partial" }
+                  { "name": "implementation-status", "value": "implemented" }
                 ],
                 "links": [
                   { "href": "../Sources/MacOSControlLib/AppleScript/AuditRecorder.swift", "rel": "implementation" },
-                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification", "text": "Exercises the protocol-seam portion that is committed; the deferred production sink is unverifiable until built." },
-                  { "href": "../docs/SECURITY.md", "rel": "related", "text": "§4.4 Audit log tampering — primary mitigation gap and re-evaluation criteria" }
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditStorage.swift", "rel": "implementation", "text": "Append-only on-disk store with audit_log_immutability_violation enforcement" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditChainVerifier.swift", "rel": "implementation", "text": "Hash-chain integrity verifier (server start, retention sweep, verify_audit_chain tool)" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditRemoteSink.swift", "rel": "implementation", "text": "Off-host shipping: OSLog default, HTTP/syslog optional" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/Audit/AuditChainTests.swift", "rel": "verification", "text": "Chain integrity, tamper detection, genesis pinning" },
+                  { "href": "../docs/AUDIT-LOG-OPERATIONS.md", "rel": "documentation", "text": "Log location, env-var matrix, chain-verification incident response" },
+                  { "href": "../docs/SECURITY.md", "rel": "related", "text": "§4.4 Audit log tampering — residual risk now scoped to absence of per-record HSM signing" }
                 ],
                 "statements": [
                   {
-                    "statement-id": "au-9_smt.deferred",
+                    "statement-id": "au-9_smt.no-hsm-signing",
                     "uuid": "513a786f-0bf9-4e04-9517-084fa5e37106",
-                    "description": "Production append-only audit sink is deferred until a downstream deployer requires it.",
-                    "remarks": "Re-evaluation criteria: any deployment outside the developer workstation. The protocol seam means swap-in is mechanical; the gap is the production implementation, not the architecture. Tracked separately under the project's risk register."
+                    "description": "Accepted residual risk: per-record digital signatures are not produced. Hash-chain plus off-host shipping provides two independent corroborations of integrity, which the project accepts as compensating for the absence of HSM-backed signing.",
+                    "props": [
+                      { "name": "implementation-status", "value": "alternative" }
+                    ],
+                    "remarks": "Re-evaluation criteria per SECURITY.md §4.4: a credible HSM-backed signing path becomes available, or a post-incident review identifies a class of tampering the chain misses. POA&M item tracked in oscal/plan-of-action-and-milestones.json under SECURITY.md §4.4."
                   }
+                ]
+              },
+              {
+                "uuid": "5b0e1d4a-2c8e-4f29-a14a-2ff67ee6e7d1",
+                "control-id": "au-11",
+                "description": "Audit Record Retention. AuditRetentionSweeper enforces a configurable retention window (default 365 days, env var MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS). Records older than the window AND acknowledged by the remote sink move to an archive directory; pending records are never rotated automatically — silent log loss during an outage is documented as the worst audit failure mode and avoided by design. The archive chain remains verifiable: AuditChainVerifier walks both active and archived records when invoked.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditRetentionSweeper.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditConfig.swift", "rel": "implementation", "text": "Retention-window environment configuration" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/Audit/AuditMaintenance.swift", "rel": "implementation", "text": "Operator-only force_rotate_unacked escape hatch" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification" },
+                  { "href": "../docs/AUDIT-LOG-OPERATIONS.md", "rel": "documentation" }
                 ]
               },
               {
