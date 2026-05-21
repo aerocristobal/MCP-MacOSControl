@@ -30,6 +30,10 @@ different semantics — the server refuses to start on collision.
 | `all_layers_failed` | smart_interact exhausted every eligible interaction layer (AX semantic, AppleScript, hit-test, coordinate) without a success. The error details carry the full ordered decision_log of attempts and skip/fail reasons plus retry_suggestions. | `decision_log` (array), `retry_suggestions` (array) |
 | `applescript_error` | AppleScript compilation or execution returned an error. | — |
 | `application_not_found` | Tool could not locate the requested application by bundle id or name. | — |
+| `audit_admin_disabled` | An administrative audit tool (e.g., force_rotate_unacked) was invoked but admin tools are not enabled. Set MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED=true to opt in. | — |
+| `audit_chain_verification_failed` | The audit log's hash chain did not verify. The details carry the first record id at which the chain broke and a summary of the break. | `first_break_at` (string), `summary` (string), `total_checked` (number) |
+| `audit_config_invalid` | Audit configuration env vars are internally inconsistent (e.g., MCP_MACOS_CONTROL_AUDIT_REMOTE=http without MCP_MACOS_CONTROL_AUDIT_REMOTE_URL). The error details name the missing or malformed variable. | `missing_variable` (string), `reason` (string) |
+| `audit_log_immutability_violation` | An attempt was made to rewrite an audit record after it had been persisted. The audit log is append-only by design. | `record_id` (string) |
 | `automation_permission_required` | Cross-application Automation (Apple Events) permission required for the named target application. | `recovery_hint` (string), `target_application` (string) |
 | `ax_action_failed` | Dispatching the AX action returned an error from the Accessibility API. | `action` (string), `underlying_code` (number) |
 | `ax_action_unsupported` | The resolved accessibility element does not support the requested AX action. | `action` (string) |

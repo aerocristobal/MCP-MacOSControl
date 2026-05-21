@@ -9,7 +9,7 @@ of Done requires every tool to declare `readOnlyHint` and
 `destructiveHint`, ship an `idempotentHint`, and have a description of
 at least 50 characters.
 
-**Total tools:** 75
+**Total tools:** 77
 
 | Tool | readOnlyHint | destructiveHint | idempotentHint | description length |
 |---|---|---|---|---|
@@ -31,6 +31,7 @@ at least 50 characters.
 | `element_at_position` | true | false | true | 960 |
 | `extract_key_info` | true | false | true | 261 |
 | `find_elements` | true | false | true | 1090 |
+| `force_rotate_unacked` | false | true | false | 497 |
 | `generate_text_llm` | true | false | false | 264 |
 | `get_capture_frame` | true | false | false | 292 |
 | `get_model_info` | true | false | true | 183 |
@@ -72,7 +73,7 @@ at least 50 characters.
 | `move_mouse` | false | false | true | 259 |
 | `perform_ax_action` | false | true | false | 532 |
 | `press_keys` | false | false | false | 278 |
-| `run_applescript` | false | true | false | 1003 |
+| `run_applescript` | false | true | false | 1139 |
 | `scroll` | false | false | false | 271 |
 | `smart_interact` | false | true | false | 1194 |
 | `start_continuous_capture` | false | false | false | 307 |
@@ -83,6 +84,7 @@ at least 50 characters.
 | `take_screenshot_with_ocr` | true | false | true | 300 |
 | `type_text` | false | false | false | 279 |
 | `unload_coreml_model` | false | false | true | 193 |
+| `verify_audit_chain` | true | false | true | 422 |
 | `wait_for_app_event` | true | false | false | 1248 |
 | `wait_for_element_state` | true | false | true | 1454 |
 | `wait_for_text` | true | false | false | 294 |

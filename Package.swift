@@ -18,6 +18,18 @@ let package = Package(
         .executable(
             name: "mcp-macos-control-catalog",
             targets: ["MCP-MacOSControlCatalog"]
+        ),
+        // STORY-037 — CLI executables for the POA&M and Assessment Results
+        // artifacts. `oscal-emit` converts AuditRecord JSONL into OSCAL
+        // observations; `oscal-drift` checks SECURITY.md / POA&M / OSCAL
+        // bidirectional drift.
+        .executable(
+            name: "oscal-emit",
+            targets: ["OscalEmit"]
+        ),
+        .executable(
+            name: "oscal-drift",
+            targets: ["OscalDrift"]
         )
     ],
     dependencies: [
@@ -34,6 +46,33 @@ let package = Package(
                 .copy("Prompts/Definitions"),
                 .copy("Router/Defaults")
             ]
+        ),
+        // STORY-022 — Compliance tooling used only by tests and the OSCAL-
+        // authoring CLIs (oscal-emit, oscal-drift). Kept out of
+        // MacOSControlLib so the runtime module stays focused on the MCP
+        // server surface. STORY-037 added a dependency on MacOSControlLib
+        // because the AuditRecord schema (the input to oscal-emit) is
+        // canonical there.
+        .target(
+            name: "OSCALComplianceSupport",
+            dependencies: ["MacOSControlLib"],
+            path: "Sources/OSCALComplianceSupport"
+        ),
+        // STORY-037 — CLI that converts STORY-024 AuditRecord JSONL into
+        // OSCAL Assessment Results observations (append-only). Lives here
+        // because the AuditRecord schema is canonical in this repo.
+        .executableTarget(
+            name: "OscalEmit",
+            dependencies: ["MacOSControlLib", "OSCALComplianceSupport"],
+            path: "Sources/OscalEmit"
+        ),
+        // STORY-037 — CLI that checks SECURITY.md §4 ↔ POA&M and the existing
+        // SECURITY.md §7/§8 ↔ component-definition.json drift. Extension of
+        // the STORY-022 drift detector with POA&M coverage rules.
+        .executableTarget(
+            name: "OscalDrift",
+            dependencies: ["OSCALComplianceSupport"],
+            path: "Sources/OscalDrift"
         ),
         .executableTarget(
             name: "MCP-MacOSControl",
@@ -63,12 +102,14 @@ let package = Package(
             name: "MCP-MacOSControlTests",
             dependencies: [
                 "MacOSControlLib",
+                "OSCALComplianceSupport",
                 .product(name: "MCP", package: "swift-sdk")
             ],
             path: "Tests/MCP-MacOSControlTests",
             resources: [
                 .copy("Features"),
-                .copy("AppCompatibilityFixtures")
+                .copy("AppCompatibilityFixtures"),
+                .copy("Compliance/Fixtures")
             ]
         ),
         // STORY-012 — End-to-End Integration Validation Suite. Separate target:

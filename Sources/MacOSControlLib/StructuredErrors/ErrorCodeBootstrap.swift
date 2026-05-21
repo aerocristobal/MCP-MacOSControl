@@ -346,6 +346,38 @@ public enum ErrorCodeBootstrap {
             ]
         )
 
+        // MARK: - STORY-024 — Audit Log Integrity, Retention, and Off-Host Shipping
+
+        try registry.register(
+            code: "audit_log_immutability_violation",
+            description: "An attempt was made to rewrite an audit record after it had been persisted. The audit log is append-only by design.",
+            detailsSchema: [
+                "record_id": "string"
+            ]
+        )
+        try registry.register(
+            code: "audit_config_invalid",
+            description: "Audit configuration env vars are internally inconsistent (e.g., MCP_MACOS_CONTROL_AUDIT_REMOTE=http without MCP_MACOS_CONTROL_AUDIT_REMOTE_URL). The error details name the missing or malformed variable.",
+            detailsSchema: [
+                "missing_variable": "string",
+                "reason": "string"
+            ]
+        )
+        try registry.register(
+            code: "audit_chain_verification_failed",
+            description: "The audit log's hash chain did not verify. The details carry the first record id at which the chain broke and a summary of the break.",
+            detailsSchema: [
+                "first_break_at": "string",
+                "total_checked": "number",
+                "summary": "string"
+            ]
+        )
+        try registry.register(
+            code: "audit_admin_disabled",
+            description: "An administrative audit tool (e.g., force_rotate_unacked) was invoked but admin tools are not enabled. Set MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED=true to opt in.",
+            detailsSchema: [:]
+        )
+
         // MARK: - STORY-010 — Agent Interaction Hierarchy Router (smart_interact)
 
         try registry.register(

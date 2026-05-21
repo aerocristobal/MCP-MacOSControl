@@ -1,0 +1,60 @@
+name: Release
+
+# STORY-021 — On tagged releases, regenerate the CycloneDX SBOM against the
+# tagged source and attach it (plus the VEX document when non-empty) to the
+# GitHub Release. Runs only on `v*` tags so feature branches and PRs don't
+# accidentally publish anything.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # required to upload assets to the GitHub Release
+
+jobs:
+  publish-sbom:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Swift build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: ${{ runner.os }}-swift-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-swift-
+
+      - name: Build (Release)
+        run: swift build -c release
+
+      - name: Generate CycloneDX SBOM (STORY-021)
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          artifact-name: sbom-cyclonedx.json
+
+      # Attach the SBOM unconditionally. Attach the VEX document only when
+      # it carries statements — an empty `[]` placeholder has no signal
+      # value on a public release. `gh` is preinstalled on macos-15 runners.
+      - name: Attach SBOM (and VEX if non-empty) to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          ASSETS=(sbom-cyclonedx.json)
+          if [ -f .github/vex-statements.json ]; then
+            # CycloneDX VEX is an empty JSON array (`[]`) when no statements
+            # exist. jq returns the array length; anything > 0 is real content.
+            VEX_LEN=$(jq 'if type == "array" then length else (.vulnerabilities // []) | length end' .github/vex-statements.json)
+            if [ "${VEX_LEN}" -gt 0 ]; then
+              cp .github/vex-statements.json vex-statements.json
+              ASSETS+=(vex-statements.json)
+            else
+              echo "VEX statements file is empty; skipping VEX attachment."
+            fi
+          fi
+          gh release upload "${TAG_NAME}" "${ASSETS[@]}" --clobber

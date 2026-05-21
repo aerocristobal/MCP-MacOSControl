@@ -29,6 +29,206 @@ jobs:
       - name: Verify living documentation is up to date
         run: git diff --exit-code docs/LIVING-DOCUMENTATION.md
 
+      # STORY-022 / STORY-037 — Validate the three OSCAL artifacts against
+      # the published NIST OSCAL v1.1.2 JSON schemas. Originally pinned
+      # to ghcr.io/metaschema-framework/oscal-cli:v3.2.0 via Docker, but
+      # GitHub's macos-15 runners don't ship Docker (and pulling Colima
+      # adds 1–3 min of fragile setup). Switched to ajv-cli (Node, full
+      # ECMAScript regex support) against the schemas downloaded from
+      # the NIST OSCAL v1.1.2 release assets. ajv-cli is stricter than
+      # the OSCAL CLI's default mode — any schema violation fails the
+      # build, satisfying STORY-022 BDD #1 ("validates without warnings
+      # or errors") in spirit.
+      #
+      # Drift between SECURITY.md and OSCAL is covered by
+      # `OscalCoverageCheckerTests` inside `swift test` above plus the
+      # `oscal-drift check` step below; this step catches schema-shape
+      # regressions specifically.
+      - name: Download NIST OSCAL v1.1.2 JSON schemas
+        run: |
+          set -euo pipefail
+          SCHEMA_DIR="${RUNNER_TEMP:-/tmp}/oscal-schemas"
+          mkdir -p "${SCHEMA_DIR}"
+          BASE="https://github.com/usnistgov/OSCAL/releases/download/v1.1.2/"
+          for f in oscal_component_schema.json oscal_poam_schema.json oscal_assessment-results_schema.json; do
+            curl -sSL --fail --retry 3 "${BASE}${f}" -o "${SCHEMA_DIR}/${f}"
+            test -s "${SCHEMA_DIR}/${f}"
+          done
+
+      - name: Validate OSCAL component definition (STORY-022)
+        run: |
+          set -euo pipefail
+          npx --yes ajv-cli@5 validate \
+            -s "${RUNNER_TEMP:-/tmp}/oscal-schemas/oscal_component_schema.json" \
+            -d oscal/component-definition.json \
+            --spec=draft7 \
+            --strict=false
+
+      - name: Validate OSCAL POA&M (STORY-037)
+        run: |
+          set -euo pipefail
+          npx --yes ajv-cli@5 validate \
+            -s "${RUNNER_TEMP:-/tmp}/oscal-schemas/oscal_poam_schema.json" \
+            -d oscal/plan-of-action-and-milestones.json \
+            --spec=draft7 \
+            --strict=false
+
+      - name: Validate OSCAL Assessment Results (STORY-037)
+        run: |
+          set -euo pipefail
+          npx --yes ajv-cli@5 validate \
+            -s "${RUNNER_TEMP:-/tmp}/oscal-schemas/oscal_assessment-results_schema.json" \
+            -d oscal/assessment-results.json \
+            --spec=draft7 \
+            --strict=false
+
+      # STORY-037 — Bidirectional drift detector. Catches the four classes
+      # of drift the BDD scenarios call out: §4 statement without POA&M
+      # item, POA&M item referencing a removed §4 statement, closed §4
+      # statement with an open item, and closed item without closure
+      # evidence. The CLI also re-runs the STORY-022 controls drift
+      # check so a single step covers both artifact pairs.
+      - name: OSCAL drift check (SECURITY.md ↔ component-definition.json + POA&M)
+        run: swift run oscal-drift check
+
+      # STORY-037 — oscal-emit smoke test. Proves the CLI builds and
+      # appends observations to a copy of the committed AR from the
+      # fixture AuditRecord stream. The smoke run does NOT touch the
+      # committed AR; the nightly integration job is the only writer.
+      - name: oscal-emit smoke test (STORY-037)
+        run: |
+          set -euo pipefail
+          TMP_AR="${RUNNER_TEMP:-/tmp}/story-037-smoke-ar.json"
+          cp oscal/assessment-results.json "${TMP_AR}"
+          BEFORE=$(jq '.["assessment-results"].results[0].observations | length' "${TMP_AR}")
+          swift run oscal-emit \
+            Tests/MCP-MacOSControlTests/Compliance/Fixtures/audit-records-sample.jsonl \
+            "${TMP_AR}"
+          AFTER=$(jq '.["assessment-results"].results[0].observations | length' "${TMP_AR}")
+          # The fixture observation UUIDs are deterministic and already in
+          # the committed AR, so appended count should be 0 on re-run.
+          if [ "${BEFORE}" != "${AFTER}" ]; then
+            echo "::error::oscal-emit smoke: re-emitting the committed fixture should be idempotent (before=${BEFORE} after=${AFTER})"
+            exit 1
+          fi
+
+      # STORY-021 — Supply-chain security. Generate a CycloneDX 1.5+ SBOM
+      # covering every transitive Swift package, then scan it with Grype.
+      # Policy lives in .github/sbom-policy.yml; the threshold there must
+      # stay in sync with `severity-cutoff` below.
+      - name: Generate CycloneDX SBOM (STORY-021)
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          # anchore/sbom-action auto-uploads by default; disable here so
+          # the explicit upload-artifact step below owns artifact naming.
+          upload-artifact: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom-cyclonedx.json
+
+      # Native dependency review on PRs: blocks on critical-severity CVEs
+      # and disallowed licenses before they merge. Skipped on push events
+      # (no base ref to diff against).
+      - name: Dependency Review (STORY-021)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+
+      # SBOM-based scan via Grype. severity-cutoff:critical aligns with
+      # sbom-policy.yml's `block: critical` gate. SARIF goes to the
+      # repo's Security → Code scanning tab.
+      #
+      # Pinned to v7 (originally v3) because v3 pre-bundles a vulnerability
+      # database that Grype now refuses to scan against (DB ≥ 5 days old);
+      # v7 fetches a fresh DB on every run. GRYPE_DB_AUTO_UPDATE is also
+      # set explicitly as belt-and-braces in case the action's pinned DB
+      # ages past 5 days again.
+      - name: SCA scan (Grype, STORY-021)
+        id: grype
+        uses: anchore/scan-action@v7
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+        with:
+          sbom: sbom-cyclonedx.json
+          severity-cutoff: critical
+          fail-build: true
+          output-format: sarif
+          by-cve: true
+          vex: .github/vex-statements.json
+
+      - name: Upload Grype SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+
+      # Also publish the SARIF as a downloadable workflow artifact (the
+      # Security tab is the live view; the artifact is what reviewers
+      # download for offline triage and the OSCAL evidence trail).
+      - name: Upload Grype SARIF as workflow artifact
+        if: always() && steps.grype.outputs.sarif != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-sca-report
+          path: ${{ steps.grype.outputs.sarif }}
+
+      # High-severity findings (CVSS 7.0–8.9): warn-only per
+      # sbom-policy.yml. Parse the SARIF, post a single PR comment
+      # summarizing the high-severity CVEs. Non-PR events skip.
+      - name: Comment high-severity SCA findings on PR (STORY-021)
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SARIF_PATH: ${{ steps.grype.outputs.sarif }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SARIF_PATH:-}" ] || [ ! -f "${SARIF_PATH}" ]; then
+            echo "No SARIF report; skipping high-severity PR comment."
+            exit 0
+          fi
+          # Extract findings with security-severity 7.0–8.9. Grype encodes
+          # CVSS in `properties.security-severity` as a string per SARIF spec.
+          HIGH_FINDINGS=$(jq -r '
+            [ .runs[0].results[]?
+              | . as $r
+              | ($r.ruleId // "UNKNOWN") as $cve
+              | (.properties["security-severity"] // "0") | tonumber as $cvss
+              | select($cvss >= 7.0 and $cvss < 9.0)
+              | "- **\($cve)** (CVSS \($cvss)) — \($r.message.text // "no description")"
+            ] | unique | .[]' "${SARIF_PATH}" || true)
+          if [ -z "${HIGH_FINDINGS}" ]; then
+            echo "No high-severity findings to report."
+            exit 0
+          fi
+          # Emit each finding as a GitHub Actions warning annotation so it
+          # surfaces in the workflow log even when no PR comment lands
+          # (e.g., re-runs on closed PRs, or fork-PR token restrictions).
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::warning title=Supply-chain (high severity)::${line}"
+          done <<< "${HIGH_FINDINGS}"
+          BODY=$(cat <<EOF
+          ### Supply-chain scan: high-severity findings (warn-only, no block)
+
+          The following CVEs are at CVSS 7.0–8.9. Per \`.github/sbom-policy.yml\`
+          these warn but do not block merge. Review and either upgrade the
+          dependency or add a VEX statement in \`.github/vex-statements.json\`.
+
+          ${HIGH_FINDINGS}
+
+          Full SARIF: Security → Code scanning tab.
+          EOF
+          )
+          gh pr comment "${PR_NUMBER}" --body "${BODY}"
+
       # STORY-020 smoke — proves the catalog CLI builds and runs end-to-end on
       # every PR using the in-tree test fixtures (no integration runners needed).
       # The ci-integration.yml workflow exercises the CLI against real

@@ -1,5 +1,8 @@
 // STORY-007 — click_menu_item MCP Tool
 // COMPONENT: AppleScriptMenuClickBackend (v1 implementation of MenuClickBackend)
+//
+// Audit assertions updated for STORY-024 schema: outcome is split into
+// filter_disposition + execution_outcome; toolName is replaced by event_type.
 
 import XCTest
 @testable import MacOSControlLib
@@ -90,10 +93,11 @@ final class AppleScriptMenuClickBackendTests: XCTestCase {
 
         XCTAssertEqual(auditSpy.records.count, 1)
         let record = auditSpy.records[0]
-        XCTAssertEqual(record.toolName, "click_menu_item")
-        XCTAssertEqual(record.outcome, .success)
+        XCTAssertEqual(record.eventType, .menuClick)
+        XCTAssertEqual(record.executionOutcome, .success)
+        XCTAssertEqual(record.filterDisposition, .allowed)
         XCTAssertEqual(record.durationMs, 7)
-        XCTAssertEqual(record.targetApps, ["TextEdit"])
+        XCTAssertEqual(record.targetAppsExtracted, ["TextEdit"])
         XCTAssertFalse(record.scriptSha256.isEmpty)
     }
 
@@ -106,7 +110,8 @@ final class AppleScriptMenuClickBackendTests: XCTestCase {
                                     doNotActivate: false)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records[0].outcome, .scriptError(code: -1728))
+        XCTAssertEqual(auditSpy.records[0].executionOutcome, .scriptError)
+        XCTAssertEqual(auditSpy.records[0].scriptErrorCode, -1728)
     }
 
     func test_click_throwsBackendNeutralTimeout_whenExecutorTimesOut() async {
@@ -124,7 +129,7 @@ final class AppleScriptMenuClickBackendTests: XCTestCase {
         }
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records[0].outcome, .timeout)
+        XCTAssertEqual(auditSpy.records[0].executionOutcome, .timeout)
     }
 
     func test_click_throwsBackendNeutralFailure_whenExecutorIOErrors() async {
@@ -152,7 +157,6 @@ final class AppleScriptMenuClickBackendTests: XCTestCase {
         let alternatives = try await backend.alternatives(forFailingPath: ["File", "Ghost"],
                                                           application: "TextEdit")
 
-        // Sorted alphabetically per resolved Open Question 4.
         XCTAssertEqual(alternatives, ["New", "Open", "Print", "Save", "Save As"])
         XCTAssertEqual(resolverSpy.lastAlternativesPath, ["File", "Ghost"])
         XCTAssertEqual(resolverSpy.lastAlternativesApplication, "TextEdit")
@@ -174,6 +178,6 @@ final class AppleScriptMenuClickBackendTests: XCTestCase {
                                            application: "TextEdit")
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records[0].toolName, "click_menu_item")
+        XCTAssertEqual(auditSpy.records[0].eventType, .menuAlternativesLookup)
     }
 }

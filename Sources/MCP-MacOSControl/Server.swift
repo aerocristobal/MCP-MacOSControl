@@ -12,6 +12,79 @@ enum MacOSControlServer {
         let registeredCount = MacOSControlLib.ErrorCodeRegistry.shared.allRegistrations().count
         MacOSControlLib.MCPLogger.info("Error responses now structured JSON; legacy text format removed (STORY-016). \(registeredCount) codes registered.")
 
+        // STORY-024 — Audit subsystem bootstrap.
+        //
+        // Load configuration; fail-fast on invalid env-var combinations
+        // (per BDD §2 "Server refuses to start when audit config is
+        // internally inconsistent"). Then construct the persistent
+        // AuditRecorder, the chain verifier, and the retention sweeper;
+        // verify the existing chain on disk before serving any tool
+        // calls. A verification failure at startup is reported as a
+        // SECURITY-CRITICAL log line — the server still starts (to
+        // preserve availability) but the operator is expected to
+        // investigate immediately.
+        let auditConfig = MacOSControlLib.AuditConfig.load()
+        do {
+            try auditConfig.validate()
+        } catch {
+            fputs("Audit configuration invalid: \(error)\n", stderr)
+            exit(1)
+        }
+        let auditIdentity = MacOSControlLib.AuditInstallIdentityResolver.resolve(config: auditConfig)
+        let auditStorage: MacOSControlLib.AuditStorage
+        do {
+            auditStorage = try MacOSControlLib.FileAuditStorage(logDirectory: auditConfig.logDirectory)
+        } catch {
+            fputs("Failed to open audit log directory \(auditConfig.logDirectory.path): \(error)\n", stderr)
+            exit(1)
+        }
+        let auditSink = MacOSControlLib.AuditRemoteSinkFactory.make(config: auditConfig)
+        let auditRecorder = MacOSControlLib.AuditRecorder(
+            storage: auditStorage,
+            remoteSink: auditSink,
+            config: auditConfig,
+            identity: auditIdentity
+        )
+        let auditVerifier = MacOSControlLib.AuditChainVerifier(
+            storage: auditStorage, identity: auditIdentity
+        )
+        let auditSweeper = MacOSControlLib.AuditRetentionSweeper(
+            storage: auditStorage,
+            verifier: auditVerifier,
+            clock: MacOSControlLib.SystemClock(),
+            retentionDays: auditConfig.retentionDays
+        )
+        let startupReport = auditVerifier.verify()
+        if !startupReport.isValid {
+            MacOSControlLib.MCPLogger.error(
+                "SECURITY-CRITICAL: audit chain verification failed on startup — \(startupReport.summary)"
+            )
+        } else {
+            MacOSControlLib.MCPLogger.info(
+                "STORY-024 audit subsystem ready: \(startupReport.totalChecked) records verified, sink=\(auditConfig.remoteSinkKind.rawValue), retention=\(auditConfig.retentionDays)d."
+            )
+        }
+        // Swap the in-process auditor used by run_applescript /
+        // click_menu_item, and wire the admin tools.
+        MacOSControlLib.AppleScriptModule.auditor = auditRecorder
+        MacOSControlLib.AuditAdminModule.wiring = MacOSControlLib.AuditAdminModule.Wiring(
+            auditor: auditRecorder,
+            sweeper: auditSweeper,
+            verifier: auditVerifier,
+            adminEnabled: auditConfig.adminToolsEnabled
+        )
+
+        // Start the background maintenance loops: retry pending
+        // records (BDD: outage recovery flushes in order) and daily
+        // retention sweep (DoD: AuditRetentionSweeper runs daily).
+        let auditMaintenance = MacOSControlLib.AuditMaintenanceLoop(
+            storage: auditStorage,
+            remoteSink: auditSink,
+            sweeper: auditSweeper,
+            config: auditConfig
+        )
+        auditMaintenance.start()
+
         // STORY-019: load the per-app capability registry. Bundled defaults are
         // required infrastructure — a missing/malformed default file is fatal
         // (same posture as the prompt registry below). A malformed *user

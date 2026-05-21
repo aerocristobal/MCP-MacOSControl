@@ -15,6 +15,7 @@ public enum ToolRouter {
         IPhoneMirroringModule.self,
         AccessibilityModule.self,
         AppleScriptModule.self,
+        AuditAdminModule.self,
         WaitForUIEventModule.self,
         WaitForElementStateModule.self,
         WaitForAppEventModule.self,

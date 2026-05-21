@@ -5,7 +5,7 @@ public final class RunAppleScriptTool {
     private let filter: AppleScriptSecurityFiltering
     private let permissionChecker: AutomationPermissionChecking
     private let executor: AppleScriptExecuting
-    private let audit: AuditRecorder
+    private let audit: AuditRecording
 
     private static let defaultTimeoutSeconds = 30
     private static let minTimeoutSeconds = 1
@@ -15,7 +15,7 @@ public final class RunAppleScriptTool {
         filter: AppleScriptSecurityFiltering,
         permissionChecker: AutomationPermissionChecking,
         executor: AppleScriptExecuting,
-        audit: AuditRecorder
+        audit: AuditRecording
     ) {
         self.filter = filter
         self.permissionChecker = permissionChecker
@@ -34,38 +34,36 @@ public final class RunAppleScriptTool {
         }
 
         let timeoutSeconds = clampTimeout(args["timeout_seconds"]?.intValue ?? Self.defaultTimeoutSeconds)
-        let auditFullSource = args["audit_full_source"]?.boolValue ?? false
 
         let scriptSha256 = ScriptHasher.sha256Hex(script)
-        let recordedSource: String? = auditFullSource ? script : nil
         let targetApps = permissionChecker.extractTargetApps(from: script)
 
         // Phase 1: security filter
         do {
             try filter.validate(script)
         } catch let secError as AppleScriptSecurityError {
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .securityRejected(reason: secError.matchedRule),
+                targetApps: targetApps,
+                filterDisposition: .rejectedSecurity,
+                executionOutcome: .notExecuted,
                 durationMs: 0,
-                targetApps: targetApps
+                rejectionReason: secError.matchedRule
             ))
             return errorResult(
                 code: "security_policy_violation",
                 message: "\(secError.detail) (rule: \(secError.matchedRule))"
             )
         } catch {
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .securityRejected(reason: "unknown"),
+                targetApps: targetApps,
+                filterDisposition: .rejectedSecurity,
+                executionOutcome: .notExecuted,
                 durationMs: 0,
-                targetApps: targetApps
+                rejectionReason: "unknown"
             ))
             return errorResult(
                 code: "security_policy_violation",
@@ -76,14 +74,14 @@ public final class RunAppleScriptTool {
         // Phase 2: TCC pre-flight
         switch permissionChecker.check(targetApps: targetApps) {
         case .denied(let app):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .permissionDenied(app: app),
+                targetApps: targetApps,
+                filterDisposition: .rejectedPermission,
+                executionOutcome: .notExecuted,
                 durationMs: 0,
-                targetApps: targetApps
+                deniedApp: app
             ))
             return errorResult(
                 code: "automation_permission_required",
@@ -98,14 +96,13 @@ public final class RunAppleScriptTool {
         do {
             executionResult = try executor.run(script, timeout: TimeInterval(timeoutSeconds))
         } catch {
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .scriptError(code: 0),
-                durationMs: 0,
-                targetApps: targetApps
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .ioError,
+                durationMs: 0
             ))
             return errorResult(
                 code: "applescript_error",
@@ -115,26 +112,24 @@ public final class RunAppleScriptTool {
 
         switch executionResult {
         case .success(let stdout, let durationMs, let truncated):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .success,
-                durationMs: durationMs,
-                targetApps: targetApps
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .success,
+                durationMs: durationMs
             ))
             return successResult(stdout: stdout, durationMs: durationMs, truncated: truncated)
 
         case .failure(.timeout(let after)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .timeout,
-                durationMs: Int((after * 1000).rounded()),
-                targetApps: targetApps
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .timeout,
+                durationMs: Int((after * 1000).rounded())
             ))
             return errorResult(
                 code: "execution_timeout",
@@ -142,14 +137,14 @@ public final class RunAppleScriptTool {
             )
 
         case .failure(.scriptError(let code, let message)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .scriptError(code: code),
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .scriptError,
                 durationMs: 0,
-                targetApps: targetApps
+                scriptErrorCode: code
             ))
             return errorResult(
                 code: "applescript_error",
@@ -157,14 +152,13 @@ public final class RunAppleScriptTool {
             )
 
         case .failure(.ioError(let detail)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: "run_applescript",
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
                 scriptSha256: scriptSha256,
-                scriptSource: recordedSource,
-                outcome: .scriptError(code: 0),
-                durationMs: 0,
-                targetApps: targetApps
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .ioError,
+                durationMs: 0
             ))
             return errorResult(
                 code: "applescript_error",

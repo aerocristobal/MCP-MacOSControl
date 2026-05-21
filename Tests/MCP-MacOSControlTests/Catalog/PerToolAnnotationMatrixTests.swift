@@ -15,7 +15,7 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         let idempotent: Bool
     }
 
-    /// Source of truth for the 75 currently-registered tools. Adding a tool to
+    /// Source of truth for the 77 currently-registered tools. Adding a tool to
     /// `ToolRouter` without a row here will make `test_matrixCoversEveryRegisteredTool`
     /// fail — that is the intended TDD signal for new contributors.
     private static let expectations: [ExpectedAnnotation] = [
@@ -126,6 +126,12 @@ final class PerToolAnnotationMatrixTests: XCTestCase {
         // Router (1) — STORY-010. Conservative: may click any control or
         // overwrite text, and the routed outcome depends on live UI state.
         .init(toolName: "smart_interact",              readOnly: false, destructive: true,  idempotent: false),
+
+        // Audit admin (2) — STORY-024. verify_audit_chain is a read-only
+        // integrity probe; force_rotate_unacked is destructive (accepted log
+        // loss) and gated by MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED=true.
+        .init(toolName: "verify_audit_chain",          readOnly: true,  destructive: false, idempotent: true),
+        .init(toolName: "force_rotate_unacked",        readOnly: false, destructive: true,  idempotent: false),
     ]
 
     func test_eachTool_hasExpectedAnnotation() {

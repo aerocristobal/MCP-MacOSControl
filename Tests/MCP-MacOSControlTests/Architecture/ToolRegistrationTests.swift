@@ -89,7 +89,8 @@ final class ToolRegistrationTests: XCTestCase {
             "list_displays",
             "iphone_open_app", "iphone_wait_for_text", "iphone_reconnect",
             "wait_for_ui_event", "wait_for_element_state", "wait_for_app_event",
-            "smart_interact"
+            "smart_interact",
+            "verify_audit_chain", "force_rotate_unacked"
         ]
         let actual = Set(ToolRouter.allTools.map(\.name))
         XCTAssertEqual(actual, expected)

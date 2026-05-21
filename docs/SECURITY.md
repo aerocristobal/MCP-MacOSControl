@@ -1,8 +1,9 @@
 # Security Policy and Threat Model
 
 > **Status:** Living document. Owners must review on every change to the AppleScript or Accessibility surface.
-> **Last reviewed:** 2026-05-09 — initial draft (pending Three Amigos security sign-off)
+> **Last reviewed:** 2026-05-20 — added OSCAL component definition (STORY-022)
 > **Companion artifacts:** `docs/stories/STORY-006-run-applescript-tool.md`, `docs/PRD-MCP-MacOSControl.md`
+> **Machine-readable mapping:** [`oscal/component-definition.json`](../oscal/component-definition.json) — OSCAL 1.1.2 Component Definition. See [`oscal/README.md`](../oscal/README.md) for maintenance workflow. CI fails on drift between this document and the OSCAL artifact (see §7.3).
 
 ---
 
@@ -76,7 +77,7 @@ The following four risk classes are the canonical threat model for the AppleScri
 Filter ruleset is owned by the security reviewer and changes go through code review with a security label.
 
 **Secondary mitigations.**
-- Mandatory audit hook on every invocation (success, failure, **and rejection**) — see §4.4 mitigations
+- Mandatory audit hook on every invocation (success, failure, **and rejection**) — STORY-024 makes this hook trustworthy: each record is hash-chained (`prev_hash` → `record_hash`), retained for a configurable window (default 365 days), and shipped off-host to a managed sink (OSLog by default, or HTTP/syslog). See §4.4 and [`AUDIT-LOG-OPERATIONS.md`](AUDIT-LOG-OPERATIONS.md).
 - macOS TCC automation permissions per target app (§4.3) — additional gate that operates outside the server's control
 - MCP host gating — Claude Desktop and most hosts require user confirmation for `destructiveHint: true` tools; `run_applescript` is annotated accordingly
 
@@ -88,7 +89,7 @@ Filter ruleset is owned by the security reviewer and changes go through code rev
 
 **Justification for accepting this residual risk:**
 1. AST-based filtering would require a production-ready Swift AppleScript parser, which does not exist. Building one is out of scope and would itself introduce new attack surface.
-2. The audit hook ensures every invocation — including bypass attempts that succeed against the filter — produces a forensic record. Detection compensates for imperfect prevention.
+2. The audit hook ensures every invocation — including bypass attempts that succeed against the filter — produces a forensic record. STORY-024 makes the hook tamper-evident (hash chain), retained (configurable window with archive), and off-host (OSLog / HTTP / syslog) so detection compensates for imperfect prevention *operationally*, not just architecturally.
 3. macOS TCC enforces per-app automation permissions independently. Even a bypassed filter cannot reach apps the user has not granted automation permission for.
 4. The MCP host's user-confirmation prompt for destructive tools provides a final human gate.
 
@@ -125,15 +126,19 @@ The bypass class is recorded as an accepted risk in the project POA&M (NIST SP 8
 
 **Threat.** A malicious script (or post-incident attacker with local access) modifies or deletes audit records to hide evidence of policy violations.
 
-**Current mitigation (STORY-006 scope).** The `AuditRecorder` protocol seam is committed; the v1 production implementation is `InMemoryAuditRecorder`. Records are not persisted across process restarts.
+**Mitigation (STORY-024).** The `AuditRecorder` is now a chained, persistent, off-host-shipping recorder. Three properties combine:
 
-**Acknowledged gap.** This is the seam, not the production implementation. The in-memory recorder is suitable for development and tests but provides no tamper resistance and no durability. A separate compliance-track story must commit:
-- Append-only filesystem sink with rotation, owned by a directory the server's user can write to but not silently truncate
-- Optional OpenTelemetry export for organizations with central log aggregation
-- Optional syslog / unified-logging emission for macOS-native audit pipelines
-- Tamper-evident hashing (each record includes the SHA-256 of the previous record's serialized form)
+1. **Tamper-evidence via hash chain.** Each record's `prev_hash` equals SHA-256 of the prior record's `record_hash`; the first record's `prev_hash` is a deterministic genesis derived from `gethostname()` + per-install UUID. `AuditChainVerifier` walks the chain on server start, on every retention sweep, and on operator demand via the `verify_audit_chain` MCP tool. A chain break is reported with the first-break record id and surfaced as a SECURITY-CRITICAL log line.
+2. **Retention with archive.** `AuditRetentionSweeper` runs against a configurable retention window (default 365 days, `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS`). Records older than the window AND acknowledged by the remote sink are moved to an archive directory; records still `delivery_status=pending` are NEVER rotated automatically (silent log loss during an outage is the worst audit failure mode). The operator-only `force_rotate_unacked` MCP tool, gated by `MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED=true`, is the documented escape hatch and self-audits before rotating.
+3. **Off-host shipping.** Default sink is OSLog (subsystem `com.mcp.macos-control.audit`) — built into macOS, requires no external service, collected by enterprise MDM. Optional HTTP JSON sink (for managed SIEMs) and syslog sink (for legacy infrastructure) configurable via `MCP_MACOS_CONTROL_AUDIT_REMOTE`. Each shipped record gets a `remote_ack_timestamp` annotation on success; failures leave `delivery_status=pending` and a background retry loop drains them in order.
 
-**Why deferred.** STORY-006 commits the protocol seam — that is the only architectural decision needed to make the production sink swappable. Implementing the production sink now would over-design the v1 code and bury the security-critical execution path under audit infrastructure. The deferral is intentional and the risk is accepted *for development and test environments only*. The production sink is a precondition for any deployment that claims AU-2 / AU-3 implementation under NIST SP 800-53.
+**Append-only enforcement.** `AuditStorage.insert(_:)` throws `audit_log_immutability_violation` if a record_id already exists. Delivery-status annotations are kept in a sibling ack-ledger file so the record stream itself is never rewritten.
+
+**Schema.** Each record carries 13 mandatory fields per the BDD outline in `docs/stories/STORY-024-audit-log-integrity.md` §2. Schema is version-stamped (`audit_schema_version: 1`) for future evolution. The script *source* is explicitly NOT recorded — only its SHA-256 fingerprint — because the source can contain typed secrets (see §4.2).
+
+**Operations.** See [`AUDIT-LOG-OPERATIONS.md`](AUDIT-LOG-OPERATIONS.md) for log location, env-var matrix, chain-verification incident response, and HTTP-sink ingestion format.
+
+**Acknowledged residual risk.** A per-record digital signature would be stronger than a hash chain — but signing requires key management, and a stored key on the host is no harder to compromise than the host itself. The chain + off-host shipping pair gives a verifier two independent corroborations: the on-disk chain AND the remote sink's collected copy. Re-evaluation criteria: a credible HSM-backed signing path becomes available, or a post-incident review identifies a class of tampering the chain misses.
 
 ---
 
@@ -179,14 +184,18 @@ Authoring formal OSCAL component-definition entries is **out of scope** for STOR
 |---|---|---|
 | **AC-3** | Access Enforcement | Tool annotations (`destructiveHint`, `readOnlyHint`) signal MCP hosts to apply user-confirmation gates before invocation. macOS TCC is the underlying enforcement mechanism for filesystem and automation access. |
 | **AC-4** | Information Flow Enforcement | 1 MB output truncation cap with `truncated: true` flag bounds data egress per invocation. |
-| **AU-2** | Event Logging | `AuditRecorder.record(_:)` is invoked on every `run_applescript` and `click_menu_item` call regardless of outcome. |
-| **AU-3** | Content of Audit Records | `AuditRecord` schema satisfies "what (toolName), when (timestamp), where (targetApps), source (MCP client metadata when present), outcome (success / failure variant)." Subject identity is the local user (single-tenant by design). |
-| **AU-9** | Protection of Audit Information | **Partially satisfied.** Protocol seam committed; production sink with append-only semantics is deferred (see §4.4). |
+| **AU-2** | Event Logging | `AuditRecording.record(_:)` (renamed protocol seam) is invoked on every `run_applescript` and `click_menu_item` call regardless of outcome. STORY-024's `AuditRecorder` persists each record to JSON Lines on disk under `~/Library/Logs/com.mcp.macos-control/audit/`. |
+| **AU-3** | Content of Audit Records | `AuditRecord` schema (STORY-024) carries the 13 mandatory fields: `record_id`, `timestamp_iso8601`, `event_type`, `script_sha256`, `target_apps_extracted`, `filter_disposition`, `execution_outcome`, `prev_hash`, `record_hash`, `delivery_status`, `remote_ack_timestamp`, `host_identifier`, `server_version`. Schema is version-stamped (`audit_schema_version: 1`). |
+| **AU-9** | Protection of Audit Information | **Satisfied.** Records are hash-chained (per-install genesis → `prev_hash` → `record_hash`), append-only at the storage layer (`audit_log_immutability_violation` on duplicate `record_id`), and shipped off-host to the configured sink (OSLog default, HTTP/syslog optional). Chain verifier runs on server start, on every retention sweep, and on operator demand via the `verify_audit_chain` MCP tool. Pending records are never rotated to archive automatically — silent log loss is documented as the worst audit failure mode and avoided by design. |
+| **AU-11** | Audit Record Retention | `AuditRetentionSweeper` enforces a configurable retention window (default 365 days, `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS`). Records older than the window AND acknowledged by the remote sink move to archive; the archive chain remains verifiable. |
 | **CM-7** | Least Functionality | `AppleScriptSecurityFilter` denylist disables `do shell script` and `do JavaScript` even though `osascript` supports them — the project intentionally exposes a reduced subset of AppleScript's capability surface. |
 | **SC-7** | Boundary Protection | Out of scope for the server itself; relevant to deployers configuring MCP transport. |
 | **SI-10** | Information Input Validation | `AppleScriptSecurityFilter.validate(_:)` is the validator for AppleScript input. Input schema validation in tool entry points covers structural validation for all tools. |
 | **SI-11** | Error Handling | Structured `MCPError` envelope per tool — error codes designed to be actionable (`element_not_found`, `automation_permission_required`, `security_policy_violation`) without leaking internal state. |
-| **RA-5** | Vulnerability Monitoring and Scanning | CI runs static analysis on every PR (existing `.github/workflows/ci.yml`); supply-chain scanning is a deferred concern not addressed by this document. |
+| **RA-5** | Vulnerability Monitoring and Scanning | CI runs SCA on every PR via Grype against a CycloneDX SBOM, plus GitHub's native Dependency Review action. See §8 for the full pipeline. |
+| **SR-3** | Supply Chain Controls and Processes | `.github/sbom-policy.yml` declares allowed licenses and severity gates; changes are PR-gated under the `security-review` label. See §8.1. |
+| **SR-4** | Provenance | CycloneDX 1.5+ SBOM generated by Syft on every push and PR identifies every transitive Swift package by name, version, and SHA. Attached to GitHub Releases on tagged builds. See §8.2. |
+| **SR-11** | Component Authenticity | Grype scans the SBOM against the GitHub Advisory Database on every PR; CVSS ≥ 9.0 blocks merge, 7.0–8.9 warns with a PR comment. See §8.3. |
 
 ### 7.2 Controls NOT addressed by this project (deployer responsibility)
 
@@ -194,38 +203,110 @@ Authoring formal OSCAL component-definition entries is **out of scope** for STOR
 |---|---|
 | **AC-2** Account Management | The server is single-tenant by design — runs as the launching user. Multi-user account management is a deployer / OS concern. |
 | **IA-2** Identification and Authentication | MCP transport is local stdio; the connecting host is implicitly trusted by virtue of process boundary. Cross-network MCP deployments require a deployer-supplied authentication layer. |
-| **AU-9** (full satisfaction) | Production audit sink is deferred; see §4.4. |
+| **AU-9** (full satisfaction) | Satisfied by STORY-024 — see row above. |
 | **SC-8** Transmission Confidentiality and Integrity | MCP stdio is loopback; no transport encryption applied or required. |
 | **SC-13** Cryptographic Protection | No cryptographic operations performed by the server other than SHA-256 of script source for audit fingerprinting. |
 
-### 7.3 OSCAL artifact roadmap
+### 7.3 OSCAL artifacts
 
-Out of scope for STORY-006 / STORY-007; recorded here as a design input for the future compliance story:
-
-1. **Component Definition** — express MCP-MacOSControl as an OSCAL component, listing `control-implementations` for the controls in §7.1
-2. **Audit Record → OSCAL Observation mapping** — each `AuditRecord` should be convertible to an OSCAL Assessment Results `observation` for inclusion in an SSP's evidence collection
-3. **POA&M entries** — the regex bypass class accepted risk (§4.1) should be a POA&M entry with status `risk-accepted` and a `risk-log` documenting the rationale
+1. **Component Definition** — Authored at [`oscal/component-definition.json`](../oscal/component-definition.json) (OSCAL 1.1.2). Every control named in §7.1 and §8 has an `implemented-requirement` block with links to source files (`rel: implementation`) and test files (`rel: verification`). The §7.2 deployer-responsibility controls appear with `implementation-status: not-applicable`. Maintained per STORY-022; see [`oscal/README.md`](../oscal/README.md). Drift between §7/§8 and the OSCAL artifact is enforced by `OscalCoverageCheckerTests` (CI-gated).
+2. **Assessment Results** — Authored at [`oscal/assessment-results.json`](../oscal/assessment-results.json) (OSCAL 1.1.2). The `oscal-emit` CLI (STORY-037) converts the `AuditRecord` stream (STORY-024) into Observations, one per record. Append-only — prior observations are never modified. The committed file is seeded from a fixture stream and is regenerated nightly from the integration suite's audit-record output; the per-record schema mapping lives in [`oscal/assessment-results-mapping.md`](../oscal/assessment-results-mapping.md). Chain-break events from STORY-024 produce elevated-severity observations linked to the AU-9 control and a stable risk UUID; the corresponding POA&M item is auto-opened.
+3. **POA&M** — Authored at [`oscal/plan-of-action-and-milestones.json`](../oscal/plan-of-action-and-milestones.json) (OSCAL 1.1.2). Every §4 accepted-risk statement has at least one open POA&M item with status, owner, related-controls, milestones, and re-evaluation criterion. Historical closed risks (e.g. the pre-STORY-024 deferred audit sink) are retained as `status: closed` with closure evidence in `remarks`. UUID registry: [`oscal/poam-id-allocations.md`](../oscal/poam-id-allocations.md). Bidirectional drift between §4 and the POA&M is enforced by `oscal-drift check-section4-poam` (CI-gated). Maintained per STORY-037.
 
 Reference: `oscal-engineering-guide.md` (project knowledge base).
 
 ---
 
-## 8. Operational Guidance
+## 8. Supply Chain Risk Management
 
-### 8.1 For developers contributing to security-relevant code paths
+This section maps to NIST SP 800-53 controls **SR-3** (Supply Chain Controls and Processes), **SR-4** (Provenance), and **SR-11** (Component Authenticity). It documents the SBOM + SCA + dependency-review pipeline that runs on every push and pull request, and the release-time publication of evidence artifacts.
+
+### 8.1 Policy artifact
+
+`.github/sbom-policy.yml` is the single source of truth for supply-chain policy. It declares:
+
+| Field | Current value | Used by |
+|---|---|---|
+| `allowed_licenses` | `MIT`, `Apache-2.0`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC` | `dependency-review-action` (`allow-licenses` arg) |
+| `severity_gates.block` | `critical` (CVSS ≥ 9.0) | `anchore/scan-action` (`severity-cutoff` arg); fails the workflow |
+| `severity_gates.warn` | `high` (CVSS 7.0–8.9) | post-scan SARIF parser; posts a PR comment, does not block |
+| `severity_gates.log` | `medium`, `low` | recorded in SARIF only; visible in Security tab |
+| `vex_statements_file` | `.github/vex-statements.json` | `release.yml` (attach VEX to release when non-empty) |
+
+Edits to this file route through PR review under the `security-review` label. Re-evaluate the CVSS block threshold after 30 days of operation per §9 Notes in `docs/stories/STORY-021-software-supply-chain-security.md`.
+
+### 8.2 SBOM generation (SR-4)
+
+`.github/workflows/ci.yml` runs `anchore/sbom-action@v0` (Syft under the hood) on every push and PR. The tool parses `Package.resolved` natively and emits a CycloneDX 1.5+ JSON document at `sbom-cyclonedx.json` that names every transitive Swift package by identity, version, and revision SHA. The SBOM is uploaded as a workflow artifact (`sbom-cyclonedx`).
+
+On tagged releases (`v*`), `.github/workflows/release.yml` regenerates the SBOM against the tagged source and attaches it (alongside `vex-statements.json` when non-empty) to the GitHub Release. Consumers who need an authoritative component manifest pull the asset from the release.
+
+### 8.3 SCA and gating (SR-11)
+
+Two scanners run on every PR:
+
+1. **`actions/dependency-review-action@v4`** (PR-only). Native GitHub action, diffs the PR's manifest against the base ref, fails on `severity: critical` and on disallowed licenses. First-line gate; runs in seconds.
+2. **`anchore/scan-action@v3`** (Grype). Scans the SBOM against the GitHub Advisory Database, emits SARIF, fails the build on `severity-cutoff: critical`. SARIF is uploaded to the repo's Security → Code scanning tab via `github/codeql-action/upload-sarif@v3`.
+
+A subsequent shell step parses the Grype SARIF for findings with `security-severity` between 7.0 and 8.9 (the `warn` tier per §8.1). When present, it posts a single `gh pr comment` summarizing each CVE with its score. No third-party action is required.
+
+### 8.4 VEX (Vulnerability Exploitability eXchange)
+
+`.github/vex-statements.json` holds CycloneDX VEX 0.5 statements documenting CVEs that are known but **not exploitable** in this codebase, or accepted with mitigation. The initial committed content is `[]` (no statements). Adding a statement is a security-review action that asserts evidence — the requested format and review cadence are documented in `docs/stories/STORY-021-software-supply-chain-security.md` §4 Q5.
+
+The release workflow attaches the VEX document to GitHub Releases only when it is non-empty; an empty placeholder has no signal value on a public release.
+
+### 8.5 Dependency upgrades (Dependabot)
+
+`.github/dependabot.yml` opens monthly PRs for Swift packages and weekly PRs for GitHub Actions. Cadence rationale:
+
+- **Swift packages** move slowly and the project pins exact versions in `Package.resolved`. Weekly upgrade PRs would create churn without payoff.
+- **GitHub Actions** ship security fixes more often (and supply-chain attacks against Actions are a real class — see e.g. the `tj-actions/changed-files` incident). Weekly cadence catches these faster.
+
+Dependabot-opened PRs run the full pipeline above, so each upgrade is automatically re-scanned for CVEs and license drift.
+
+### 8.6 Verifying the critical-CVE gate
+
+The gate is exercised in two ways:
+
+1. **Production traffic.** Every PR runs `anchore/scan-action@v3` against the freshly generated SBOM. The first PR after a newly disclosed Critical CVE in any pinned dependency will fail, naming the offending package, CVE ID, and CVSS score in the workflow log. No fixture needed — the live advisory database is the test.
+2. **Out-of-band proof on demand.** Open a throwaway feature branch, pin a Swift package version with a known-disclosed Critical CVE (e.g. an old `swift-nio` predating an advisory), push, and confirm the CI's `SCA scan (Grype, STORY-021)` step fails. Discard the branch. Record the run URL in a follow-up PR comment if the gate's correctness ever comes into question.
+
+Synthetic-SBOM unit tests are deliberately not committed: maintaining a fixture with a hard-coded "known-bad" CVE drifts as advisories age and creates a maintenance footgun. The DoD permits manual verification (story §8 Tests bullet) and the production-traffic mode above is the standing assurance.
+
+### 8.7 Accepted risk and known limitations
+
+- **No SBOM signing yet.** STORY-021 commits the artifact but not its attestation. STORY-023 (signing/notarization) will close this loop with `sigstore` / `cosign`.
+- **Advisory-database freshness.** Grype's vulnerability database refreshes daily inside the action; a CVE published in the last 24 hours may not be caught on a given PR. Subsequent PRs will pick it up; this is consistent with the rest of the ecosystem.
+- **Reachability is not modeled.** A high or critical CVE in a transitive dependency is flagged even if the vulnerable code path is unreachable from this codebase. The `warn`-tier classification (not blocking) for high-severity findings is the explicit compromise; VEX statements are how operators downgrade individual cases after review.
+- **Single SBOM format.** CycloneDX only; SPDX is not generated. If a downstream consumer requires SPDX, it is a one-line tool-config change in `sbom-action`.
+
+### 8.8 Cross-references
+
+- `.github/sbom-policy.yml` — current policy values
+- `.github/workflows/ci.yml` — PR gate pipeline
+- `.github/workflows/release.yml` — tagged-release publication
+- `docs/stories/STORY-021-software-supply-chain-security.md` — full BDD acceptance criteria, DoD, and refinement notes
+- [`oscal/component-definition.json`](../oscal/component-definition.json) — STORY-022 OSCAL component definition. Links the SBOM as `rel: evidence` (see SR-3 / SR-4 / SR-11 implementation statements).
+
+---
+
+## 9. Operational Guidance
+
+### 9.1 For developers contributing to security-relevant code paths
 
 - Any change to `AppleScriptSecurityFilter`'s ruleset requires a security-labeled review and an updated entry in §4.1's documented bypass classes (additions, removals, or known-bypasses-now-fixed).
 - Any change to the `AuditRecord` schema requires updating §7.1 (control mapping) and the future OSCAL component-definition story.
 - Any new tool that takes free-form input from the agent — string inputs that aren't enums or fixed-shape structs — must come with a section in §3 (attack surface entry) and an entry in §4 (threat + mitigation) before merge.
 
-### 8.2 For deployers
+### 9.2 For deployers
 
 - Grant the server the minimum macOS TCC permissions actually required for your use case. The server's tool descriptions identify which permission each tool needs.
 - Disable the `AppleScriptModule` entirely if your deployment forbids `osascript` execution. The module is structured as a separable unit specifically so this is a one-line change in `Sources/MCP-MacOSControl/main.swift`.
 - Provide a production audit sink before deploying outside development. The in-memory recorder is not suitable for production.
 - Apply MCP host configuration that requires user confirmation for tools annotated `destructiveHint: true`.
 
-### 8.3 For security reviewers
+### 9.3 For security reviewers
 
 - The four risk classes in §4 are the authoritative threat catalog. Threats not covered by this catalog are either out of scope (§1) or warrant an addition to the catalog via PR.
 - The accepted-risk justifications in §4.1 (regex bypass class) and §4.4 (deferred production audit sink) are the load-bearing ones. Re-evaluation criteria are documented inline.
@@ -233,8 +314,12 @@ Reference: `oscal-engineering-guide.md` (project knowledge base).
 
 ---
 
-## 9. Change Log
+## 10. Change Log
 
 | Date | Author | Change |
 |---|---|---|
 | 2026-05-09 | aerocristobal | Initial draft accompanying STORY-006 (run_applescript). Threat model, NIST SP 800-53 control mapping, and OSCAL roadmap. |
+| 2026-05-20 | aerocristobal | Added §8 Supply Chain Risk Management (STORY-021): CycloneDX SBOM via Syft, Grype SCA, GitHub Dependency Review, Dependabot config, VEX placeholder, and SR-3/SR-4/SR-11 mapping in §7.1. §8 Operational Guidance renumbered to §9; Change Log renumbered to §10. |
+| 2026-05-20 | aerocristobal | Authored `oscal/component-definition.json` (STORY-022): OSCAL 1.1.2 machine-readable mirror of §7/§8. Adds CI-gated drift detection (`OscalCoverageCheckerTests`) and Docker-pinned `oscal-cli` schema validation. §1 header updated to advertise the OSCAL artifact; §7.3 roadmap updated past-tense; §8.8 cross-references updated. |
+| 2026-05-20 | aerocristobal | STORY-024. §4.1 / §4.4 / §7: audit log is now hash-chained, retained, and shipped off-host. AU-9 moves from "partially satisfied" to "satisfied"; AU-11 newly mapped. New companion document `AUDIT-LOG-OPERATIONS.md`. |
+| 2026-05-21 | aerocristobal | STORY-037. §7.3 roadmap items 2 and 3 closed: Assessment Results (`oscal/assessment-results.json`) and POA&M (`oscal/plan-of-action-and-milestones.json`) committed alongside the Component Definition. Adds `oscal-emit` (AuditRecord → OSCAL Observation) and `oscal-drift` (SECURITY.md §4 ↔ POA&M bidirectional drift) CLIs. AU-9 statement under the Component Definition rewritten to reflect STORY-024 closure; AU-11 added; residual risk under §4.4 reframed as the absence of per-record HSM signing. |

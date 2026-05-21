@@ -58,6 +58,31 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
+## Security
+
+The threat model, AppleScript denylist, audit-record schema, and NIST SP 800-53 control mapping live in [docs/SECURITY.md](docs/SECURITY.md). Vulnerabilities should be reported via a private GitHub Security Advisory — see §6 of that document.
+
+**Supply-chain controls (STORY-021, see §8).** Every push and pull request:
+
+- Generates a CycloneDX 1.5+ SBOM (via Syft) covering every transitive Swift package.
+- Runs Grype SBOM scanning + GitHub's native Dependency Review against the SBOM.
+- Fails the build on CVSS ≥ 9.0 (Critical) findings; CVSS 7.0–8.9 (High) warns via a PR comment without blocking.
+- Enforces a license allow-list: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC.
+
+Tagged releases attach the SBOM (and a VEX document, when statements exist) to the GitHub Release as evidence artifacts. Dependabot opens monthly Swift-package and weekly GitHub-Actions upgrade PRs against the same gate. Policy is declared in [`.github/sbom-policy.yml`](.github/sbom-policy.yml).
+
+### Compliance Artifacts
+
+Machine-readable compliance posture for downstream SSP authors, assessors, and continuous-monitoring consumers. All three artifacts are versioned in `oscal/` and validated against the NIST OSCAL schemas on every push.
+
+| Artifact | OSCAL model | Purpose |
+|----------|-------------|---------|
+| [`oscal/component-definition.json`](oscal/component-definition.json) | OSCAL 1.1.2 Component Definition | Mirror of [`docs/SECURITY.md`](docs/SECURITY.md) §7/§8 control implementation, with `rel:implementation` and `rel:verification` links into source and tests. Maintained per STORY-022. |
+| [`oscal/plan-of-action-and-milestones.json`](oscal/plan-of-action-and-milestones.json) | OSCAL 1.1.2 POA&M | One open item per accepted-risk statement in `docs/SECURITY.md` §4, plus historical closed items. Each item carries status, owner, related-controls, and milestones. UUID registry: [`oscal/poam-id-allocations.md`](oscal/poam-id-allocations.md). Maintained per STORY-037. |
+| [`oscal/assessment-results.json`](oscal/assessment-results.json) | OSCAL 1.1.2 Assessment Results | Continuous-monitoring observations derived from the STORY-024 AuditRecord stream. One observation per AuditRecord. Append-only; nightly emit job amends new observations without rewriting prior ones. AuditRecord ↔ Observation mapping: [`oscal/assessment-results-mapping.md`](oscal/assessment-results-mapping.md). Maintained per STORY-037. |
+
+Drift between `docs/SECURITY.md` and the OSCAL artifacts is enforced bidirectionally by [`swift run oscal-drift check`](Sources/OscalDrift/main.swift) — CI fails on any of: a §7/§8 control claim without an OSCAL `implemented-requirement`, an OSCAL `implemented-requirement` not referenced by §7/§8, a §4 accepted-risk statement without a matching open POA&M item, or a POA&M item whose `security-md-section` no longer exists.
+
 ## Tools (75 total, 16 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)
@@ -229,6 +254,16 @@ Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates us
 | `MCP_MACOS_CONTROL_LOG_LEVEL` | `warn` | Log level: error, warn, info, debug, trace |
 | `MCP_MACOS_CONTROL_MAX_INPUT_RATE` | `10` | Maximum input events per second |
 | `MCP_MACOS_CONTROL_OVERRIDES_PATH` | _(see below)_ | Path to the per-app capability override file |
+| `MCP_MACOS_CONTROL_AUDIT_DIR` | `~/Library/Logs/com.mcp.macos-control/audit/` | STORY-024: audit log directory |
+| `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS` | `365` | STORY-024: retention window before records move to archive |
+| `MCP_MACOS_CONTROL_AUDIT_REMOTE` | `oslog` | STORY-024: off-host sink — `oslog`, `http`, or `syslog` |
+| `MCP_MACOS_CONTROL_AUDIT_REMOTE_URL` | _(unset)_ | STORY-024: required when `REMOTE=http`; must be an `http(s)` URL |
+| `MCP_MACOS_CONTROL_AUDIT_ACK_TIMEOUT_MS` | `5000` | STORY-024: per-record remote-ack timeout |
+| `MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED` | `false` | STORY-024: set `true` to expose the `force_rotate_unacked` MCP tool |
+
+See [`docs/AUDIT-LOG-OPERATIONS.md`](docs/AUDIT-LOG-OPERATIONS.md) for the full
+audit subsystem operator guide (chain verification, retention, incident
+response, sink-specific configuration).
 
 ## Per-App Capability Overrides
 
