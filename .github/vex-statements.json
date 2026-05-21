@@ -1,44 +1,25 @@
 {
-  "bomFormat": "CycloneDX",
-  "specVersion": "1.5",
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/aerocristobal/MCP-MacOSControl/.github/vex-statements.json",
+  "author": "MCP-MacOSControl maintainers",
+  "role": "Project Owner",
+  "timestamp": "2026-05-21T00:00:00Z",
   "version": 1,
-  "metadata": {
-    "timestamp": "2026-05-21T00:00:00Z",
-    "tools": [
-      {
-        "vendor": "MCP-MacOSControl",
-        "name": "manual-vex",
-        "version": "1.0.0"
-      }
-    ]
-  },
-  "vulnerabilities": [
+  "statements": [
     {
-      "id": "CVE-2022-1650",
-      "source": {
-        "name": "NVD",
-        "url": "https://nvd.nist.gov/vuln/detail/CVE-2022-1650"
+      "vulnerability": {
+        "name": "CVE-2022-1650",
+        "@id": "https://nvd.nist.gov/vuln/detail/CVE-2022-1650",
+        "description": "Improper Removal of Sensitive Information Before Storage or Transfer in GitHub repository eventsource/eventsource (Node.js npm package) prior to v2.0.2."
       },
-      "ratings": [
+      "products": [
         {
-          "source": { "name": "NVD" },
-          "score": 9.3,
-          "severity": "critical",
-          "method": "CVSSv3"
+          "@id": "pkg:swift/Recouse/EventSource"
         }
       ],
-      "description": "Improper Removal of Sensitive Information Before Storage or Transfer in GitHub repository eventsource/eventsource prior to v2.0.2.",
-      "analysis": {
-        "state": "not_affected",
-        "justification": "code_not_present",
-        "response": ["will_not_fix"],
-        "detail": "CVE-2022-1650 is registered against the Node.js npm package `eventsource` (NVD CPE: cpe:2.3:a:eventsource:eventsource:*:*:*:*:node.js:*:*:*). Grype matches it against the unrelated Swift package at https://github.com/Recouse/EventSource (pulled in transitively via modelcontextprotocol/swift-sdk) solely on package name. The Swift `eventsource` is a Server-Sent Events client for Apple platforms (iOS/macOS/watchOS/tvOS/visionOS), declared with swift-tools-version 6.1 and 6.0 fallback. It does not contain the vulnerable Node.js code path. This is a Grype package-name-collision false positive across ecosystems."
-      },
-      "affects": [
-        {
-          "ref": "pkg:swift/Recouse/EventSource"
-        }
-      ]
+      "status": "not_affected",
+      "justification": "vulnerable_code_not_present",
+      "impact_statement": "CVE-2022-1650 is registered against the Node.js npm package `eventsource` (NVD CPE: cpe:2.3:a:eventsource:eventsource:*:*:*:*:node.js:*:*:*). Grype matches it against the Swift package at https://github.com/Recouse/EventSource (pulled in transitively via modelcontextprotocol/swift-sdk) solely on package name. The Swift `eventsource` is an unrelated Server-Sent Events client for Apple platforms (iOS/macOS/watchOS/tvOS/visionOS), declared with swift-tools-version 6.1 (6.0 fallback). It does not contain the vulnerable Node.js code path. This is a Grype package-name-collision false positive across ecosystems."
     }
   ]
 }
