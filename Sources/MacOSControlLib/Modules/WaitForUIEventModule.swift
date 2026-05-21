@@ -74,6 +74,6 @@ public enum WaitForUIEventModule: ToolModule {
             manager: sharedManager,
             resolver: resolver
         )
-        return await tool.execute(params)
+        return await tool.execute(params, context: context)
     }
 }
