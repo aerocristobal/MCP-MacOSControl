@@ -24,9 +24,9 @@ final class AppleScriptExecutorIntegrationTests: XCTestCase {
         )
     }
 
-    func test_run_returnsStdout_forSimpleExpression() throws {
+    func test_run_returnsStdout_forSimpleExpression() async throws {
         try skipUnlessIntegration()
-        let result = try executor.run("return 1 + 1", timeout: 5)
+        let result = try await executor.run("return 1 + 1", timeout: 5)
         guard case .success(let stdout, _, let truncated) = result else {
             return XCTFail("expected success, got \(result)")
         }
@@ -34,9 +34,9 @@ final class AppleScriptExecutorIntegrationTests: XCTestCase {
         XCTAssertFalse(truncated)
     }
 
-    func test_run_returnsScriptError_forSyntaxError() throws {
+    func test_run_returnsScriptError_forSyntaxError() async throws {
         try skipUnlessIntegration()
-        let result = try executor.run("this is not valid applescript", timeout: 5)
+        let result = try await executor.run("this is not valid applescript", timeout: 5)
         guard case .failure(let error) = result,
               case .scriptError(let code, _) = error else {
             return XCTFail("expected scriptError, got \(result)")
@@ -44,10 +44,10 @@ final class AppleScriptExecutorIntegrationTests: XCTestCase {
         XCTAssertNotEqual(code, 0)
     }
 
-    func test_run_terminatesProcess_afterTimeout() throws {
+    func test_run_terminatesProcess_afterTimeout() async throws {
         try skipUnlessIntegration()
         let start = Date()
-        let result = try executor.run("delay 30", timeout: 1)
+        let result = try await executor.run("delay 30", timeout: 1)
         let elapsed = Date().timeIntervalSince(start)
 
         guard case .failure(.timeout) = result else {

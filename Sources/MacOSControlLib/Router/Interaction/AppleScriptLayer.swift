@@ -41,7 +41,7 @@ public final class AppleScriptLayer: InteractionLayer {
         let script = "tell application \"\(escaped)\" to activate"
 
         do {
-            let outcome = try executor.run(script, timeout: timeout)
+            let outcome = try await executor.run(script, timeout: timeout)
             switch outcome {
             case .success:
                 return .succeeded(method: name, confidence: 0.85)
@@ -61,6 +61,8 @@ public final class AppleScriptLayer: InteractionLayer {
             return "timed out after \(after)s"
         case .ioError(let detail):
             return detail
+        case .cancelled:
+            return "tool call was cancelled"
         }
     }
 }

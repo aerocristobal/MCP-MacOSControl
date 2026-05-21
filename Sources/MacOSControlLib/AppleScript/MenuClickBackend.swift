@@ -50,7 +50,7 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
         let script = resolver.script(for: path, application: application, doNotActivate: doNotActivate)
         let sha = ScriptHasher.sha256Hex(script)
 
-        let result = try executor.run(script, timeout: Self.clickTimeoutSeconds)
+        let result = try await executor.run(script, timeout: Self.clickTimeoutSeconds)
         switch result {
         case .success(_, let durationMs, _):
             audit.record(AuditRecordDraft(
@@ -99,6 +99,23 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
                 durationMs: 0
             ))
             throw MenuClickError.backendFailure(detail: detail)
+
+        case .failure(.cancelled):
+            // STORY-027 — click_menu_item is not on the cancellable surface
+            // (Q4: quick tools support cancellation uniformly but rarely use it).
+            // If it ever observes a cancelled result it surfaces as a backend
+            // failure with a cancelled audit outcome so the chain stays
+            // consistent. throw CancellationError so the SDK suppresses the
+            // response.
+            audit.record(AuditRecordDraft(
+                eventType: .menuClick,
+                scriptSha256: sha,
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .cancelled,
+                durationMs: 0
+            ))
+            throw CancellationError()
         }
     }
 
@@ -106,7 +123,7 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
         let script = resolver.alternativesScript(for: path, application: application)
         let sha = ScriptHasher.sha256Hex(script)
 
-        let result = try executor.run(script, timeout: Self.alternativesTimeoutSeconds)
+        let result = try await executor.run(script, timeout: Self.alternativesTimeoutSeconds)
         switch result {
         case .success(let stdout, let durationMs, _):
             audit.record(AuditRecordDraft(
@@ -152,6 +169,17 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
                 durationMs: 0
             ))
             return []
+
+        case .failure(.cancelled):
+            audit.record(AuditRecordDraft(
+                eventType: .menuAlternativesLookup,
+                scriptSha256: sha,
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .cancelled,
+                durationMs: 0
+            ))
+            throw CancellationError()
         }
     }
 
