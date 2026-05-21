@@ -37,7 +37,7 @@ jobs:
       # ephemeral artifact path; the diff gate replaces that workflow.
       STORY_012_OBSERVATIONS_JSON: ${{ github.workspace }}/docs/compatibility-observations.json
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache Swift build
         uses: actions/cache@v4
