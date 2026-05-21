@@ -53,7 +53,7 @@ public enum SystemModule: ToolModule {
         ]
     }
 
-    public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         let args = params.arguments ?? [:]
         switch params.name {
         case "check_permissions":

@@ -3,7 +3,19 @@ import MCP
 
 public protocol ToolModule {
     static var tools: [Tool] { get }
-    static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result?
+    static func handle(
+        _ params: CallTool.Parameters,
+        context: ToolCallContext
+    ) async throws -> CallTool.Result?
+}
+
+public extension ToolModule {
+    /// Backwards-compatible convenience for callers that don't participate in
+    /// cancellation (most tests, quick tools). Forwards to the two-argument
+    /// form with a non-cancellable context.
+    static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+        try await handle(params, context: .nonCancellable())
+    }
 }
 
 public func jsonSchema(

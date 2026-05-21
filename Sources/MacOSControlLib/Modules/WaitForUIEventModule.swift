@@ -65,7 +65,7 @@ public enum WaitForUIEventModule: ToolModule {
         ]
     }
 
-    public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         guard params.name == "wait_for_ui_event" else { return nil }
 
         let bridge = AXApplicationBridgeImpl()
