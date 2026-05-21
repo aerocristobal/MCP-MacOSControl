@@ -113,6 +113,86 @@ final class AuditChainTests: XCTestCase {
         XCTAssertEqual(report.totalChecked, 0)
     }
 
+    /// Mirrors the BDD scenario literally: an attacker who is
+    /// sophisticated enough to also recompute and overwrite the
+    /// tampered record's own record_hash. The self-hash check at R2
+    /// passes (because the attacker did the math); the chain breaks
+    /// at R3 because R3's prev_hash still references the *original*
+    /// R2.record_hash, not the recomputed one.
+    func test_verify_detectsSophisticatedTampering_atR3() throws {
+        _ = recorder.record(makeDraft("a"))
+        let r2 = recorder.record(makeDraft("b"))
+        let r3 = recorder.record(makeDraft("c"))
+
+        // Attacker rewrites R2 AND recomputes record_hash so the self
+        // check no longer catches them at R2.
+        storage.mutate(r2.recordId) { rec in
+            let tampered = AuditRecord(
+                recordId: rec.recordId,
+                timestampIso8601: rec.timestampIso8601,
+                eventType: rec.eventType,
+                scriptSha256: "TAMPERED",
+                targetAppsExtracted: rec.targetAppsExtracted,
+                filterDisposition: rec.filterDisposition,
+                executionOutcome: rec.executionOutcome,
+                prevHash: rec.prevHash,
+                recordHash: rec.recordHash,
+                deliveryStatus: rec.deliveryStatus,
+                remoteAckTimestamp: rec.remoteAckTimestamp,
+                hostIdentifier: rec.hostIdentifier,
+                serverVersion: rec.serverVersion,
+                durationMs: rec.durationMs
+            )
+            let newHash = (try? tampered.computeRecordHash()) ?? rec.recordHash
+            return AuditRecord(
+                recordId: tampered.recordId,
+                timestampIso8601: tampered.timestampIso8601,
+                eventType: tampered.eventType,
+                scriptSha256: tampered.scriptSha256,
+                targetAppsExtracted: tampered.targetAppsExtracted,
+                filterDisposition: tampered.filterDisposition,
+                executionOutcome: tampered.executionOutcome,
+                prevHash: tampered.prevHash,
+                recordHash: newHash,
+                deliveryStatus: tampered.deliveryStatus,
+                remoteAckTimestamp: tampered.remoteAckTimestamp,
+                hostIdentifier: tampered.hostIdentifier,
+                serverVersion: tampered.serverVersion,
+                durationMs: tampered.durationMs
+            )
+        }
+
+        let verifier = AuditChainVerifier(storage: storage, identity: identity)
+        let report = verifier.verify()
+        XCTAssertFalse(report.isValid)
+        // Per the BDD scenario: "verification fails at R3 because
+        // R3.prev_hash no longer matches SHA-256(modified R2)."
+        XCTAssertEqual(report.firstBreakAt, r3.recordId)
+    }
+
+    // MARK: - Archive chain (BDD: "Records moved to archive remain chain-verifiable")
+
+    func test_verifyAcrossSets_succeeds_whenChainSpansActiveAndArchive() throws {
+        let r1 = recorder.record(makeDraft("a"))
+        let r2 = recorder.record(makeDraft("b"))
+        let r3 = recorder.record(makeDraft("c"))
+        let r4 = recorder.record(makeDraft("d"))
+
+        // Move the first two records to archive. The chain
+        // (R1 → R2 → R3 → R4) must still verify when read as
+        // archive + active.
+        try storage.moveToArchive([r1, r2])
+
+        let verifier = AuditChainVerifier(storage: storage, identity: identity)
+        let report = verifier.verifyAcrossSets()
+        XCTAssertTrue(report.isValid, "chain broke after archive move: \(report.summary)")
+        XCTAssertEqual(report.totalChecked, 4)
+
+        // Sanity: r3 and r4 are still active; r1 and r2 are archived.
+        XCTAssertEqual(storage.archived.map(\.recordId), [r1.recordId, r2.recordId])
+        XCTAssertEqual(storage.active.map(\.recordId), [r3.recordId, r4.recordId])
+    }
+
     // MARK: - Append-Only (BDD: "No record is ever modified after write")
 
     func test_append_throwsImmutabilityViolation_whenSameRecordIdWrittenTwice() throws {

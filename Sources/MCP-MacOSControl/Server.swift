@@ -74,6 +74,17 @@ enum MacOSControlServer {
             adminEnabled: auditConfig.adminToolsEnabled
         )
 
+        // Start the background maintenance loops: retry pending
+        // records (BDD: outage recovery flushes in order) and daily
+        // retention sweep (DoD: AuditRetentionSweeper runs daily).
+        let auditMaintenance = MacOSControlLib.AuditMaintenanceLoop(
+            storage: auditStorage,
+            remoteSink: auditSink,
+            sweeper: auditSweeper,
+            config: auditConfig
+        )
+        auditMaintenance.start()
+
         // STORY-019: load the per-app capability registry. Bundled defaults are
         // required infrastructure — a missing/malformed default file is fatal
         // (same posture as the prompt registry below). A malformed *user
