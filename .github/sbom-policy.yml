@@ -1,0 +1,39 @@
+# STORY-021 — Software Supply Chain Security
+#
+# Single source of truth for SBOM / SCA policy. Referenced by:
+#   - .github/workflows/ci.yml      (severity gate, license allow-list)
+#   - .github/workflows/release.yml (SBOM + VEX publication)
+#   - docs/SECURITY.md §8           (NIST SR-3 / SR-4 / SR-11 mapping)
+#
+# Editing this file is a security-review action. Open a PR with the
+# `security-review` label and route to the maintainers.
+version: 1
+
+# SPDX identifiers permitted for transitive dependencies. Additions
+# require security review. License violations fail the build via the
+# dependency-review action's `allow-licenses` arg in ci.yml.
+allowed_licenses:
+  - MIT
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+
+# CVSS thresholds — kept aligned with anchore/scan-action's
+# `severity-cutoff` and the post-scan SARIF parser in ci.yml that posts a
+# PR comment for `warn` findings.
+#   block: CVSS >= 9.0 (Critical)  — fails the workflow
+#   warn:  CVSS 7.0 - 8.9 (High)   — PR comment, no block
+#   log:   medium + low            — visible in SARIF artifact only
+severity_gates:
+  block: critical
+  warn: high
+  log:
+    - medium
+    - low
+
+# CycloneDX VEX 0.5 statements documenting accepted/exploitable-but-
+# mitigated CVEs. Reviewed at sprint planning. Initial content is an
+# empty array; the file is required to exist so workflows can attach it
+# unconditionally on tagged releases (release.yml).
+vex_statements_file: .github/vex-statements.json

@@ -58,6 +58,19 @@ macOS requires explicit permissions:
 
 See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
+## Security
+
+The threat model, AppleScript denylist, audit-record schema, and NIST SP 800-53 control mapping live in [docs/SECURITY.md](docs/SECURITY.md). Vulnerabilities should be reported via a private GitHub Security Advisory — see §6 of that document.
+
+**Supply-chain controls (STORY-021, see §8).** Every push and pull request:
+
+- Generates a CycloneDX 1.5+ SBOM (via Syft) covering every transitive Swift package.
+- Runs Grype SBOM scanning + GitHub's native Dependency Review against the SBOM.
+- Fails the build on CVSS ≥ 9.0 (Critical) findings; CVSS 7.0–8.9 (High) warns via a PR comment without blocking.
+- Enforces a license allow-list: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC.
+
+Tagged releases attach the SBOM (and a VEX document, when statements exist) to the GitHub Release as evidence artifacts. Dependabot opens monthly Swift-package and weekly GitHub-Actions upgrade PRs against the same gate. Policy is declared in [`.github/sbom-policy.yml`](.github/sbom-policy.yml).
+
 ## Tools (75 total, 16 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)

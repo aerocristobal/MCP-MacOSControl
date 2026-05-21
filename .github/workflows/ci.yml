@@ -29,6 +29,114 @@ jobs:
       - name: Verify living documentation is up to date
         run: git diff --exit-code docs/LIVING-DOCUMENTATION.md
 
+      # STORY-021 — Supply-chain security. Generate a CycloneDX 1.5+ SBOM
+      # covering every transitive Swift package, then scan it with Grype.
+      # Policy lives in .github/sbom-policy.yml; the threshold there must
+      # stay in sync with `severity-cutoff` below.
+      - name: Generate CycloneDX SBOM (STORY-021)
+        uses: anchore/sbom-action@v0
+        with:
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          # anchore/sbom-action auto-uploads by default; disable here so
+          # the explicit upload-artifact step below owns artifact naming.
+          upload-artifact: false
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: sbom-cyclonedx.json
+
+      # Native dependency review on PRs: blocks on critical-severity CVEs
+      # and disallowed licenses before they merge. Skipped on push events
+      # (no base ref to diff against).
+      - name: Dependency Review (STORY-021)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC
+
+      # SBOM-based scan via Grype. severity-cutoff:critical aligns with
+      # sbom-policy.yml's `block: critical` gate. SARIF goes to the
+      # repo's Security → Code scanning tab.
+      - name: SCA scan (Grype, STORY-021)
+        id: grype
+        uses: anchore/scan-action@v3
+        with:
+          sbom: sbom-cyclonedx.json
+          severity-cutoff: critical
+          fail-build: true
+          output-format: sarif
+          by-cve: true
+
+      - name: Upload Grype SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+
+      # Also publish the SARIF as a downloadable workflow artifact (the
+      # Security tab is the live view; the artifact is what reviewers
+      # download for offline triage and the OSCAL evidence trail).
+      - name: Upload Grype SARIF as workflow artifact
+        if: always() && steps.grype.outputs.sarif != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: grype-sca-report
+          path: ${{ steps.grype.outputs.sarif }}
+
+      # High-severity findings (CVSS 7.0–8.9): warn-only per
+      # sbom-policy.yml. Parse the SARIF, post a single PR comment
+      # summarizing the high-severity CVEs. Non-PR events skip.
+      - name: Comment high-severity SCA findings on PR (STORY-021)
+        if: github.event_name == 'pull_request' && always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SARIF_PATH: ${{ steps.grype.outputs.sarif }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SARIF_PATH:-}" ] || [ ! -f "${SARIF_PATH}" ]; then
+            echo "No SARIF report; skipping high-severity PR comment."
+            exit 0
+          fi
+          # Extract findings with security-severity 7.0–8.9. Grype encodes
+          # CVSS in `properties.security-severity` as a string per SARIF spec.
+          HIGH_FINDINGS=$(jq -r '
+            [ .runs[0].results[]?
+              | . as $r
+              | ($r.ruleId // "UNKNOWN") as $cve
+              | (.properties["security-severity"] // "0") | tonumber as $cvss
+              | select($cvss >= 7.0 and $cvss < 9.0)
+              | "- **\($cve)** (CVSS \($cvss)) — \($r.message.text // "no description")"
+            ] | unique | .[]' "${SARIF_PATH}" || true)
+          if [ -z "${HIGH_FINDINGS}" ]; then
+            echo "No high-severity findings to report."
+            exit 0
+          fi
+          # Emit each finding as a GitHub Actions warning annotation so it
+          # surfaces in the workflow log even when no PR comment lands
+          # (e.g., re-runs on closed PRs, or fork-PR token restrictions).
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::warning title=Supply-chain (high severity)::${line}"
+          done <<< "${HIGH_FINDINGS}"
+          BODY=$(cat <<EOF
+          ### Supply-chain scan: high-severity findings (warn-only, no block)
+
+          The following CVEs are at CVSS 7.0–8.9. Per \`.github/sbom-policy.yml\`
+          these warn but do not block merge. Review and either upgrade the
+          dependency or add a VEX statement in \`.github/vex-statements.json\`.
+
+          ${HIGH_FINDINGS}
+
+          Full SARIF: Security → Code scanning tab.
+          EOF
+          )
+          gh pr comment "${PR_NUMBER}" --body "${BODY}"
+
       # STORY-020 smoke — proves the catalog CLI builds and runs end-to-end on
       # every PR using the in-tree test fixtures (no integration runners needed).
       # The ci-integration.yml workflow exercises the CLI against real
