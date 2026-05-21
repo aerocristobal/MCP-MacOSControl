@@ -88,6 +88,6 @@ public enum WaitForElementStateModule: ToolModule {
             clock: SystemClock(),
             pollIntervalMs: pollIntervalMs
         )
-        return await tool.execute(params)
+        return await tool.execute(params, context: context)
     }
 }

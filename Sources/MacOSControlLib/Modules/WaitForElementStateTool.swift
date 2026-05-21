@@ -43,7 +43,7 @@ public final class WaitForElementStateTool {
         self.pollIntervalMs = pollIntervalMs
     }
 
-    public func execute(_ params: CallTool.Parameters) async -> CallTool.Result {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async -> CallTool.Result {
         let args = params.arguments ?? [:]
 
         // `condition` wins; legacy `state` is accepted as a one-version alias (Q5).
@@ -103,7 +103,8 @@ public final class WaitForElementStateTool {
             probe: probe,
             timeout: timeout,
             pollIntervalMs: pollIntervalMs,
-            clock: clock
+            clock: clock,
+            cancellation: context.cancellation
         )
 
         switch outcome {
@@ -124,6 +125,14 @@ public final class WaitForElementStateTool {
                 elapsedSeconds: elapsed,
                 pollsPerformed: polls
             ).toStructuredResult()
+        case .cancelled:
+            // STORY-027 — SDK suppresses the response per
+            // notifications/cancelled; structured body appears only in the
+            // race window where the response is sent after cancellation.
+            return MCPErrorResponseBuilder.shared.build(
+                code: "cancelled",
+                message: "wait_for_element_state was cancelled."
+            )
         }
     }
 
