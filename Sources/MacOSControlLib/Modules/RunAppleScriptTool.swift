@@ -23,7 +23,7 @@ public final class RunAppleScriptTool {
         self.audit = audit
     }
 
-    public func execute(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async throws -> CallTool.Result? {
         let args = params.arguments ?? [:]
 
         guard let script = args["script"]?.stringValue, !script.isEmpty else {
@@ -94,7 +94,7 @@ public final class RunAppleScriptTool {
         // Phase 3: execute
         let executionResult: AppleScriptExecutionResult
         do {
-            executionResult = try executor.run(script, timeout: TimeInterval(timeoutSeconds))
+            executionResult = try await executor.run(script, timeout: TimeInterval(timeoutSeconds), context: context)
         } catch {
             audit.record(AuditRecordDraft(
                 eventType: .applescriptExecute,
@@ -164,6 +164,25 @@ public final class RunAppleScriptTool {
                 code: "applescript_error",
                 message: "osascript I/O failure: \(detail)"
             )
+
+        case .failure(.cancelled):
+            // STORY-027 — caller cancelled mid-execution. The osascript
+            // subprocess was killed (SIGTERM, then SIGKILL after 1000ms if
+            // still running). Audit with execution_outcome: cancelled so the
+            // chain records that the script started but did not complete.
+            // Throw CancellationError so the SDK suppresses the response per
+            // the notifications/cancelled contract; the structured `cancelled`
+            // code surfaces only in the race window where the SDK still sends
+            // a response.
+            audit.record(AuditRecordDraft(
+                eventType: .applescriptExecute,
+                scriptSha256: scriptSha256,
+                targetApps: targetApps,
+                filterDisposition: .allowed,
+                executionOutcome: .cancelled,
+                durationMs: 0
+            ))
+            throw CancellationError()
         }
     }
 

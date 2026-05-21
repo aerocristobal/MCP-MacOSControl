@@ -94,13 +94,34 @@ public protocol InteractionLayer {
     /// Human label for the governing flag, used in the skip `reason` string
     /// (e.g. `"ax_supported"`). `nil` when `registryFlag` is `nil`.
     var registryFlagName: String? { get }
-    func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome
+    /// STORY-027 — the `context` lets a layer thread its `CancellationToken`
+    /// into long-running sub-tools (the AppleScript layer's osascript call,
+    /// for example). Quick layers (AX semantic, hit-test, coordinate) accept
+    /// the parameter for protocol uniformity but rarely use it; the router
+    /// itself observes cancellation between layer attempts.
+    func attempt(
+        _ intent: InteractionIntent,
+        target: TargetSpec,
+        context: ToolCallContext
+    ) async -> LayerOutcome
+}
+
+public extension InteractionLayer {
+    /// Backwards-compatible convenience for call sites that don't care about
+    /// cancellation (most existing tests).
+    func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome {
+        await attempt(intent, target: target, context: .nonCancellable())
+    }
 }
 
 public enum DecisionOutcome: String, Sendable, Equatable {
     case succeeded
     case skipped
     case failed
+    /// STORY-027 — the caller cancelled the tool call. The router records this
+    /// for the layer that was either mid-attempt when cancellation arrived or
+    /// the first layer that the router declined to invoke after cancellation.
+    case cancelled
 }
 
 /// One ordered audit entry. Always present even when the first layer succeeds

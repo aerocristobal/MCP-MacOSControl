@@ -1,7 +1,7 @@
 ---
 name: interaction_hierarchy
 description: Recommended order for choosing a macOS UI interaction tool — prefer smart_interact (the router), which tries AX semantic first, then AppleScript, then hit-test, and only falls back to raw coordinates when the upper layers cannot resolve the target.
-prompt_version: 2
+prompt_version: 3
 arguments: []
 ---
 **Preferred entry point: `smart_interact`.** State your *intent* (`click` or
@@ -83,3 +83,16 @@ Only invoke `click_screen` when every higher layer has been ruled out.
 
 Typical chain: `wait_for_app_event launched bundle_identifier=com.apple.TextEdit`,
 then `wait_for_ui_event AXWindowCreated`, then `click_element`.
+
+---
+
+**Abandoning a workflow:** if you decide partway through a multi-step plan
+that you no longer need the in-flight wait or interaction, send the standard
+MCP `notifications/cancelled` for its request id. The server tears the
+in-flight tool down within a per-tool budget (≤100 ms for the observer-based
+waits, ≤200 ms for `wait_for_element_state`, ≤1 s for `smart_interact`,
+≤1.5 s for `run_applescript` including SIGKILL escalation). The response to
+the cancelled request is suppressed per the MCP spec — do not wait for it.
+Honouring cancellation matters: leaving long-running tools running after you
+have abandoned their results keeps AX observers, NSWorkspace observers, and
+osascript subprocesses allocated until their original timeout.

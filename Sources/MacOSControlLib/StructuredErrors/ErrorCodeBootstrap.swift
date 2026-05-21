@@ -68,6 +68,11 @@ public enum ErrorCodeBootstrap {
             detailsSchema: [:]
         )
         try registry.register(
+            code: "cancelled",
+            description: "Tool execution was cancelled by the client via notifications/cancelled or by server shutdown. The MCP protocol treats cancellation as fire-and-forget, so this code is surfaced only in the race window where the tool's response is generated after cancellation arrived (STORY-027).",
+            detailsSchema: [:]
+        )
+        try registry.register(
             code: "security_policy_violation",
             description: "Input violated the server's security policy (e.g., disallowed AppleScript verb).",
             detailsSchema: [:]

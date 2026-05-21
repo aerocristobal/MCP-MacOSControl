@@ -35,7 +35,11 @@ public final class AXSemanticLayer: InteractionLayer {
         self.interactor = interactor
     }
 
-    public func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome {
+    public func attempt(
+        _ intent: InteractionIntent,
+        target: TargetSpec,
+        context: ToolCallContext
+    ) async -> LayerOutcome {
         guard let description = target.description, !description.isEmpty else {
             return .skipped(reason: "no target_description for AX resolution")
         }

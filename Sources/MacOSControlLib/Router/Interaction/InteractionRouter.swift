@@ -9,7 +9,17 @@ import Foundation
 
 /// Seam so `SmartInteractTool` can be unit-tested against a stub router.
 public protocol InteractionRouting {
-    func route(input: SmartInteractInput) async -> RouterResult
+    /// STORY-027 — `context` is threaded through to each layer and observed
+    /// between layer attempts so cancellation halts the loop without invoking
+    /// further layers.
+    func route(input: SmartInteractInput, context: ToolCallContext) async -> RouterResult
+}
+
+public extension InteractionRouting {
+    /// Backwards-compatible convenience.
+    func route(input: SmartInteractInput) async -> RouterResult {
+        await route(input: input, context: .nonCancellable())
+    }
 }
 
 public final class InteractionRouter: InteractionRouting {
@@ -28,7 +38,7 @@ public final class InteractionRouter: InteractionRouting {
         self.now = now
     }
 
-    public func route(input: SmartInteractInput) async -> RouterResult {
+    public func route(input: SmartInteractInput, context: ToolCallContext) async -> RouterResult {
         var log: [DecisionLogEntry] = []
         // Failed (not skipped) attempts decay later layers' confidence — a
         // success after two failed layers is less trustworthy (Q2).
@@ -43,6 +53,21 @@ public final class InteractionRouter: InteractionRouting {
         )
 
         for layer in layers {
+            // STORY-027 — between-layer cancellation check (Three Amigos
+            // scenario "cancellation between layer attempts is detected
+            // immediately"). The check happens BEFORE the skip/registry/attempt
+            // sequence so even a layer that would just record a skip doesn't
+            // get touched after cancellation.
+            if context.cancellation.isCancelled {
+                log.append(DecisionLogEntry(
+                    layer: layer.name,
+                    attempted: false,
+                    outcome: .cancelled,
+                    reason: "tool call cancelled before layer attempted"
+                ))
+                return cancellationResult(decisionLog: log)
+            }
+
             // 1. Per-call skip override (Q6).
             if input.skipLayers.contains(layer.name) {
                 log.append(DecisionLogEntry(
@@ -74,8 +99,23 @@ public final class InteractionRouter: InteractionRouting {
             //    inapplicable intent / missing prerequisite (e.g. hit-test
             //    with no coordinates, or type intent).
             let start = now()
-            let outcome = await layer.attempt(input.intent, target: target)
+            let outcome = await layer.attempt(input.intent, target: target, context: context)
             let elapsedMs = Int(now().timeIntervalSince(start) * 1000)
+
+            // STORY-027 — if the layer attempt was interrupted by cancellation
+            // it surfaces a `.failed` with errorCode "cancelled" (the AppleScript
+            // layer routes AppleScriptError.cancelled here). Treat it as a
+            // cancellation, not an ordinary failure, and stop the loop.
+            if case let .failed(code, message) = outcome, code == "cancelled" {
+                log.append(DecisionLogEntry(
+                    layer: layer.name,
+                    attempted: true,
+                    outcome: .cancelled,
+                    reason: message,
+                    elapsedMs: elapsedMs
+                ))
+                return cancellationResult(decisionLog: log)
+            }
 
             switch outcome {
             case .succeeded(let method, let baseline):
@@ -139,6 +179,24 @@ public final class InteractionRouter: InteractionRouting {
                     "If the app may be frozen, wait_for_app_event for it to become responsive, then retry.",
                     "As a last resort, fall back to explicit coordinate tools (click_screen / type_text) after take_screenshot_with_ocr."
                 ]
+            ]
+        )
+    }
+
+    /// STORY-027 — when cancellation is detected (either between layers or
+    /// mid-attempt via a `.failed("cancelled", ...)` outcome from a layer),
+    /// emit a structured `cancelled` envelope alongside the partial decision
+    /// log. The SDK suppresses the wire response per notifications/cancelled,
+    /// so this body is only seen in the race window.
+    private func cancellationResult(decisionLog: [DecisionLogEntry]) -> RouterResult {
+        RouterResult(
+            interactionMethod: "",
+            confidence: 0,
+            decisionLog: decisionLog,
+            isError: true,
+            errorCode: "cancelled",
+            details: [
+                "decision_log": decisionLog.map(\.asDictionary)
             ]
         )
     }

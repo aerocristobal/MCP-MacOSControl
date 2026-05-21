@@ -25,7 +25,7 @@ public final class WaitForUIEventTool {
         self.pidResolver = pidResolver ?? Self.defaultPIDResolver
     }
 
-    public func execute(_ params: CallTool.Parameters) async -> CallTool.Result {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async -> CallTool.Result {
         let args = params.arguments ?? [:]
 
         // --- Input validation -------------------------------------------------
@@ -107,7 +107,8 @@ public final class WaitForUIEventTool {
             let event = try await manager.wait(
                 for: notification,
                 in: pid,
-                timeout: timeout
+                timeout: timeout,
+                cancellation: context.cancellation
             )
             let elapsed = Date().timeIntervalSince(start)
             return successResult(
@@ -125,6 +126,15 @@ public final class WaitForUIEventTool {
             return permission.toStructuredResult()
         } catch let resolution as AXResolutionError {
             return resolution.toStructuredResult()
+        } catch is CancellationError {
+            // STORY-027 — the SDK will suppress the response per the
+            // notifications/cancelled contract, but we still need to return a
+            // structured value (the type signature requires it). The handler
+            // also re-throws so withTaskCancellationHandler can propagate.
+            return MCPErrorResponseBuilder.shared.build(
+                code: "cancelled",
+                message: "wait_for_ui_event was cancelled."
+            )
         } catch {
             return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
         }

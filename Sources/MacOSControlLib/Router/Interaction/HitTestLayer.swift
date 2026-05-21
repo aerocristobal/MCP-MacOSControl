@@ -24,7 +24,11 @@ public final class HitTestLayer: InteractionLayer {
         self.interactor = interactor
     }
 
-    public func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome {
+    public func attempt(
+        _ intent: InteractionIntent,
+        target: TargetSpec,
+        context: ToolCallContext
+    ) async -> LayerOutcome {
         guard intent == .click else {
             return .skipped(reason: "type intent does not use hit-test")
         }

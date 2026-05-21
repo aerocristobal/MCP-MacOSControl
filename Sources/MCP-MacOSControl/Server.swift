@@ -191,8 +191,30 @@ enum MacOSControlServer {
             .init(tools: ToolRouter.allTools)
         }
 
+        // STORY-027 — in-flight registry maps server-generated request ids to
+        // their CancellationToken so SIGTERM can drain in-flight work uniformly.
+        // The swift-sdk already routes `notifications/cancelled` into
+        // `Task.cancel()` on the handler task; the `withTaskCancellationHandler`
+        // below bridges that signal into the token so non-Task waiters (AX
+        // continuations, NSWorkspace observers, osascript subprocesses, polling
+        // loops) can tear down their resources.
+        let inFlightRegistry = MacOSControlLib.InFlightRegistry()
         await server.withMethodHandler(CallTool.self) { params in
-            try await ToolRouter.handle(params)
+            let requestId = UUID().uuidString
+            let token = MacOSControlLib.CancellationToken()
+            await inFlightRegistry.register(requestId: requestId, token: token)
+            defer {
+                Task { await inFlightRegistry.finish(requestId: requestId) }
+            }
+            return try await withTaskCancellationHandler {
+                let context = MacOSControlLib.ToolCallContext(
+                    requestId: requestId,
+                    cancellation: token
+                )
+                return try await ToolRouter.handle(params, context: context)
+            } onCancel: {
+                token.cancel()
+            }
         }
 
         // Prompt wiring (STORY-017). Built once at startup; loading errors are
@@ -294,6 +316,26 @@ enum MacOSControlServer {
             registry.unsubscribe(canonical, clientId: "stdio")
             return Empty()
         }
+
+        // STORY-027 — graceful SIGTERM. Drain in-flight tool calls via the
+        // registry (each token's onCancel hooks send SIGTERM to osascript
+        // subprocesses, unregister AX/NSWorkspace observers, exit polling
+        // loops) and then exit. The 2.5s wait gives the tool-side budgets
+        // (per-tool max 1500ms) room to complete tear-down before exit(0).
+        // SIG_IGN is required so DispatchSource sees the signal — without it
+        // the default handler kills the process before we ever run.
+        signal(SIGTERM, SIG_IGN)
+        let sigtermSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .global())
+        sigtermSource.setEventHandler {
+            let semaphore = DispatchSemaphore(value: 0)
+            Task {
+                await inFlightRegistry.cancelAll()
+                semaphore.signal()
+            }
+            _ = semaphore.wait(timeout: .now() + 2.5)
+            exit(0)
+        }
+        sigtermSource.resume()
 
         let transport = StdioTransport()
         do {

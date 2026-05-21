@@ -67,31 +67,47 @@ public actor AXObserverManager {
 
     /// Suspend until `notification` fires for `pid`, the target application
     /// terminates, or `timeout` seconds elapse — whichever happens first.
+    /// STORY-027 — pass a `cancellation` token to also race a caller-driven
+    /// cancellation; on cancel the waiter is removed and the continuation
+    /// resumes with `CancellationError`.
     public func wait(
         for notification: String,
         in pid: pid_t,
-        timeout: TimeInterval
+        timeout: TimeInterval,
+        cancellation: CancellationToken?
     ) async throws -> WaitForUIEvent {
         guard axBridge.isProcessTrusted else {
             throw AccessibilityPermissionRequiredError()
+        }
+
+        // Fast-path: pre-cancelled token short-circuits before we attach.
+        if cancellation?.isCancelled == true {
+            throw CancellationError()
         }
 
         let key = Key(pid: pid, notification: notification)
         let waiterID = UUID()
         let start = Date()
 
-        // Race the notification, termination, and timeout. Whoever finishes
-        // first wins; the loser's branch becomes a no-op via the once-only
-        // continuation contract. Swift task cancellation is intentionally NOT
-        // wired here — Q5 defers cancellation to the MCP protocol layer.
+        // Race the notification, termination, timeout, and cancellation. Whoever
+        // finishes first wins; the loser's branch becomes a no-op via the
+        // once-only continuation contract.
         return try await withCheckedThrowingContinuation { continuation in
+            // Register the cancellation hook BEFORE the Task that installs the
+            // AX subscription. The actor serialises attach + cancel, so a
+            // cancel that arrives mid-install collapses to install-then-remove.
+            cancellation?.onCancel { [weak self] in
+                guard let self else { return }
+                Task { await self.removeWaiter(key: key, waiterID: waiterID, reason: .cancelled) }
+            }
             Task {
                 await self.attach(
                     key: key,
                     waiterID: waiterID,
                     continuation: continuation,
                     timeout: timeout,
-                    start: start
+                    start: start,
+                    cancellation: cancellation
                 )
             }
         }
@@ -104,8 +120,18 @@ public actor AXObserverManager {
         waiterID: UUID,
         continuation: CheckedContinuation<WaitForUIEvent, Error>,
         timeout: TimeInterval,
-        start: Date
+        start: Date,
+        cancellation: CancellationToken?
     ) async {
+        // STORY-027 — cancel-before-attach race: if the caller cancelled while
+        // the install Task was queued on the actor, the cancel-task already
+        // ran and found no state to remove. Resume the continuation with
+        // CancellationError here so the waiter does not get installed.
+        if cancellation?.isCancelled == true {
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+
         let record = WaiterRecord(id: waiterID, continuation: continuation)
 
         if let existing = subscriptions[key] {
@@ -180,6 +206,9 @@ public actor AXObserverManager {
 
     private enum RemovalReason {
         case timeout(elapsedSeconds: Double)
+        /// STORY-027 — caller cancelled the wait via notifications/cancelled
+        /// or server shutdown. Continuation resumes with `CancellationError`.
+        case cancelled
     }
 
     private func removeWaiter(key: Key, waiterID: UUID, reason: RemovalReason) {
@@ -192,6 +221,8 @@ public actor AXObserverManager {
                 notification: key.notification,
                 elapsedSeconds: elapsed
             ))
+        case .cancelled:
+            record.continuation.resume(throwing: CancellationError())
         }
 
         if state.waiters.isEmpty {

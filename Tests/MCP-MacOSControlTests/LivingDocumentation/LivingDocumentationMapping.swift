@@ -815,5 +815,72 @@ enum LivingDocumentationMapping {
             "CatalogGeneratorCLITests.test_exit_returnsNonZero_whenPersistentDiscrepancyPresent",
             "DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent",
         ],
+
+        // MARK: STORY-027 — MCP Tool-Call Cancellation Support
+
+        "ToolRouter accepts and routes notifications/cancelled": [
+            // The swift-sdk already routes notifications/cancelled into
+            // Task.cancel(); Server.swift's withTaskCancellationHandler bridges
+            // that into the CancellationToken. The InFlightRegistry is the
+            // server-side state map that SIGTERM uses to drain in-flight work.
+            "InFlightRegistryTests.test_register_then_cancel_firesToken",
+            "InFlightRegistryTests.test_cancel_removesEntry_doubleCancelReturnsFalse",
+            "CancellationTokenTests.test_cancel_setsIsCancelled",
+        ],
+        "Cancellation for an unknown request_id is ignored silently": [
+            "InFlightRegistryTests.test_cancel_unknownRequestId_returnsFalse",
+        ],
+        "Cancelling wait_for_ui_event unregisters its AXObserver subscription": [
+            "WaitForUIEventToolCancellationTests.test_execute_passesCancellationTokenToManager",
+            "WaitForUIEventToolCancellationTests.test_execute_returnsCancelledStructuredError_whenTokenCancelledMidWait",
+        ],
+        "Cancelling wait_for_element_state halts the polling loop within one poll cycle": [
+            "WaitForElementStateToolCancellationTests.test_pollLoop_returnsCancelled_whenTokenCancelledBetweenProbes",
+            "WaitForElementStateToolCancellationTests.test_tool_returnsCancelledStructuredError_whenContextCancelledMidPoll",
+        ],
+        "Cancelling wait_for_app_event removes its NSWorkspace observer": [
+            "WaitForAppEventToolCancellationTests.test_execute_passesCancellationTokenToManager",
+            "WaitForAppEventToolCancellationTests.test_execute_returnsCancelledEnvelope_whenTokenCancelledMidWait",
+        ],
+        "Cancelling smart_interact mid-layer-attempt aborts the current layer and skips remaining layers": [
+            "InteractionRouterCancellationTests.test_cancellationMidLayerAttempt_recordsCancelledAndStopsLoop",
+        ],
+        "Cancelling smart_interact between layer attempts is detected immediately": [
+            "InteractionRouterCancellationTests.test_cancellationBetweenLayers_stopsLoop_withCancelledDecisionEntry",
+            "InteractionRouterCancellationTests.test_preCancelledContext_stopsBeforeFirstLayerAttempt",
+        ],
+        "Cancelling run_applescript terminates the osascript subprocess": [
+            "AppleScriptExecutorCancellationTests.test_cancel_returnsCancelledResult_andKillsSubprocessQuickly",
+            "AppleScriptExecutorCancellationTests.test_cancel_beforeRun_killsImmediately",
+            "RunAppleScriptToolCancellationTests.test_execute_propagatesCancellation_andWritesCancelledAudit",
+        ],
+        "Cancellation while AXObserver subscription is initializing is idempotent": [
+            // The actor races attach-task vs cancel-task on the same actor;
+            // whichever runs first, attach checks isCancelled at entry to
+            // cover the cancel-first ordering, and removeWaiter covers the
+            // attach-first ordering. Either way: zero active observers.
+            "AXObserverManagerCancellationTests.test_wait_cancelDuringInitRace_neverLeavesActiveObserver",
+            "AXObserverManagerCancellationTests.test_wait_preCancelledToken_neverInstallsSubscription",
+            "AXObserverManagerCancellationTests.test_wait_throwsCancellationError_whenTokenCancelledAfterAttach",
+            "AXObserverManagerCancellationTests.test_wait_sharedSubscription_otherWaiterSurvivesCancellation",
+        ],
+        "Double cancellation is idempotent": [
+            "CancellationTokenTests.test_cancel_isIdempotent",
+            "InFlightRegistryTests.test_cancel_removesEntry_doubleCancelReturnsFalse",
+        ],
+        "Server shutdown cancels every in-flight tool call": [
+            // Server.swift wires SIGTERM to InFlightRegistry.cancelAll().
+            // Tested end-to-end by the registry test below; the SIGTERM signal
+            // source itself is a runtime-only path that lives outside unit-test
+            // scope (raises SIGTERM mid-test would terminate the test runner).
+            "InFlightRegistryTests.test_cancelAll_cancelsEveryToken",
+        ],
+        "Every long-running tool participates in cancellation": [
+            "WaitForUIEventToolCancellationTests.test_execute_passesCancellationTokenToManager",
+            "WaitForElementStateToolCancellationTests.test_tool_returnsCancelledStructuredError_whenContextCancelledMidPoll",
+            "WaitForAppEventToolCancellationTests.test_execute_passesCancellationTokenToManager",
+            "InteractionRouterCancellationTests.test_cancellationMidLayerAttempt_recordsCancelledAndStopsLoop",
+            "RunAppleScriptToolCancellationTests.test_execute_passesContextToExecutor",
+        ],
     ]
 }

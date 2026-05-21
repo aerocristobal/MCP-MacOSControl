@@ -43,6 +43,7 @@ public enum AuditExecutionOutcome: String, Codable, Equatable, Sendable, CaseIte
     case ioError = "io_error"
     case notExecuted = "not_executed"
     case administrative
+    case cancelled
 }
 
 public enum AuditDeliveryStatus: String, Codable, Equatable, Sendable, CaseIterable {

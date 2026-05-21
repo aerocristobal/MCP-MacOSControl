@@ -29,7 +29,11 @@ public final class AppleScriptLayer: InteractionLayer {
         self.timeout = timeout
     }
 
-    public func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome {
+    public func attempt(
+        _ intent: InteractionIntent,
+        target: TargetSpec,
+        context: ToolCallContext
+    ) async -> LayerOutcome {
         guard let app = target.application, !app.isEmpty else {
             return .skipped(reason: "no application to address an AppleScript tell block")
         }
@@ -41,7 +45,7 @@ public final class AppleScriptLayer: InteractionLayer {
         let script = "tell application \"\(escaped)\" to activate"
 
         do {
-            let outcome = try executor.run(script, timeout: timeout)
+            let outcome = try await executor.run(script, timeout: timeout, context: context)
             switch outcome {
             case .success:
                 return .succeeded(method: name, confidence: 0.85)
@@ -61,6 +65,8 @@ public final class AppleScriptLayer: InteractionLayer {
             return "timed out after \(after)s"
         case .ioError(let detail):
             return detail
+        case .cancelled:
+            return "tool call was cancelled"
         }
     }
 }

@@ -6,6 +6,11 @@ import Foundation
 public enum PollOutcome {
     case satisfied(last: ElementProbeResult, elapsed: TimeInterval, polls: Int)
     case timedOut(last: ElementProbeResult, elapsed: TimeInterval, polls: Int)
+    /// STORY-027 — the caller cancelled the wait via notifications/cancelled
+    /// or server shutdown. `last` is the probe result from the cycle that ran
+    /// most recently before cancellation was observed (nil if cancellation
+    /// arrived before the first probe completed).
+    case cancelled(last: ElementProbeResult?, elapsed: TimeInterval, polls: Int)
 }
 
 /// Fixed-cadence poll loop. One in-flight probe per cycle (the `await` is
@@ -21,14 +26,26 @@ public final class ElementStatePollLoop {
         probe: ElementStateProbe,
         timeout: TimeInterval,
         pollIntervalMs: Int,
-        clock: Clock
+        clock: Clock,
+        cancellation: CancellationToken? = nil
     ) async -> PollOutcome {
         let start = clock.now()
         var polls = 0
 
+        // Fast-path: caller cancelled before we even began.
+        if cancellation?.isCancelled == true {
+            let elapsed = clock.now().timeIntervalSince(start)
+            return .cancelled(last: nil, elapsed: elapsed, polls: 0)
+        }
+
         while true {
             let result = await probe.probe()
             polls += 1
+
+            if cancellation?.isCancelled == true {
+                let elapsed = clock.now().timeIntervalSince(start)
+                return .cancelled(last: result, elapsed: elapsed, polls: polls)
+            }
 
             if predicate.evaluate(result) {
                 let elapsed = clock.now().timeIntervalSince(start)
@@ -41,6 +58,14 @@ public final class ElementStatePollLoop {
             }
 
             await clock.sleep(forMilliseconds: pollIntervalMs)
+
+            // STORY-027 — also check between sleep and next probe so a
+            // cancellation that lands during sleep stops us before the next
+            // AX tree read.
+            if cancellation?.isCancelled == true {
+                let elapsed = clock.now().timeIntervalSince(start)
+                return .cancelled(last: result, elapsed: elapsed, polls: polls)
+            }
         }
     }
 }

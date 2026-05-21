@@ -38,7 +38,7 @@ final class AuditChainPropertyTests: XCTestCase {
         var rng = SeededRNG(seed: 0xC0DE_AB1B)
 
         let outcomes: [AuditExecutionOutcome] = [
-            .success, .scriptError, .timeout, .ioError, .notExecuted
+            .success, .scriptError, .timeout, .ioError, .notExecuted, .cancelled
         ]
         let dispositions: [AuditFilterDisposition] = [
             .allowed, .rejectedSecurity, .rejectedPermission

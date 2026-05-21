@@ -96,7 +96,7 @@ public enum AppleScriptModule: ToolModule {
         ]
     }
 
-    public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         switch params.name {
         case "run_applescript":
             let tool = RunAppleScriptTool(
@@ -105,7 +105,7 @@ public enum AppleScriptModule: ToolModule {
                 executor: AppleScriptExecutor(),
                 audit: auditor
             )
-            return try await tool.execute(params)
+            return try await tool.execute(params, context: context)
         case "click_menu_item":
             let backend = AppleScriptMenuClickBackend(
                 executor: AppleScriptExecutor(),

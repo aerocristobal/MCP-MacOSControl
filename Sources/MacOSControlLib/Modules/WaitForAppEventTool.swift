@@ -16,7 +16,7 @@ public final class WaitForAppEventTool {
         self.manager = manager
     }
 
-    public func execute(_ params: CallTool.Parameters) async -> CallTool.Result {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async -> CallTool.Result {
         let args = params.arguments ?? [:]
 
         // --- Input validation -------------------------------------------------
@@ -62,12 +62,18 @@ public final class WaitForAppEventTool {
             let event = try await manager.wait(
                 event: event,
                 bundleIdentifierFilter: bundleIdentifierFilter,
-                timeout: timeout
+                timeout: timeout,
+                cancellation: context.cancellation
             )
             let elapsed = Date().timeIntervalSince(start)
             return successResult(event: event, elapsedSeconds: elapsed)
         } catch let timeoutError as AppEventWaitTimeoutError {
             return timeoutError.toStructuredResult()
+        } catch is CancellationError {
+            return MCPErrorResponseBuilder.shared.build(
+                code: "cancelled",
+                message: "wait_for_app_event was cancelled."
+            )
         } catch {
             return MCPErrorResponseBuilder.shared.buildFromUnknown(error)
         }

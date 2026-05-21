@@ -80,7 +80,7 @@ public enum AuditAdminModule: ToolModule {
         ]
     }
 
-    public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         switch params.name {
         case "verify_audit_chain":
             return handleVerify()

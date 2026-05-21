@@ -68,7 +68,7 @@ public enum WaitForElementStateModule: ToolModule {
         ]
     }
 
-    public static func handle(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public static func handle(_ params: CallTool.Parameters, context: ToolCallContext) async throws -> CallTool.Result? {
         guard params.name == "wait_for_element_state" else { return nil }
 
         let bridge = AXApplicationBridgeImpl()
@@ -88,6 +88,6 @@ public enum WaitForElementStateModule: ToolModule {
             clock: SystemClock(),
             pollIntervalMs: pollIntervalMs
         )
-        return await tool.execute(params)
+        return await tool.execute(params, context: context)
     }
 }
