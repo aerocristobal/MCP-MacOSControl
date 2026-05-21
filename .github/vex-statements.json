@@ -14,12 +14,15 @@
       },
       "products": [
         {
-          "@id": "pkg:swift/Recouse/EventSource"
+          "@id": "pkg:swift/github.com/mattt/eventsource.git/eventsource@1.1.0"
+        },
+        {
+          "@id": "pkg:swift/github.com/mattt/eventsource.git/eventsource@1.4.1"
         }
       ],
       "status": "not_affected",
       "justification": "vulnerable_code_not_present",
-      "impact_statement": "CVE-2022-1650 is registered against the Node.js npm package `eventsource` (NVD CPE: cpe:2.3:a:eventsource:eventsource:*:*:*:*:node.js:*:*:*). Grype matches it against the Swift package at https://github.com/Recouse/EventSource (pulled in transitively via modelcontextprotocol/swift-sdk) solely on package name. The Swift `eventsource` is an unrelated Server-Sent Events client for Apple platforms (iOS/macOS/watchOS/tvOS/visionOS), declared with swift-tools-version 6.1 (6.0 fallback). It does not contain the vulnerable Node.js code path. This is a Grype package-name-collision false positive across ecosystems."
+      "impact_statement": "CVE-2022-1650 is registered against the Node.js npm package `eventsource` (NVD CPE: cpe:2.3:a:eventsource:eventsource:*:*:*:*:node.js:*:*:*). Grype matches it against the Swift package at https://github.com/mattt/eventsource (pulled in transitively via modelcontextprotocol/swift-sdk) solely on package name. The Swift `eventsource` is an unrelated Server-Sent Events client for Apple platforms. It does not contain the vulnerable Node.js code path. This is a Grype package-name-collision false positive across ecosystems."
     }
   ]
 }
