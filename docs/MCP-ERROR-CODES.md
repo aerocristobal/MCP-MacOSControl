@@ -42,6 +42,7 @@ different semantics — the server refuses to start on collision.
 | `ax_resolution_failed` | Accessibility element lookup failed at the AX layer (e.g., AX timeout, AX API error). | `underlying_code` (number) |
 | `backend_error` | An underlying backend (AppleScript engine, AX bridge, etc.) returned an unrecoverable error. | — |
 | `calibration_failed` | iPhone Mirroring window calibration failed; coordinates cannot be mapped reliably. | — |
+| `cancelled` | Tool execution was cancelled by the client via notifications/cancelled or by server shutdown. The MCP protocol treats cancellation as fire-and-forget, so this code is surfaced only in the race window where the tool's response is generated after cancellation arrived (STORY-027). | — |
 | `conflicting_identifier_predicates` | At most one of identifier, identifier_matches may be set per call. | — |
 | `conflicting_title_predicates` | At most one of title, title_contains, title_matches may be set per call. | — |
 | `coordinates_out_of_bounds` | Supplied coordinates fall outside the union of all attached display bounds. | `display_bounds` (object) |
