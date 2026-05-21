@@ -83,7 +83,8 @@ public actor NSWorkspaceEventBridge {
                     waiterID: waiterID,
                     continuation: continuation,
                     timeout: timeout,
-                    start: start
+                    start: start,
+                    cancellation: cancellation
                 )
             }
         }
@@ -96,8 +97,17 @@ public actor NSWorkspaceEventBridge {
         waiterID: UUID,
         continuation: CheckedContinuation<AppLifecycleEvent, Error>,
         timeout: TimeInterval,
-        start: Date
+        start: Date,
+        cancellation: CancellationToken?
     ) async {
+        // STORY-027 — cancel-before-attach race: cancel-task may have run
+        // first and found no state. Resume the continuation here so the
+        // observer is never installed.
+        if cancellation?.isCancelled == true {
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+
         let record = WaiterRecord(id: waiterID, continuation: continuation)
 
         if let existing = subscriptions[key] {

@@ -1069,3 +1069,76 @@ mapped test.
 - `CatalogGeneratorCLITests.test_exit_returnsNonZero_whenPersistentDiscrepancyPresent`
 - `DiscrepancyDetectorTests.test_threeConsecutiveMismatches_classifyPersistent`
 
+
+## MCP Tool-Call Cancellation Support
+
+*Source: `Tests/MCP-MacOSControlTests/Features/story-027-mcp-tool-call-cancellation.feature`*
+
+> In order to abort in-flight tool calls cleanly
+> As an AI agent or MCP host
+> I want the server to honor notifications/cancelled and propagate cancellation
+
+### Scenario: ToolRouter accepts and routes notifications/cancelled
+
+- `InFlightRegistryTests.test_register_then_cancel_firesToken`
+- `InFlightRegistryTests.test_cancel_removesEntry_doubleCancelReturnsFalse`
+- `CancellationTokenTests.test_cancel_setsIsCancelled`
+
+### Scenario: Cancellation for an unknown request_id is ignored silently
+
+- `InFlightRegistryTests.test_cancel_unknownRequestId_returnsFalse`
+
+### Scenario: Cancelling wait_for_ui_event unregisters its AXObserver subscription
+
+- `WaitForUIEventToolCancellationTests.test_execute_passesCancellationTokenToManager`
+- `WaitForUIEventToolCancellationTests.test_execute_returnsCancelledStructuredError_whenTokenCancelledMidWait`
+
+### Scenario: Cancelling wait_for_element_state halts the polling loop within one poll cycle
+
+- `WaitForElementStateToolCancellationTests.test_pollLoop_returnsCancelled_whenTokenCancelledBetweenProbes`
+- `WaitForElementStateToolCancellationTests.test_tool_returnsCancelledStructuredError_whenContextCancelledMidPoll`
+
+### Scenario: Cancelling wait_for_app_event removes its NSWorkspace observer
+
+- `WaitForAppEventToolCancellationTests.test_execute_passesCancellationTokenToManager`
+- `WaitForAppEventToolCancellationTests.test_execute_returnsCancelledEnvelope_whenTokenCancelledMidWait`
+
+### Scenario: Cancelling smart_interact mid-layer-attempt aborts the current layer and skips remaining layers
+
+- `InteractionRouterCancellationTests.test_cancellationMidLayerAttempt_recordsCancelledAndStopsLoop`
+
+### Scenario: Cancelling smart_interact between layer attempts is detected immediately
+
+- `InteractionRouterCancellationTests.test_cancellationBetweenLayers_stopsLoop_withCancelledDecisionEntry`
+- `InteractionRouterCancellationTests.test_preCancelledContext_stopsBeforeFirstLayerAttempt`
+
+### Scenario: Cancelling run_applescript terminates the osascript subprocess
+
+- `AppleScriptExecutorCancellationTests.test_cancel_returnsCancelledResult_andKillsSubprocessQuickly`
+- `AppleScriptExecutorCancellationTests.test_cancel_beforeRun_killsImmediately`
+- `RunAppleScriptToolCancellationTests.test_execute_propagatesCancellation_andWritesCancelledAudit`
+
+### Scenario: Cancellation while AXObserver subscription is initializing is idempotent
+
+- `AXObserverManagerCancellationTests.test_wait_cancelDuringInitRace_neverLeavesActiveObserver`
+- `AXObserverManagerCancellationTests.test_wait_preCancelledToken_neverInstallsSubscription`
+- `AXObserverManagerCancellationTests.test_wait_throwsCancellationError_whenTokenCancelledAfterAttach`
+- `AXObserverManagerCancellationTests.test_wait_sharedSubscription_otherWaiterSurvivesCancellation`
+
+### Scenario: Double cancellation is idempotent
+
+- `CancellationTokenTests.test_cancel_isIdempotent`
+- `InFlightRegistryTests.test_cancel_removesEntry_doubleCancelReturnsFalse`
+
+### Scenario: Server shutdown cancels every in-flight tool call
+
+- `InFlightRegistryTests.test_cancelAll_cancelsEveryToken`
+
+### Scenario Outline: Every long-running tool participates in cancellation
+
+- `WaitForUIEventToolCancellationTests.test_execute_passesCancellationTokenToManager`
+- `WaitForElementStateToolCancellationTests.test_tool_returnsCancelledStructuredError_whenContextCancelledMidPoll`
+- `WaitForAppEventToolCancellationTests.test_execute_passesCancellationTokenToManager`
+- `InteractionRouterCancellationTests.test_cancellationMidLayerAttempt_recordsCancelledAndStopsLoop`
+- `RunAppleScriptToolCancellationTests.test_execute_passesContextToExecutor`
+

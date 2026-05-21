@@ -855,12 +855,14 @@ enum LivingDocumentationMapping {
             "RunAppleScriptToolCancellationTests.test_execute_propagatesCancellation_andWritesCancelledAudit",
         ],
         "Cancellation while AXObserver subscription is initializing is idempotent": [
-            // Validated by actor serialisation in AXObserverManager: onCancel
-            // registers before the install Task runs, so even if cancel arrives
-            // mid-install the actor's serialised state ensures install-then-
-            // tearDown rather than a leaked observer.
-            "CancellationTokenTests.test_onCancel_firesSynchronouslyIfAlreadyCancelled",
-            "WaitForUIEventToolCancellationTests.test_execute_preCancelledContext_returnsCancelledImmediately",
+            // The actor races attach-task vs cancel-task on the same actor;
+            // whichever runs first, attach checks isCancelled at entry to
+            // cover the cancel-first ordering, and removeWaiter covers the
+            // attach-first ordering. Either way: zero active observers.
+            "AXObserverManagerCancellationTests.test_wait_cancelDuringInitRace_neverLeavesActiveObserver",
+            "AXObserverManagerCancellationTests.test_wait_preCancelledToken_neverInstallsSubscription",
+            "AXObserverManagerCancellationTests.test_wait_throwsCancellationError_whenTokenCancelledAfterAttach",
+            "AXObserverManagerCancellationTests.test_wait_sharedSubscription_otherWaiterSurvivesCancellation",
         ],
         "Double cancellation is idempotent": [
             "CancellationTokenTests.test_cancel_isIdempotent",

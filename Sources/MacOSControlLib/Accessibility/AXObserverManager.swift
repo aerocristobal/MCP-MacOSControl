@@ -106,7 +106,8 @@ public actor AXObserverManager {
                     waiterID: waiterID,
                     continuation: continuation,
                     timeout: timeout,
-                    start: start
+                    start: start,
+                    cancellation: cancellation
                 )
             }
         }
@@ -119,8 +120,18 @@ public actor AXObserverManager {
         waiterID: UUID,
         continuation: CheckedContinuation<WaitForUIEvent, Error>,
         timeout: TimeInterval,
-        start: Date
+        start: Date,
+        cancellation: CancellationToken?
     ) async {
+        // STORY-027 — cancel-before-attach race: if the caller cancelled while
+        // the install Task was queued on the actor, the cancel-task already
+        // ran and found no state to remove. Resume the continuation with
+        // CancellationError here so the waiter does not get installed.
+        if cancellation?.isCancelled == true {
+            continuation.resume(throwing: CancellationError())
+            return
+        }
+
         let record = WaiterRecord(id: waiterID, continuation: continuation)
 
         if let existing = subscriptions[key] {
