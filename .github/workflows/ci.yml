@@ -63,6 +63,54 @@ jobs:
             fi
           fi
 
+      # STORY-037 — Validate the POA&M and Assessment Results artifacts
+      # against the NIST schemas. Same CLI tag, same warning-catalogue
+      # discipline as the Component Definition. The OSCAL CLI emits
+      # `--strict` is not yet uniformly supported across all OSCAL models
+      # in v3.2.0, so we rely on the default validate behavior which
+      # already returns non-zero on schema violations.
+      - name: Validate OSCAL POA&M (STORY-037)
+        run: |
+          docker run --rm -v "${PWD}:/work" -w /work \
+            ghcr.io/metaschema-framework/oscal-cli:v3.2.0 \
+            validate oscal/plan-of-action-and-milestones.json
+
+      - name: Validate OSCAL Assessment Results (STORY-037)
+        run: |
+          docker run --rm -v "${PWD}:/work" -w /work \
+            ghcr.io/metaschema-framework/oscal-cli:v3.2.0 \
+            validate oscal/assessment-results.json
+
+      # STORY-037 — Bidirectional drift detector. Catches the four classes
+      # of drift the BDD scenarios call out: §4 statement without POA&M
+      # item, POA&M item referencing a removed §4 statement, closed §4
+      # statement with an open item, and closed item without closure
+      # evidence. The CLI also re-runs the STORY-022 controls drift
+      # check so a single step covers both artifact pairs.
+      - name: OSCAL drift check (SECURITY.md ↔ component-definition.json + POA&M)
+        run: swift run oscal-drift check
+
+      # STORY-037 — oscal-emit smoke test. Proves the CLI builds and
+      # appends observations to a copy of the committed AR from the
+      # fixture AuditRecord stream. The smoke run does NOT touch the
+      # committed AR; the nightly integration job is the only writer.
+      - name: oscal-emit smoke test (STORY-037)
+        run: |
+          set -euo pipefail
+          TMP_AR="${RUNNER_TEMP:-/tmp}/story-037-smoke-ar.json"
+          cp oscal/assessment-results.json "${TMP_AR}"
+          BEFORE=$(jq '.["assessment-results"].results[0].observations | length' "${TMP_AR}")
+          swift run oscal-emit \
+            Tests/MCP-MacOSControlTests/Compliance/Fixtures/audit-records-sample.jsonl \
+            "${TMP_AR}"
+          AFTER=$(jq '.["assessment-results"].results[0].observations | length' "${TMP_AR}")
+          # The fixture observation UUIDs are deterministic and already in
+          # the committed AR, so appended count should be 0 on re-run.
+          if [ "${BEFORE}" != "${AFTER}" ]; then
+            echo "::error::oscal-emit smoke: re-emitting the committed fixture should be idempotent (before=${BEFORE} after=${AFTER})"
+            exit 1
+          fi
+
       # STORY-021 — Supply-chain security. Generate a CycloneDX 1.5+ SBOM
       # covering every transitive Swift package, then scan it with Grype.
       # Policy lives in .github/sbom-policy.yml; the threshold there must

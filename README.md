@@ -71,6 +71,18 @@ The threat model, AppleScript denylist, audit-record schema, and NIST SP 800-53 
 
 Tagged releases attach the SBOM (and a VEX document, when statements exist) to the GitHub Release as evidence artifacts. Dependabot opens monthly Swift-package and weekly GitHub-Actions upgrade PRs against the same gate. Policy is declared in [`.github/sbom-policy.yml`](.github/sbom-policy.yml).
 
+### Compliance Artifacts
+
+Machine-readable compliance posture for downstream SSP authors, assessors, and continuous-monitoring consumers. All three artifacts are versioned in `oscal/` and validated against the NIST OSCAL schemas on every push.
+
+| Artifact | OSCAL model | Purpose |
+|----------|-------------|---------|
+| [`oscal/component-definition.json`](oscal/component-definition.json) | OSCAL 1.1.2 Component Definition | Mirror of [`docs/SECURITY.md`](docs/SECURITY.md) §7/§8 control implementation, with `rel:implementation` and `rel:verification` links into source and tests. Maintained per STORY-022. |
+| [`oscal/plan-of-action-and-milestones.json`](oscal/plan-of-action-and-milestones.json) | OSCAL 1.1.2 POA&M | One open item per accepted-risk statement in `docs/SECURITY.md` §4, plus historical closed items. Each item carries status, owner, related-controls, and milestones. UUID registry: [`oscal/poam-id-allocations.md`](oscal/poam-id-allocations.md). Maintained per STORY-037. |
+| [`oscal/assessment-results.json`](oscal/assessment-results.json) | OSCAL 1.1.2 Assessment Results | Continuous-monitoring observations derived from the STORY-024 AuditRecord stream. One observation per AuditRecord. Append-only; nightly emit job amends new observations without rewriting prior ones. AuditRecord ↔ Observation mapping: [`oscal/assessment-results-mapping.md`](oscal/assessment-results-mapping.md). Maintained per STORY-037. |
+
+Drift between `docs/SECURITY.md` and the OSCAL artifacts is enforced bidirectionally by [`swift run oscal-drift check`](Sources/OscalDrift/main.swift) — CI fails on any of: a §7/§8 control claim without an OSCAL `implemented-requirement`, an OSCAL `implemented-requirement` not referenced by §7/§8, a §4 accepted-risk statement without a matching open POA&M item, or a POA&M item whose `security-md-section` no longer exists.
+
 ## Tools (75 total, 16 modules)
 
 ### Mouse Control (MouseModule -- 9 tools)

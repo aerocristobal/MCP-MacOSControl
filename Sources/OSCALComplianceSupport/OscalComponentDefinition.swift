@@ -59,6 +59,14 @@ public struct OscalProp: Codable, Equatable {
     public let ns: String?
     public let `class`: String?
     public let remarks: String?
+
+    public init(name: String, value: String, ns: String? = nil, class: String? = nil, remarks: String? = nil) {
+        self.name = name
+        self.value = value
+        self.ns = ns
+        self.`class` = `class`
+        self.remarks = remarks
+    }
 }
 
 public struct OscalControlImplementation: Codable, Equatable {
@@ -109,6 +117,14 @@ public struct OscalMetadata: Codable, Equatable {
     public let version: String
     public let oscalVersion: String
     public let parties: [OscalParty]?
+
+    public init(title: String, lastModified: String, version: String, oscalVersion: String, parties: [OscalParty]? = nil) {
+        self.title = title
+        self.lastModified = lastModified
+        self.version = version
+        self.oscalVersion = oscalVersion
+        self.parties = parties
+    }
 
     enum CodingKeys: String, CodingKey {
         case title
