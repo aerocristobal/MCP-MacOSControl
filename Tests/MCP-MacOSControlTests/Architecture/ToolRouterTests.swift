@@ -3,8 +3,9 @@ import MCP
 @testable import MacOSControlLib
 
 final class ToolRouterTests: XCTestCase {
-    func testAllToolsReturns75Tools() {
-        XCTAssertEqual(ToolRouter.allTools.count, 75)
+    func testAllToolsReturns77Tools() {
+        // 75 baseline + STORY-024 added verify_audit_chain and force_rotate_unacked.
+        XCTAssertEqual(ToolRouter.allTools.count, 77)
     }
 
     func testAllToolNamesAreUnique() {

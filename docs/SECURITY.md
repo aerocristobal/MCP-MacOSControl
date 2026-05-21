@@ -77,7 +77,7 @@ The following four risk classes are the canonical threat model for the AppleScri
 Filter ruleset is owned by the security reviewer and changes go through code review with a security label.
 
 **Secondary mitigations.**
-- Mandatory audit hook on every invocation (success, failure, **and rejection**) — see §4.4 mitigations
+- Mandatory audit hook on every invocation (success, failure, **and rejection**) — STORY-024 makes this hook trustworthy: each record is hash-chained (`prev_hash` → `record_hash`), retained for a configurable window (default 365 days), and shipped off-host to a managed sink (OSLog by default, or HTTP/syslog). See §4.4 and [`AUDIT-LOG-OPERATIONS.md`](AUDIT-LOG-OPERATIONS.md).
 - macOS TCC automation permissions per target app (§4.3) — additional gate that operates outside the server's control
 - MCP host gating — Claude Desktop and most hosts require user confirmation for `destructiveHint: true` tools; `run_applescript` is annotated accordingly
 
@@ -89,7 +89,7 @@ Filter ruleset is owned by the security reviewer and changes go through code rev
 
 **Justification for accepting this residual risk:**
 1. AST-based filtering would require a production-ready Swift AppleScript parser, which does not exist. Building one is out of scope and would itself introduce new attack surface.
-2. The audit hook ensures every invocation — including bypass attempts that succeed against the filter — produces a forensic record. Detection compensates for imperfect prevention.
+2. The audit hook ensures every invocation — including bypass attempts that succeed against the filter — produces a forensic record. STORY-024 makes the hook tamper-evident (hash chain), retained (configurable window with archive), and off-host (OSLog / HTTP / syslog) so detection compensates for imperfect prevention *operationally*, not just architecturally.
 3. macOS TCC enforces per-app automation permissions independently. Even a bypassed filter cannot reach apps the user has not granted automation permission for.
 4. The MCP host's user-confirmation prompt for destructive tools provides a final human gate.
 
@@ -126,15 +126,19 @@ The bypass class is recorded as an accepted risk in the project POA&M (NIST SP 8
 
 **Threat.** A malicious script (or post-incident attacker with local access) modifies or deletes audit records to hide evidence of policy violations.
 
-**Current mitigation (STORY-006 scope).** The `AuditRecorder` protocol seam is committed; the v1 production implementation is `InMemoryAuditRecorder`. Records are not persisted across process restarts.
+**Mitigation (STORY-024).** The `AuditRecorder` is now a chained, persistent, off-host-shipping recorder. Three properties combine:
 
-**Acknowledged gap.** This is the seam, not the production implementation. The in-memory recorder is suitable for development and tests but provides no tamper resistance and no durability. A separate compliance-track story must commit:
-- Append-only filesystem sink with rotation, owned by a directory the server's user can write to but not silently truncate
-- Optional OpenTelemetry export for organizations with central log aggregation
-- Optional syslog / unified-logging emission for macOS-native audit pipelines
-- Tamper-evident hashing (each record includes the SHA-256 of the previous record's serialized form)
+1. **Tamper-evidence via hash chain.** Each record's `prev_hash` equals SHA-256 of the prior record's `record_hash`; the first record's `prev_hash` is a deterministic genesis derived from `gethostname()` + per-install UUID. `AuditChainVerifier` walks the chain on server start, on every retention sweep, and on operator demand via the `verify_audit_chain` MCP tool. A chain break is reported with the first-break record id and surfaced as a SECURITY-CRITICAL log line.
+2. **Retention with archive.** `AuditRetentionSweeper` runs against a configurable retention window (default 365 days, `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS`). Records older than the window AND acknowledged by the remote sink are moved to an archive directory; records still `delivery_status=pending` are NEVER rotated automatically (silent log loss during an outage is the worst audit failure mode). The operator-only `force_rotate_unacked` MCP tool, gated by `MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED=true`, is the documented escape hatch and self-audits before rotating.
+3. **Off-host shipping.** Default sink is OSLog (subsystem `com.mcp.macos-control.audit`) — built into macOS, requires no external service, collected by enterprise MDM. Optional HTTP JSON sink (for managed SIEMs) and syslog sink (for legacy infrastructure) configurable via `MCP_MACOS_CONTROL_AUDIT_REMOTE`. Each shipped record gets a `remote_ack_timestamp` annotation on success; failures leave `delivery_status=pending` and a background retry loop drains them in order.
 
-**Why deferred.** STORY-006 commits the protocol seam — that is the only architectural decision needed to make the production sink swappable. Implementing the production sink now would over-design the v1 code and bury the security-critical execution path under audit infrastructure. The deferral is intentional and the risk is accepted *for development and test environments only*. The production sink is a precondition for any deployment that claims AU-2 / AU-3 implementation under NIST SP 800-53.
+**Append-only enforcement.** `AuditStorage.insert(_:)` throws `audit_log_immutability_violation` if a record_id already exists. Delivery-status annotations are kept in a sibling ack-ledger file so the record stream itself is never rewritten.
+
+**Schema.** Each record carries 13 mandatory fields per the BDD outline in `docs/stories/STORY-024-audit-log-integrity.md` §2. Schema is version-stamped (`audit_schema_version: 1`) for future evolution. The script *source* is explicitly NOT recorded — only its SHA-256 fingerprint — because the source can contain typed secrets (see §4.2).
+
+**Operations.** See [`AUDIT-LOG-OPERATIONS.md`](AUDIT-LOG-OPERATIONS.md) for log location, env-var matrix, chain-verification incident response, and HTTP-sink ingestion format.
+
+**Acknowledged residual risk.** A per-record digital signature would be stronger than a hash chain — but signing requires key management, and a stored key on the host is no harder to compromise than the host itself. The chain + off-host shipping pair gives a verifier two independent corroborations: the on-disk chain AND the remote sink's collected copy. Re-evaluation criteria: a credible HSM-backed signing path becomes available, or a post-incident review identifies a class of tampering the chain misses.
 
 ---
 
@@ -180,9 +184,10 @@ Authoring formal OSCAL component-definition entries is **out of scope** for STOR
 |---|---|---|
 | **AC-3** | Access Enforcement | Tool annotations (`destructiveHint`, `readOnlyHint`) signal MCP hosts to apply user-confirmation gates before invocation. macOS TCC is the underlying enforcement mechanism for filesystem and automation access. |
 | **AC-4** | Information Flow Enforcement | 1 MB output truncation cap with `truncated: true` flag bounds data egress per invocation. |
-| **AU-2** | Event Logging | `AuditRecorder.record(_:)` is invoked on every `run_applescript` and `click_menu_item` call regardless of outcome. |
-| **AU-3** | Content of Audit Records | `AuditRecord` schema satisfies "what (toolName), when (timestamp), where (targetApps), source (MCP client metadata when present), outcome (success / failure variant)." Subject identity is the local user (single-tenant by design). |
-| **AU-9** | Protection of Audit Information | **Partially satisfied.** Protocol seam committed; production sink with append-only semantics is deferred (see §4.4). |
+| **AU-2** | Event Logging | `AuditRecording.record(_:)` (renamed protocol seam) is invoked on every `run_applescript` and `click_menu_item` call regardless of outcome. STORY-024's `AuditRecorder` persists each record to JSON Lines on disk under `~/Library/Logs/com.mcp.macos-control/audit/`. |
+| **AU-3** | Content of Audit Records | `AuditRecord` schema (STORY-024) carries the 13 mandatory fields: `record_id`, `timestamp_iso8601`, `event_type`, `script_sha256`, `target_apps_extracted`, `filter_disposition`, `execution_outcome`, `prev_hash`, `record_hash`, `delivery_status`, `remote_ack_timestamp`, `host_identifier`, `server_version`. Schema is version-stamped (`audit_schema_version: 1`). |
+| **AU-9** | Protection of Audit Information | **Satisfied.** Records are hash-chained (per-install genesis → `prev_hash` → `record_hash`), append-only at the storage layer (`audit_log_immutability_violation` on duplicate `record_id`), and shipped off-host to the configured sink (OSLog default, HTTP/syslog optional). Chain verifier runs on server start, on every retention sweep, and on operator demand via the `verify_audit_chain` MCP tool. Pending records are never rotated to archive automatically — silent log loss is documented as the worst audit failure mode and avoided by design. |
+| **AU-11** | Audit Record Retention | `AuditRetentionSweeper` enforces a configurable retention window (default 365 days, `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS`). Records older than the window AND acknowledged by the remote sink move to archive; the archive chain remains verifiable. |
 | **CM-7** | Least Functionality | `AppleScriptSecurityFilter` denylist disables `do shell script` and `do JavaScript` even though `osascript` supports them — the project intentionally exposes a reduced subset of AppleScript's capability surface. |
 | **SC-7** | Boundary Protection | Out of scope for the server itself; relevant to deployers configuring MCP transport. |
 | **SI-10** | Information Input Validation | `AppleScriptSecurityFilter.validate(_:)` is the validator for AppleScript input. Input schema validation in tool entry points covers structural validation for all tools. |
@@ -198,7 +203,7 @@ Authoring formal OSCAL component-definition entries is **out of scope** for STOR
 |---|---|
 | **AC-2** Account Management | The server is single-tenant by design — runs as the launching user. Multi-user account management is a deployer / OS concern. |
 | **IA-2** Identification and Authentication | MCP transport is local stdio; the connecting host is implicitly trusted by virtue of process boundary. Cross-network MCP deployments require a deployer-supplied authentication layer. |
-| **AU-9** (full satisfaction) | Production audit sink is deferred; see §4.4. |
+| **AU-9** (full satisfaction) | Satisfied by STORY-024 — see row above. |
 | **SC-8** Transmission Confidentiality and Integrity | MCP stdio is loopback; no transport encryption applied or required. |
 | **SC-13** Cryptographic Protection | No cryptographic operations performed by the server other than SHA-256 of script source for audit fingerprinting. |
 
@@ -316,3 +321,4 @@ Synthetic-SBOM unit tests are deliberately not committed: maintaining a fixture 
 | 2026-05-09 | aerocristobal | Initial draft accompanying STORY-006 (run_applescript). Threat model, NIST SP 800-53 control mapping, and OSCAL roadmap. |
 | 2026-05-20 | aerocristobal | Added §8 Supply Chain Risk Management (STORY-021): CycloneDX SBOM via Syft, Grype SCA, GitHub Dependency Review, Dependabot config, VEX placeholder, and SR-3/SR-4/SR-11 mapping in §7.1. §8 Operational Guidance renumbered to §9; Change Log renumbered to §10. |
 | 2026-05-20 | aerocristobal | Authored `oscal/component-definition.json` (STORY-022): OSCAL 1.1.2 machine-readable mirror of §7/§8. Adds CI-gated drift detection (`OscalCoverageCheckerTests`) and Docker-pinned `oscal-cli` schema validation. §1 header updated to advertise the OSCAL artifact; §7.3 roadmap updated past-tense; §8.8 cross-references updated. |
+| 2026-05-20 | aerocristobal | STORY-024. §4.1 / §4.4 / §7: audit log is now hash-chained, retained, and shipped off-host. AU-9 moves from "partially satisfied" to "satisfied"; AU-11 newly mapped. New companion document `AUDIT-LOG-OPERATIONS.md`. |

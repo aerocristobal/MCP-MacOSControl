@@ -36,11 +36,11 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
 
     private let executor: AppleScriptExecuting
     private let resolver: MenuPathResolving
-    private let audit: AuditRecorder
+    private let audit: AuditRecording
 
     public init(executor: AppleScriptExecuting,
                 resolver: MenuPathResolving,
-                audit: AuditRecorder) {
+                audit: AuditRecording) {
         self.executor = executor
         self.resolver = resolver
         self.audit = audit
@@ -53,26 +53,25 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
         let result = try executor.run(script, timeout: Self.clickTimeoutSeconds)
         switch result {
         case .success(_, let durationMs, _):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuClick,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .success,
-                durationMs: durationMs,
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .success,
+                durationMs: durationMs
             ))
             return .success
 
         case .failure(.scriptError(let code, let message)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuClick,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .scriptError(code: code),
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .scriptError,
                 durationMs: 0,
-                targetApps: [application]
+                scriptErrorCode: code
             ))
             if message.range(of: "is disabled", options: .caseInsensitive) != nil {
                 return .disabled
@@ -80,26 +79,24 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
             return .notFound
 
         case .failure(.timeout(let after)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuClick,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .timeout,
-                durationMs: Int((after * 1000).rounded()),
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .timeout,
+                durationMs: Int((after * 1000).rounded())
             ))
             throw MenuClickError.timeout(after: after)
 
         case .failure(.ioError(let detail)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuClick,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .scriptError(code: 0),
-                durationMs: 0,
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .ioError,
+                durationMs: 0
             ))
             throw MenuClickError.backendFailure(detail: detail)
         }
@@ -112,50 +109,47 @@ public final class AppleScriptMenuClickBackend: MenuClickBackend {
         let result = try executor.run(script, timeout: Self.alternativesTimeoutSeconds)
         switch result {
         case .success(let stdout, let durationMs, _):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuAlternativesLookup,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .success,
-                durationMs: durationMs,
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .success,
+                durationMs: durationMs
             ))
             return parseAlternatives(stdout)
 
         case .failure(.scriptError(let code, _)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuAlternativesLookup,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .scriptError(code: code),
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .scriptError,
                 durationMs: 0,
-                targetApps: [application]
+                scriptErrorCode: code
             ))
             return []
 
         case .failure(.timeout(let after)):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuAlternativesLookup,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .timeout,
-                durationMs: Int((after * 1000).rounded()),
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .timeout,
+                durationMs: Int((after * 1000).rounded())
             ))
             return []
 
         case .failure(.ioError):
-            audit.record(AuditRecord(
-                timestamp: Date(),
-                toolName: Self.toolName,
+            audit.record(AuditRecordDraft(
+                eventType: .menuAlternativesLookup,
                 scriptSha256: sha,
-                scriptSource: nil,
-                outcome: .scriptError(code: 0),
-                durationMs: 0,
-                targetApps: [application]
+                targetApps: [application],
+                filterDisposition: .allowed,
+                executionOutcome: .ioError,
+                durationMs: 0
             ))
             return []
         }

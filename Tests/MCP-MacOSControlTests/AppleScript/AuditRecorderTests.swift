@@ -1,5 +1,10 @@
-// STORY-006 — run_applescript MCP Tool
-// COMPONENT: AuditRecorder protocol + InMemoryAuditRecorder + ScriptHasher
+// STORY-006 + STORY-024 — Audit recorder seam + hash chain.
+//
+// STORY-006 introduced the protocol seam; STORY-024 added per-record
+// hash chaining, an extended schema, and persistent storage. These
+// tests exercise the lightweight InMemoryAuditRecorder used in dev/test
+// (the production AuditRecorder is covered in AuditChainTests +
+// AuditRetentionTests).
 
 import XCTest
 @testable import MacOSControlLib
@@ -10,63 +15,67 @@ final class InMemoryAuditRecorderTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        recorder = InMemoryAuditRecorder()
+        recorder = InMemoryAuditRecorder(
+            identity: AuditInstallIdentity(hostIdentifier: "test-host",
+                                           installUuid: "test-uuid")
+        )
     }
 
     func test_record_storesRecord() {
-        let record = AuditRecord(
-            timestamp: Date(),
-            toolName: "run_applescript",
-            scriptSha256: "abc123",
-            scriptSource: nil,
-            outcome: .success,
-            durationMs: 42,
-            targetApps: ["Finder"]
-        )
-
-        recorder.record(record)
-
+        let r = recorder.record(makeDraft(sha: "abc123",
+                                          outcome: .success,
+                                          disposition: .allowed))
         XCTAssertEqual(recorder.records.count, 1)
         XCTAssertEqual(recorder.records.first?.scriptSha256, "abc123")
+        XCTAssertEqual(r.scriptSha256, "abc123")
     }
 
     func test_record_storesMultipleRecords_inOrder() {
-        let r1 = makeRecord(sha: "aaa", outcome: .success)
-        let r2 = makeRecord(sha: "bbb", outcome: .timeout)
-        let r3 = makeRecord(sha: "ccc", outcome: .securityRejected(reason: "do_shell_script"))
-
-        recorder.record(r1)
-        recorder.record(r2)
-        recorder.record(r3)
-
+        _ = recorder.record(makeDraft(sha: "aaa", outcome: .success, disposition: .allowed))
+        _ = recorder.record(makeDraft(sha: "bbb", outcome: .timeout, disposition: .allowed))
+        _ = recorder.record(makeDraft(sha: "ccc",
+                                      outcome: .notExecuted,
+                                      disposition: .rejectedSecurity,
+                                      rejection: "do_shell_script"))
         XCTAssertEqual(recorder.records.map { $0.scriptSha256 }, ["aaa", "bbb", "ccc"])
     }
 
-    func test_record_redactsSourceWhenNil() {
-        let record = makeRecord(sha: "abc", outcome: .success, source: nil)
-        recorder.record(record)
-        XCTAssertNil(recorder.records.first?.scriptSource)
+    func test_record_hashChain_firstRecordPrevHashIsGenesis() {
+        let r1 = recorder.record(makeDraft(sha: "a", outcome: .success, disposition: .allowed))
+        XCTAssertEqual(r1.prevHash, recorder.identity.genesisHashHex)
     }
 
-    func test_record_capturesSourceWhenProvided() {
-        let record = makeRecord(sha: "abc", outcome: .success, source: "tell app Finder to get name")
-        recorder.record(record)
-        XCTAssertEqual(recorder.records.first?.scriptSource, "tell app Finder to get name")
+    func test_record_hashChain_subsequentPrevHashLinksToPriorRecordHash() {
+        let r1 = recorder.record(makeDraft(sha: "a", outcome: .success, disposition: .allowed))
+        let r2 = recorder.record(makeDraft(sha: "b", outcome: .success, disposition: .allowed))
+        XCTAssertEqual(r2.prevHash, r1.recordHash)
     }
 
-    private func makeRecord(
+    func test_record_eventType_andFilterDisposition_areSet() {
+        let r = recorder.record(makeDraft(sha: "a",
+                                          outcome: .notExecuted,
+                                          disposition: .rejectedSecurity,
+                                          rejection: "do_shell_script"))
+        XCTAssertEqual(r.eventType, .applescriptExecute)
+        XCTAssertEqual(r.filterDisposition, .rejectedSecurity)
+        XCTAssertEqual(r.executionOutcome, .notExecuted)
+        XCTAssertEqual(r.rejectionReason, "do_shell_script")
+    }
+
+    private func makeDraft(
         sha: String,
-        outcome: AuditOutcome,
-        source: String? = nil
-    ) -> AuditRecord {
-        AuditRecord(
-            timestamp: Date(),
-            toolName: "run_applescript",
+        outcome: AuditExecutionOutcome,
+        disposition: AuditFilterDisposition,
+        rejection: String? = nil
+    ) -> AuditRecordDraft {
+        AuditRecordDraft(
+            eventType: .applescriptExecute,
             scriptSha256: sha,
-            scriptSource: source,
-            outcome: outcome,
+            targetApps: [],
+            filterDisposition: disposition,
+            executionOutcome: outcome,
             durationMs: 0,
-            targetApps: []
+            rejectionReason: rejection
         )
     }
 }
@@ -88,7 +97,6 @@ final class ScriptHasherTests: XCTestCase {
         let hash = ScriptHasher.sha256Hex("hello")
         XCTAssertEqual(hash.count, 64)
         XCTAssertEqual(hash, hash.lowercased())
-        // Verify against the known SHA-256 of "hello"
         XCTAssertEqual(hash, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
     }
 }

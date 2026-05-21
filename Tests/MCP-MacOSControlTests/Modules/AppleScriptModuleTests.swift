@@ -19,7 +19,10 @@ final class AppleScriptModuleTests: XCTestCase {
         let props = propertyNames(for: tool)
         XCTAssertTrue(props.contains("script"))
         XCTAssertTrue(props.contains("timeout_seconds"))
-        XCTAssertTrue(props.contains("audit_full_source"))
+        // STORY-024 Q7: script source is treated as sensitive — the
+        // audit_full_source parameter was removed by design.
+        XCTAssertFalse(props.contains("audit_full_source"),
+                       "STORY-024: audit_full_source removed — script source is never captured")
     }
 
     func test_runAppleScriptTool_requiresScript() {
@@ -39,16 +42,18 @@ final class AppleScriptModuleTests: XCTestCase {
         XCTAssertEqual(tool.annotations.readOnlyHint, false)
     }
 
-    func test_runAppleScriptTool_descriptionWarnsAboutAuditFullSource() {
+    func test_runAppleScriptTool_descriptionMentionsAuditChainAndRetention() {
+        // STORY-024 replaces the audit_full_source warning with a
+        // statement that the audit log is hash-chained and shipped
+        // off-host — the disposition the deployer needs to know.
         guard let tool = AppleScriptModule.tools.first(where: { $0.name == "run_applescript" }) else {
             return XCTFail("run_applescript tool not registered")
         }
-        let desc = tool.description ?? ""
-        XCTAssertTrue(desc.lowercased().contains("audit_full_source"),
-                      "description must mention the audit_full_source flag")
-        XCTAssertTrue(desc.lowercased().contains("pii") || desc.lowercased().contains("secret")
-                      || desc.lowercased().contains("password"),
-                      "description must warn about PII / secret capture risk")
+        let desc = (tool.description ?? "").lowercased()
+        XCTAssertTrue(desc.contains("sha-256"),
+                      "description must explain script_sha256 is captured, not source")
+        XCTAssertTrue(desc.contains("hash-chained") || desc.contains("audit-logged"),
+                      "description must mention the hash-chained audit log")
     }
 
     func test_unknownToolReturnsNil() async throws {

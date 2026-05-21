@@ -3,10 +3,12 @@ import MCP
 
 public enum AppleScriptModule: ToolModule {
 
-    /// Process-wide audit recorder. v1 uses an in-memory implementation per
-    /// STORY-006 §4.4 of docs/SECURITY.md. A future compliance story swaps in
-    /// the production sink (filesystem / OTel / unified-logging).
-    public static let auditor = InMemoryAuditRecorder()
+    /// Process-wide audit recorder. STORY-006 shipped an in-memory v1;
+    /// STORY-024 made this a swappable seam — Server.swift replaces it
+    /// at startup with a chained, persistent `AuditRecorder` wired to
+    /// AuditStorage + AuditRemoteSink. Tests and dev paths can leave
+    /// the default InMemoryAuditRecorder in place.
+    public nonisolated(unsafe) static var auditor: AuditRecording = InMemoryAuditRecorder()
 
     public static var tools: [Tool] {
         [
@@ -64,9 +66,11 @@ public enum AppleScriptModule: ToolModule {
                 execution. Each invocation is audit-logged. Target apps must have macOS Automation \
                 permission granted; missing permission returns a structured error naming the app. \
                 Output is capped at 1 MB (truncated:true flag set when reached). \
-                WARNING: setting audit_full_source=true captures the verbatim script in audit \
-                records and may include passwords, tokens, or PII present in script literals — \
-                callers are responsible for scrubbing such content.
+                STORY-024: invocations are audit-logged with a SHA-256 fingerprint of the script \
+                source — never the verbatim source, which is treated as sensitive. The audit log \
+                is hash-chained, retained per MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS (default 365), \
+                and shipped off-host to the configured sink (default OSLog subsystem \
+                com.mcp.macos-control.audit).
                 """,
                 inputSchema: jsonSchema(
                     type: "object",
@@ -79,11 +83,6 @@ public enum AppleScriptModule: ToolModule {
                             "type": "integer",
                             "description": "Maximum execution time in seconds. Default 30, minimum 1, maximum 300. The osascript process is terminated when the timeout elapses.",
                             "default": 30
-                        ],
-                        "audit_full_source": [
-                            "type": "boolean",
-                            "description": "Capture the verbatim script source in the audit record (default false — only SHA-256 is captured). Intended for development and incident-response forensics. May capture secrets and PII.",
-                            "default": false
                         ]
                     ],
                     required: ["script"]
