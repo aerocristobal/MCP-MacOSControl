@@ -25,7 +25,11 @@ public final class CoordinateLayer: InteractionLayer {
         self.actuator = actuator
     }
 
-    public func attempt(_ intent: InteractionIntent, target: TargetSpec) async -> LayerOutcome {
+    public func attempt(
+        _ intent: InteractionIntent,
+        target: TargetSpec,
+        context: ToolCallContext
+    ) async -> LayerOutcome {
         switch intent {
         case .click:
             guard let coords = target.coordinates else {

@@ -13,7 +13,7 @@ public final class SmartInteractTool {
         self.router = router
     }
 
-    public func execute(_ params: CallTool.Parameters) async -> CallTool.Result {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async -> CallTool.Result {
         let args = params.arguments ?? [:]
 
         guard let intentRaw = args["intent"]?.stringValue, !intentRaw.isEmpty else {
@@ -48,7 +48,7 @@ public final class SmartInteractTool {
             value: value,
             skipLayers: args["skip_layers"]?.arrayValue?.compactMap(\.stringValue) ?? [])
 
-        let result = await router.route(input: input)
+        let result = await router.route(input: input, context: context)
 
         if result.isError {
             return MCPErrorResponseBuilder.shared.build(
