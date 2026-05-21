@@ -1,9 +1,10 @@
-// STORY-006 — run_applescript MCP Tool
+// STORY-006 + STORY-024 — run_applescript MCP Tool
 // COMPONENT: RunAppleScriptTool
 //
 // XCTest mirror of the six BDD scenarios in
 // Tests/MCP-MacOSControlTests/Features/story-006-run-applescript.feature plus
-// cross-cutting audit assertions.
+// cross-cutting audit assertions adapted to the STORY-024 record schema
+// (event_type + filter_disposition + execution_outcome).
 
 import XCTest
 import MCP
@@ -262,7 +263,7 @@ final class RunAppleScriptToolTests: XCTestCase {
         XCTAssertEqual(executorSpy.runCallCount, 1)
     }
 
-    // MARK: - Audit (cross-cutting)
+    // MARK: - Audit (cross-cutting; STORY-024 schema)
 
     func test_execute_emitsAuditRecord_onSuccess() async throws {
         executorSpy.stubbedResult = .success(stdout: "ok", durationMs: 10)
@@ -272,10 +273,11 @@ final class RunAppleScriptToolTests: XCTestCase {
         _ = try await tool.execute(params)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records.first?.outcome, .success)
-        XCTAssertNotNil(auditSpy.records.first?.scriptSha256)
-        XCTAssertNil(auditSpy.records.first?.scriptSource,
-                     "source must NOT be logged by default — see Open Question 7")
+        let r = auditSpy.records[0]
+        XCTAssertEqual(r.eventType, .applescriptExecute)
+        XCTAssertEqual(r.executionOutcome, .success)
+        XCTAssertEqual(r.filterDisposition, .allowed)
+        XCTAssertFalse(r.scriptSha256.isEmpty)
     }
 
     func test_execute_emitsAuditRecord_onSecurityRejection() async throws {
@@ -286,8 +288,10 @@ final class RunAppleScriptToolTests: XCTestCase {
         _ = try await tool.execute(params)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records.first?.outcome,
-                       .securityRejected(reason: "do_shell_script"))
+        let r = auditSpy.records[0]
+        XCTAssertEqual(r.filterDisposition, .rejectedSecurity)
+        XCTAssertEqual(r.executionOutcome, .notExecuted)
+        XCTAssertEqual(r.rejectionReason, "do_shell_script")
     }
 
     func test_execute_emitsAuditRecord_onPermissionDenial() async throws {
@@ -299,11 +303,10 @@ final class RunAppleScriptToolTests: XCTestCase {
         _ = try await tool.execute(params)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        if case .permissionDenied(let app) = auditSpy.records.first?.outcome {
-            XCTAssertEqual(app, "Mail")
-        } else {
-            XCTFail("expected .permissionDenied outcome in audit record")
-        }
+        let r = auditSpy.records[0]
+        XCTAssertEqual(r.filterDisposition, .rejectedPermission)
+        XCTAssertEqual(r.executionOutcome, .notExecuted)
+        XCTAssertEqual(r.deniedApp, "Mail")
     }
 
     func test_execute_emitsAuditRecord_onTimeout() async throws {
@@ -316,7 +319,7 @@ final class RunAppleScriptToolTests: XCTestCase {
         _ = try await tool.execute(params)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        XCTAssertEqual(auditSpy.records.first?.outcome, .timeout)
+        XCTAssertEqual(auditSpy.records[0].executionOutcome, .timeout)
     }
 
     func test_execute_emitsAuditRecord_onScriptError() async throws {
@@ -327,24 +330,8 @@ final class RunAppleScriptToolTests: XCTestCase {
         _ = try await tool.execute(params)
 
         XCTAssertEqual(auditSpy.records.count, 1)
-        if case .scriptError(let code) = auditSpy.records.first?.outcome {
-            XCTAssertEqual(code, -2741)
-        } else {
-            XCTFail("expected .scriptError outcome")
-        }
-    }
-
-    func test_execute_includesFullSourceInAudit_whenOptInFlagSet() async throws {
-        executorSpy.stubbedResult = .success(stdout: "", durationMs: 1)
-        let script = "tell application \"Finder\" to get name of front window"
-        let params = makeParams(name: "run_applescript", args: [
-            "script": .string(script),
-            "audit_full_source": .bool(true)
-        ])
-
-        _ = try await tool.execute(params)
-
-        XCTAssertEqual(auditSpy.records.first?.scriptSource, script)
+        XCTAssertEqual(auditSpy.records[0].executionOutcome, .scriptError)
+        XCTAssertEqual(auditSpy.records[0].scriptErrorCode, -2741)
     }
 
     func test_execute_auditRecordContainsTargetApps() async throws {
@@ -355,7 +342,18 @@ final class RunAppleScriptToolTests: XCTestCase {
 
         _ = try await tool.execute(params)
 
-        XCTAssertEqual(auditSpy.records.first?.targetApps, ["Mail"])
+        XCTAssertEqual(auditSpy.records.first?.targetAppsExtracted, ["Mail"])
+    }
+
+    func test_execute_auditChainPrevHashLinksRecords() async throws {
+        executorSpy.stubbedResult = .success(stdout: "", durationMs: 1)
+        let params = makeParams(name: "run_applescript",
+                                args: ["script": .string("return 1")])
+        _ = try await tool.execute(params)
+        _ = try await tool.execute(params)
+
+        XCTAssertEqual(auditSpy.records.count, 2)
+        XCTAssertEqual(auditSpy.records[1].prevHash, auditSpy.records[0].recordHash)
     }
 
     // MARK: - Input validation

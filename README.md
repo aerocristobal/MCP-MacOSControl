@@ -229,6 +229,16 @@ Requires macOS 15 (Sequoia) with iPhone Mirroring configured. All coordinates us
 | `MCP_MACOS_CONTROL_LOG_LEVEL` | `warn` | Log level: error, warn, info, debug, trace |
 | `MCP_MACOS_CONTROL_MAX_INPUT_RATE` | `10` | Maximum input events per second |
 | `MCP_MACOS_CONTROL_OVERRIDES_PATH` | _(see below)_ | Path to the per-app capability override file |
+| `MCP_MACOS_CONTROL_AUDIT_DIR` | `~/Library/Logs/com.mcp.macos-control/audit/` | STORY-024: audit log directory |
+| `MCP_MACOS_CONTROL_AUDIT_RETENTION_DAYS` | `365` | STORY-024: retention window before records move to archive |
+| `MCP_MACOS_CONTROL_AUDIT_REMOTE` | `oslog` | STORY-024: off-host sink — `oslog`, `http`, or `syslog` |
+| `MCP_MACOS_CONTROL_AUDIT_REMOTE_URL` | _(unset)_ | STORY-024: required when `REMOTE=http`; must be an `http(s)` URL |
+| `MCP_MACOS_CONTROL_AUDIT_ACK_TIMEOUT_MS` | `5000` | STORY-024: per-record remote-ack timeout |
+| `MCP_MACOS_CONTROL_AUDIT_ADMIN_ENABLED` | `false` | STORY-024: set `true` to expose the `force_rotate_unacked` MCP tool |
+
+See [`docs/AUDIT-LOG-OPERATIONS.md`](docs/AUDIT-LOG-OPERATIONS.md) for the full
+audit subsystem operator guide (chain verification, retention, incident
+response, sink-specific configuration).
 
 ## Per-App Capability Overrides
 
