@@ -62,6 +62,8 @@ See [docs/PERMISSIONS.md](docs/PERMISSIONS.md) for detailed setup.
 
 The threat model, AppleScript denylist, audit-record schema, and NIST SP 800-53 control mapping live in [docs/SECURITY.md](docs/SECURITY.md). Vulnerabilities should be reported via a private GitHub Security Advisory — see §6 of that document.
 
+**Cooperative tool-call cancellation (STORY-027).** The server honours the MCP `notifications/cancelled` message. Five long-running tools propagate cancellation to their resource teardown path — `wait_for_ui_event` (AXObserver unregister), `wait_for_element_state` (polling loop exits within one cycle), `wait_for_app_event` (NSWorkspace observer removal), `smart_interact` (between-layer abort, layer-skip), and `run_applescript` (osascript SIGTERM, SIGKILL escalation after 1000ms). SIGTERM to the server drains every in-flight call via the same pathway. See [docs/SECURITY.md §5](docs/SECURITY.md) for the full table.
+
 **Supply-chain controls (STORY-021, see §8).** Every push and pull request:
 
 - Generates a CycloneDX 1.5+ SBOM (via Syft) covering every transitive Swift package.
