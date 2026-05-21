@@ -161,6 +161,7 @@ jobs:
           fail-build: true
           output-format: sarif
           by-cve: true
+          vex: .github/vex-statements.json
 
       - name: Upload Grype SARIF to Security tab
         if: always()
