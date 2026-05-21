@@ -1,0 +1,294 @@
+{
+  "component-definition": {
+    "uuid": "17c5db22-7c4b-416d-84aa-3adae6b6fe35",
+    "metadata": {
+      "title": "MCP-MacOSControl Component Definition",
+      "last-modified": "2026-05-20T00:00:00Z",
+      "version": "1.0.0",
+      "oscal-version": "1.1.2",
+      "parties": [
+        {
+          "uuid": "080ce0f8-ae3a-401c-a8d2-937c70bb88d1",
+          "type": "organization",
+          "name": "MCP-MacOSControl project maintainers"
+        }
+      ]
+    },
+    "components": [
+      {
+        "uuid": "37791301-45b1-41c5-a2d8-70c1ffcfcaa2",
+        "type": "software",
+        "title": "MCP-MacOSControl Server",
+        "description": "Native macOS MCP server exposing accessibility, AppleScript, Vision, CoreML, iPhone Mirroring, and screen-monitoring capabilities to AI agents under the launching user's TCC permissions. Single-tenant by design; stdio transport.",
+        "purpose": "Enable AI-driven macOS automation under user TCC permissions and produce auditable records of every privileged action (AppleScript invocation, menu navigation, supply-chain dependency change).",
+        "props": [
+          {
+            "name": "repository",
+            "value": "https://github.com/aerocristobal/MCP-MacOSControl"
+          }
+        ],
+        "links": [
+          { "href": "../docs/SECURITY.md", "rel": "documentation", "text": "Threat model and prose control mapping" },
+          { "href": "../docs/MCP-TOOL-CATALOG-AUDIT.md", "rel": "documentation", "text": "Tool catalog audit (CM-7 evidence)" },
+          { "href": "../docs/PRD-MCP-MacOSControl.md", "rel": "documentation", "text": "Product requirements document" },
+          { "href": "../sbom-cyclonedx.json", "rel": "evidence", "text": "CycloneDX SBOM published as a CI artifact on every push and attached to tagged releases (STORY-021)" },
+          { "href": "../.github/sbom-policy.yml", "rel": "evidence", "text": "Supply-chain policy declaration" },
+          { "href": "../.github/vex-statements.json", "rel": "evidence", "text": "CycloneDX VEX statements" }
+        ],
+        "control-implementations": [
+          {
+            "uuid": "45454f7a-8289-49c3-a283-35c895a1627d",
+            "source": "https://raw.githubusercontent.com/usnistgov/oscal-content/main/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog.json",
+            "description": "NIST SP 800-53 Rev 5 Moderate baseline. Per-control implementation statements follow the same scope as docs/SECURITY.md §7 and §8 — the canonical drift-checker target.",
+            "implemented-requirements": [
+              {
+                "uuid": "0cc0483b-cfb3-47d7-8cb6-8b43131668fa",
+                "control-id": "ac-3",
+                "description": "Access Enforcement. Tool annotations (destructiveHint, readOnlyHint) on every MCP tool signal the host to apply user-confirmation gates before invocation, with run_applescript flagged as the most privileged surface. The underlying enforcement is macOS TCC: AppleScript execution targets the launching user's permissions and cannot exceed them. AutomationPermissionChecker pre-flights every statically-extracted `tell application` clause via AEDeterminePermissionToAutomateTarget, surfacing a structured automation_permission_required error rather than blocking on the modal TCC prompt.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AutomationPermissionChecker.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/Modules/AppleScriptModule.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/Modules/RunAppleScriptTool.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/Modules/RunAppleScriptToolTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "5d3495b8-b12c-4e99-9b79-d2cf6fc96410",
+                "control-id": "ac-4",
+                "description": "Information Flow Enforcement. Two gates bound information flow: (1) AppleScriptSecurityFilter restricts which AppleScript primitives may execute, gating the inbound surface; (2) AppleScriptExecutor caps tool output at 1 MB per invocation and marks responses with `truncated: true` when the cap is hit, capping the outbound surface. The bounds apply regardless of which tool initiates the call. See SI-10 alternative-implementation statements for documented bypasses of the inbound gate.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptSecurityFilter.swift", "rel": "implementation", "text": "Inbound flow restriction" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptExecutor.swift", "rel": "implementation", "text": "Outbound flow restriction (1 MB truncation cap)" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AppleScriptSecurityFilterTests.swift", "rel": "verification" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AppleScriptExecutorTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "f6bd87e2-dc1b-4762-b159-31567a365c67",
+                "control-id": "au-2",
+                "description": "Event Logging. AuditRecorder.record(_:) is invoked on every run_applescript and click_menu_item call regardless of outcome — success, failure, and security-filter rejection alike produce a record. The recorder is a protocol seam so deployers can swap in a production sink; the in-tree implementation is in-memory and used by tests.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AuditRecorder.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptExecutor.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AppleScriptExecutorTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "09cae111-4778-460f-bbc9-aec12a006543",
+                "control-id": "au-3",
+                "description": "Content of Audit Records. The AuditRecord schema captures what (toolName), when (timestamp), where (targetApps statically extracted from `tell application` clauses), source (MCP client metadata when present), outcome (success / failure variant), duration (durationMs), and identity (the launching user — single-tenant by design). The script SHA-256 fingerprint provides integrity correlation without retaining the full script source by default.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AuditRecorder.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "3de426b5-687d-4a84-9ccf-67f7e2290050",
+                "control-id": "au-9",
+                "description": "Protection of Audit Information. The AuditRecording protocol seam is committed; a production sink with append-only semantics is deferred. The in-memory recorder shipped today does not survive process restart and is not tamper-evident — adequate for development and CI but not for production deployments. Deployers are instructed in docs/SECURITY.md §9.2 to provide a production sink before deployment.",
+                "props": [
+                  { "name": "implementation-status", "value": "partial" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AuditRecorder.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AuditRecorderTests.swift", "rel": "verification", "text": "Exercises the protocol-seam portion that is committed; the deferred production sink is unverifiable until built." },
+                  { "href": "../docs/SECURITY.md", "rel": "related", "text": "§4.4 Audit log tampering — primary mitigation gap and re-evaluation criteria" }
+                ],
+                "statements": [
+                  {
+                    "statement-id": "au-9_smt.deferred",
+                    "uuid": "513a786f-0bf9-4e04-9517-084fa5e37106",
+                    "description": "Production append-only audit sink is deferred until a downstream deployer requires it.",
+                    "remarks": "Re-evaluation criteria: any deployment outside the developer workstation. The protocol seam means swap-in is mechanical; the gap is the production implementation, not the architecture. Tracked separately under the project's risk register."
+                  }
+                ]
+              },
+              {
+                "uuid": "2c6268c0-b082-4d07-b84d-998292f3393f",
+                "control-id": "cm-7",
+                "description": "Least Functionality. AppleScriptSecurityFilter disables `do shell script`, `do JavaScript`, `load script`, and the System Events automation pivot — capabilities AppleScript itself supports but the project intentionally withholds. The ToolCatalogAudit test additionally proves the MCP server only exposes the catalog of tools documented in docs/MCP-TOOL-CATALOG-AUDIT.md; introducing a new tool without a catalog entry fails CI.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptSecurityFilter.swift", "rel": "implementation" },
+                  { "href": "../docs/MCP-TOOL-CATALOG-AUDIT.md", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AppleScriptSecurityFilterTests.swift", "rel": "verification" },
+                  { "href": "../Tests/MCP-MacOSControlTests/Catalog/ToolCatalogAuditTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "3933b50e-9fb9-434c-b26c-998cf785be5b",
+                "control-id": "si-10",
+                "description": "Information Input Validation. AppleScriptSecurityFilter.validate(_:) applies a case-insensitive, whitespace-tolerant regex denylist over script source after comment and string-literal stripping. Tool entry points additionally apply MCP-SDK input schema validation for all tool arguments. Four bypass classes are documented as accepted residual risk per SECURITY.md §4.1; each is recorded as an alternative-implementation statement below.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptSecurityFilter.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/AppleScript/AppleScriptExecutor.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/AppleScript/AppleScriptSecurityFilterTests.swift", "rel": "verification" }
+                ],
+                "statements": [
+                  {
+                    "statement-id": "si-10_smt.bypass-string-concat",
+                    "uuid": "1842e4ea-db1a-4add-bfec-45819a7c78ce",
+                    "description": "Accepted residual risk: reconstruction via runtime string concatenation. A script that builds the keyword `do shell script` via `set x to \"do shell\" & \" script\"` then `run script x` evades the static denylist because the filter sees literals, not the eventual evaluation.",
+                    "props": [
+                      { "name": "implementation-status", "value": "alternative" }
+                    ],
+                    "remarks": "Re-evaluation criteria per SECURITY.md §4.1: a credible Swift AST parser for AppleScript becomes available, or a post-incident review identifies an exploited bypass in this class. Compensating control: the AuditRecorder records every invocation including filter-rejected and filter-passed cases, providing forensic visibility for detection-after-the-fact."
+                  },
+                  {
+                    "statement-id": "si-10_smt.bypass-unicode",
+                    "uuid": "05cbb79b-8333-4f78-a51d-54bcd07de1cf",
+                    "description": "Accepted residual risk: Unicode normalization tricks (homoglyphs in keyword positions). AppleScript itself rejects most of these at parse time but coverage is incomplete.",
+                    "props": [
+                      { "name": "implementation-status", "value": "alternative" }
+                    ],
+                    "remarks": "Compensating control: macOS TCC enforces per-app automation permissions independently; even a bypassed filter cannot reach apps the user has not granted automation permission for."
+                  },
+                  {
+                    "statement-id": "si-10_smt.bypass-dynamic-run-script",
+                    "uuid": "24dbc275-875d-4d34-8219-8b29f3c23f9d",
+                    "description": "Accepted residual risk: dynamic `run script` with input sourced from a `tell application` return value. The denylist cannot validate data the script will only evaluate at runtime.",
+                    "props": [
+                      { "name": "implementation-status", "value": "alternative" }
+                    ],
+                    "remarks": "Compensating control: the MCP host's user-confirmation gate for destructiveHint:true tools (notably run_applescript) provides a final human approval step before the call lands."
+                  },
+                  {
+                    "statement-id": "si-10_smt.bypass-comment-split",
+                    "uuid": "c2691778-7b72-4586-973c-ddf008d12505",
+                    "description": "Accepted residual risk: comments split across lines that re-form the keyword after stripping (e.g. `do shel(*comment*)l script`).",
+                    "props": [
+                      { "name": "implementation-status", "value": "alternative" }
+                    ],
+                    "remarks": "Re-evaluation criteria: a documented exploit of this class. The current stripping pass collapses single-line `--` comments and `(* ... *)` block comments before applying the regex denylist."
+                  }
+                ]
+              },
+              {
+                "uuid": "24b1d36d-c278-4b00-ae6c-dfb1a7cbcfa1",
+                "control-id": "si-11",
+                "description": "Error Handling. Every MCP tool returns errors via the StructuredMCPError envelope with an ErrorCodeRegistry-derived code (element_not_found, automation_permission_required, security_policy_violation, etc.). Error codes are designed to be actionable to the calling agent without leaking internal state (no stack traces, no file paths, no environment data). MCPErrorResponseBuilder centralises the conversion to MCP wire-format responses.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../Sources/MacOSControlLib/StructuredErrors/StructuredMCPError.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/StructuredErrors/ErrorCodeRegistry.swift", "rel": "implementation" },
+                  { "href": "../Sources/MacOSControlLib/StructuredErrors/MCPErrorResponseBuilder.swift", "rel": "implementation" },
+                  { "href": "../Tests/MCP-MacOSControlTests/StructuredErrors/NoAdhocErrorConstructionAuditTests.swift", "rel": "verification" }
+                ]
+              },
+              {
+                "uuid": "b8e8ee68-6ae2-40da-8d20-d5a52f559524",
+                "control-id": "ra-5",
+                "description": "Vulnerability Monitoring and Scanning. The CI workflow runs SCA on every PR via Grype against a freshly generated CycloneDX SBOM, with GitHub's native Dependency Review action as the first-line gate. CVSS ≥ 9.0 blocks merge; CVSS 7.0–8.9 emits a workflow annotation and a single PR comment summarising the high-severity findings. Daily DB refresh via the Grype action's built-in mechanism.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../.github/workflows/ci.yml", "rel": "implementation" },
+                  { "href": "../.github/sbom-policy.yml", "rel": "implementation" }
+                ]
+              },
+              {
+                "uuid": "e5aedb64-46bc-49db-9039-6f1fb34f3a0b",
+                "control-id": "sr-3",
+                "description": "Supply Chain Controls and Processes. .github/sbom-policy.yml is the single source of truth for supply-chain policy: allowed_licenses (MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC); severity gates (block at critical, warn at high, log at medium/low); VEX statements file location. Edits to the policy route through PR review under the security-review label.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../.github/sbom-policy.yml", "rel": "implementation" },
+                  { "href": "../.github/dependabot.yml", "rel": "implementation" },
+                  { "href": "../docs/stories/STORY-021-software-supply-chain-security.md", "rel": "documentation" }
+                ]
+              },
+              {
+                "uuid": "83f86966-6948-43da-a119-11b64734af20",
+                "control-id": "sr-4",
+                "description": "Provenance. anchore/sbom-action@v0 (Syft under the hood) emits a CycloneDX 1.5+ JSON SBOM on every push and PR that names every transitive Swift package by identity, version, and revision SHA. The SBOM is uploaded as a workflow artifact (`sbom-cyclonedx`) and re-attached to GitHub Releases on tagged builds (`v*`) alongside the project's VEX statements when non-empty.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../.github/workflows/ci.yml", "rel": "implementation" },
+                  { "href": "../.github/workflows/release.yml", "rel": "implementation" },
+                  { "href": "../sbom-cyclonedx.json", "rel": "evidence", "text": "CI-generated SBOM artifact" }
+                ]
+              },
+              {
+                "uuid": "17c5db22-7c4b-416d-84aa-3adae6b6fe35",
+                "control-id": "sr-11",
+                "description": "Component Authenticity. anchore/scan-action@v3 (Grype) scans the SBOM against the GitHub Advisory Database on every PR. severity-cutoff is `critical`, fail-build is `true`; SARIF output is uploaded to the repository's Security → Code scanning tab via github/codeql-action/upload-sarif@v3 and additionally published as the `grype-sca-report` workflow artifact for offline review.",
+                "props": [
+                  { "name": "implementation-status", "value": "implemented" }
+                ],
+                "links": [
+                  { "href": "../.github/workflows/ci.yml", "rel": "implementation" },
+                  { "href": "../.github/sbom-policy.yml", "rel": "implementation" }
+                ]
+              },
+              {
+                "uuid": "080ce0f8-ae3a-401c-a8d2-937c70bb88d2",
+                "control-id": "ac-2",
+                "description": "Account Management. Not addressed by this server. The MCP server is single-tenant by design — it runs as the launching user and inherits that user's account state from the operating system. Multi-user account management is a deployer / macOS concern, not a server concern.",
+                "props": [
+                  { "name": "implementation-status", "value": "not-applicable" }
+                ]
+              },
+              {
+                "uuid": "37791301-45b1-41c5-a2d8-70c1ffcfcaa3",
+                "control-id": "ia-2",
+                "description": "Identification and Authentication (organizational users). Not addressed by this server. MCP transport is local stdio; the connecting host is implicitly trusted by virtue of process boundary. Cross-network MCP deployments require a deployer-supplied authentication layer outside the server's scope.",
+                "props": [
+                  { "name": "implementation-status", "value": "not-applicable" }
+                ]
+              },
+              {
+                "uuid": "45454f7a-8289-49c3-a283-35c895a1627e",
+                "control-id": "sc-8",
+                "description": "Transmission Confidentiality and Integrity. Not addressed by this server. MCP stdio is loopback only; no transport encryption is applied or required at the server boundary. Deployers exposing MCP across the network are responsible for confidentiality and integrity at the transport layer they choose.",
+                "props": [
+                  { "name": "implementation-status", "value": "not-applicable" }
+                ]
+              },
+              {
+                "uuid": "5d3495b8-b12c-4e99-9b79-d2cf6fc96411",
+                "control-id": "sc-7",
+                "description": "Boundary Protection. Out of scope for the server itself. MCP stdio operates within the launching process boundary; cross-network MCP transports are a deployer concern outside this codebase. Documented as deployer responsibility in docs/SECURITY.md §7.2.",
+                "props": [
+                  { "name": "implementation-status", "value": "not-applicable" }
+                ]
+              },
+              {
+                "uuid": "f6bd87e2-dc1b-4762-b159-31567a365c68",
+                "control-id": "sc-13",
+                "description": "Cryptographic Protection. The server performs no cryptographic operations other than SHA-256 fingerprinting of AppleScript source for audit correlation. No keys are stored, generated, or exchanged. Cryptographic protection of audit records and transport is a deployer concern per docs/SECURITY.md §7.2.",
+                "props": [
+                  { "name": "implementation-status", "value": "not-applicable" }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

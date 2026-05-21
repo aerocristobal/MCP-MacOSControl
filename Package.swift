@@ -35,6 +35,13 @@ let package = Package(
                 .copy("Router/Defaults")
             ]
         ),
+        // STORY-022 — Compliance tooling used only by tests and future
+        // OSCAL-authoring CLIs. Kept out of MacOSControlLib so the runtime
+        // module stays focused on the MCP server surface.
+        .target(
+            name: "OSCALComplianceSupport",
+            path: "Sources/OSCALComplianceSupport"
+        ),
         .executableTarget(
             name: "MCP-MacOSControl",
             dependencies: [
@@ -63,6 +70,7 @@ let package = Package(
             name: "MCP-MacOSControlTests",
             dependencies: [
                 "MacOSControlLib",
+                "OSCALComplianceSupport",
                 .product(name: "MCP", package: "swift-sdk")
             ],
             path: "Tests/MCP-MacOSControlTests",

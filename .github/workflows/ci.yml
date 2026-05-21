@@ -29,6 +29,40 @@ jobs:
       - name: Verify living documentation is up to date
         run: git diff --exit-code docs/LIVING-DOCUMENTATION.md
 
+      # STORY-022 — Validate the OSCAL component definition against the
+      # NIST schema and gate on uncatalogued warnings. Drift between
+      # SECURITY.md and OSCAL is covered by `OscalCoverageCheckerTests`
+      # inside the `Run Tests` step above; this step catches schema-shape
+      # regressions and any new validator warnings that aren't documented
+      # in oscal/known-warnings.md (BDD §2 Scenario 1). CLI tag is pinned
+      # for reproducibility per STORY-022 DoD.
+      - name: Validate OSCAL component definition (STORY-022)
+        run: |
+          set -euo pipefail
+          OUTPUT_FILE="${RUNNER_TEMP:-/tmp}/oscal-validate.log"
+          docker run --rm -v "${PWD}:/work" -w /work \
+            ghcr.io/metaschema-framework/oscal-cli:v3.2.0 \
+            validate oscal/component-definition.json 2>&1 | tee "${OUTPUT_FILE}"
+
+          # Surface any warnings that are not catalogued in oscal/known-warnings.md.
+          # The catalogue is markdown but warning lines from the validator are
+          # one-per-line; a simple substring sweep is sufficient at current scale.
+          WARNING_LINES=$(grep -iE '^[[:space:]]*WARN(ING)?\b' "${OUTPUT_FILE}" || true)
+          if [ -n "${WARNING_LINES}" ]; then
+            UNCATALOGUED=""
+            while IFS= read -r line; do
+              [ -z "${line}" ] && continue
+              if ! grep -F -q -- "${line}" oscal/known-warnings.md; then
+                UNCATALOGUED="${UNCATALOGUED}${line}"$'\n'
+              fi
+            done <<< "${WARNING_LINES}"
+            if [ -n "${UNCATALOGUED}" ]; then
+              echo "::error title=OSCAL validator emitted uncatalogued warnings::Each warning must be reviewed and added to oscal/known-warnings.md or the underlying issue fixed."
+              echo "${UNCATALOGUED}"
+              exit 1
+            fi
+          fi
+
       # STORY-021 — Supply-chain security. Generate a CycloneDX 1.5+ SBOM
       # covering every transitive Swift package, then scan it with Grype.
       # Policy lives in .github/sbom-policy.yml; the threshold there must

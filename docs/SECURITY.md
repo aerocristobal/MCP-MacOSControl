@@ -1,8 +1,9 @@
 # Security Policy and Threat Model
 
 > **Status:** Living document. Owners must review on every change to the AppleScript or Accessibility surface.
-> **Last reviewed:** 2026-05-20 — added §8 Supply Chain Risk Management (STORY-021)
+> **Last reviewed:** 2026-05-20 — added OSCAL component definition (STORY-022)
 > **Companion artifacts:** `docs/stories/STORY-006-run-applescript-tool.md`, `docs/PRD-MCP-MacOSControl.md`
+> **Machine-readable mapping:** [`oscal/component-definition.json`](../oscal/component-definition.json) — OSCAL 1.1.2 Component Definition. See [`oscal/README.md`](../oscal/README.md) for maintenance workflow. CI fails on drift between this document and the OSCAL artifact (see §7.3).
 
 ---
 
@@ -201,13 +202,11 @@ Authoring formal OSCAL component-definition entries is **out of scope** for STOR
 | **SC-8** Transmission Confidentiality and Integrity | MCP stdio is loopback; no transport encryption applied or required. |
 | **SC-13** Cryptographic Protection | No cryptographic operations performed by the server other than SHA-256 of script source for audit fingerprinting. |
 
-### 7.3 OSCAL artifact roadmap
+### 7.3 OSCAL artifacts
 
-Out of scope for STORY-006 / STORY-007; recorded here as a design input for the future compliance story:
-
-1. **Component Definition** — express MCP-MacOSControl as an OSCAL component, listing `control-implementations` for the controls in §7.1
-2. **Audit Record → OSCAL Observation mapping** — each `AuditRecord` should be convertible to an OSCAL Assessment Results `observation` for inclusion in an SSP's evidence collection
-3. **POA&M entries** — the regex bypass class accepted risk (§4.1) should be a POA&M entry with status `risk-accepted` and a `risk-log` documenting the rationale
+1. **Component Definition** — Authored at [`oscal/component-definition.json`](../oscal/component-definition.json) (OSCAL 1.1.2). Every control named in §7.1 and §8 has an `implemented-requirement` block with links to source files (`rel: implementation`) and test files (`rel: verification`). The §7.2 deployer-responsibility controls appear with `implementation-status: not-applicable`. Maintained per STORY-022; see [`oscal/README.md`](../oscal/README.md). Drift between §7/§8 and the OSCAL artifact is enforced by `OscalCoverageCheckerTests` (CI-gated).
+2. **Audit Record → OSCAL Observation mapping** — Future work. Each `AuditRecord` is structurally convertible to an OSCAL Assessment Results `observation` for inclusion in an SSP's evidence collection; a generator is out of scope until a downstream SSP author requires it.
+3. **POA&M entries** — Future work. The §4.1 bypass classes and the §4.4 deferred audit sink will be POA&M entries with `risk-accepted` status; tracked alongside the OSCAL component definition when a deployer engagement requires the artifact.
 
 Reference: `oscal-engineering-guide.md` (project knowledge base).
 
@@ -283,7 +282,7 @@ Synthetic-SBOM unit tests are deliberately not committed: maintaining a fixture 
 - `.github/workflows/ci.yml` — PR gate pipeline
 - `.github/workflows/release.yml` — tagged-release publication
 - `docs/stories/STORY-021-software-supply-chain-security.md` — full BDD acceptance criteria, DoD, and refinement notes
-- STORY-022 (forthcoming) — OSCAL component definition will reference the SBOM artifact as evidence
+- [`oscal/component-definition.json`](../oscal/component-definition.json) — STORY-022 OSCAL component definition. Links the SBOM as `rel: evidence` (see SR-3 / SR-4 / SR-11 implementation statements).
 
 ---
 
@@ -316,3 +315,4 @@ Synthetic-SBOM unit tests are deliberately not committed: maintaining a fixture 
 |---|---|---|
 | 2026-05-09 | aerocristobal | Initial draft accompanying STORY-006 (run_applescript). Threat model, NIST SP 800-53 control mapping, and OSCAL roadmap. |
 | 2026-05-20 | aerocristobal | Added §8 Supply Chain Risk Management (STORY-021): CycloneDX SBOM via Syft, Grype SCA, GitHub Dependency Review, Dependabot config, VEX placeholder, and SR-3/SR-4/SR-11 mapping in §7.1. §8 Operational Guidance renumbered to §9; Change Log renumbered to §10. |
+| 2026-05-20 | aerocristobal | Authored `oscal/component-definition.json` (STORY-022): OSCAL 1.1.2 machine-readable mirror of §7/§8. Adds CI-gated drift detection (`OscalCoverageCheckerTests`) and Docker-pinned `oscal-cli` schema validation. §1 header updated to advertise the OSCAL artifact; §7.3 roadmap updated past-tense; §8.8 cross-references updated. |
