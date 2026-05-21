@@ -105,7 +105,7 @@ public enum AppleScriptModule: ToolModule {
                 executor: AppleScriptExecutor(),
                 audit: auditor
             )
-            return try await tool.execute(params)
+            return try await tool.execute(params, context: context)
         case "click_menu_item":
             let backend = AppleScriptMenuClickBackend(
                 executor: AppleScriptExecutor(),

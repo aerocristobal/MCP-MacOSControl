@@ -23,7 +23,7 @@ public final class RunAppleScriptTool {
         self.audit = audit
     }
 
-    public func execute(_ params: CallTool.Parameters) async throws -> CallTool.Result? {
+    public func execute(_ params: CallTool.Parameters, context: ToolCallContext = .nonCancellable()) async throws -> CallTool.Result? {
         let args = params.arguments ?? [:]
 
         guard let script = args["script"]?.stringValue, !script.isEmpty else {
@@ -94,7 +94,7 @@ public final class RunAppleScriptTool {
         // Phase 3: execute
         let executionResult: AppleScriptExecutionResult
         do {
-            executionResult = try await executor.run(script, timeout: TimeInterval(timeoutSeconds))
+            executionResult = try await executor.run(script, timeout: TimeInterval(timeoutSeconds), context: context)
         } catch {
             audit.record(AuditRecordDraft(
                 eventType: .applescriptExecute,
