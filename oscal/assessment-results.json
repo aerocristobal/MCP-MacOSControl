@@ -652,11 +652,14 @@
               {
                 "name" : "rejection-reason",
                 "value" : "chain break detected at offset 42; prev_hash mismatch"
-              }
-            ],
-            "related-risks" : [
+              },
               {
-                "risk-uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b91"
+                "name" : "elevated-severity",
+                "value" : "true"
+              },
+              {
+                "name" : "related-risk-uuid",
+                "value" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b91"
               }
             ],
             "relevant-evidence" : [
@@ -851,11 +854,21 @@
             "uuid" : "4c8e6bf2-3bde-4bd8-8ce1-37bc68ff17fb"
           }
         ],
+        "reviewed-controls" : {
+          "control-selections" : [
+            {
+              "include-all" : {
+
+              }
+            }
+          ],
+          "description" : "All controls implemented by MCP-MacOSControl (see oscal/component-definition.json). The AR is generated from the STORY-024 AuditRecord stream, which transitively covers every control mapped there; the include-all selection reflects this scope."
+        },
         "start" : "2026-05-21T00:00:00.000Z",
         "title" : "Continuous monitoring observations from the AuditRecord stream",
-        "uuid" : "00000000-0000-0000-0000-0000000000ac"
+        "uuid" : "33333333-0000-4000-8000-0000000000ac"
       }
     ],
-    "uuid" : "00000000-0000-0000-0000-0000000000ab"
+    "uuid" : "22222222-0000-4000-8000-0000000000ab"
   }
 }

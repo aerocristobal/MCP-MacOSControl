@@ -28,54 +28,93 @@ final class OscalAssessmentArtifactTests: XCTestCase {
                        "POA&M must declare OSCAL 1.1.x")
     }
 
-    func test_poam_eachItemHasStatusAndOwner() throws {
+    func test_poam_eachRiskHasStatusAndOwner() throws {
         let doc = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
-        for item in doc.planOfActionAndMilestones.poamItems {
-            XCTAssertNotNil(item.status, "POA&M item \(item.uuid) (\(item.title)) is missing status prop")
-            XCTAssertNotNil(item.owner, "POA&M item \(item.uuid) (\(item.title)) is missing poam-owner prop")
+        for risk in doc.risks {
+            XCTAssertFalse(risk.status.isEmpty, "Risk \(risk.uuid) (\(risk.title)) is missing status")
+            XCTAssertNotNil(risk.owner, "Risk \(risk.uuid) (\(risk.title)) is missing poam-owner prop")
         }
     }
 
-    func test_poam_openItemsHaveAtLeastOneMilestone() throws {
+    func test_poam_openRisksTiedToSection4HaveAtLeastOneMilestone() throws {
+        // BDD §2 "POA&M includes the milestone schedule for each open
+        // item" specifies milestones for §4-derived risks. Auto-opened
+        // operational risks (e.g. the chain-break risk) carry action
+        // tasks instead of milestones — actions are remediations, not
+        // forward-planned dates. Distinguish via security-md-section.
         let doc = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
-        for item in doc.planOfActionAndMilestones.poamItems
-        where (item.status == "open" || item.status == "risk-accepted") {
-            let count = item.milestones?.count ?? 0
-            XCTAssertGreaterThan(count, 0, "Open POA&M item \(item.uuid) (\(item.title)) must declare at least one milestone with a target date")
+        for risk in doc.risks
+        where PoamCoverageChecker.openLikeStatuses.contains(risk.status) && risk.securityMdSection != nil {
+            let milestones = risk.milestones
+            XCTAssertGreaterThan(milestones.count, 0, "§4-derived open risk \(risk.uuid) (\(risk.title)) must declare at least one milestone with a target date")
+            for m in milestones {
+                XCTAssertNotNil(m.targetDate, "Milestone \(m.uuid) under \(risk.title) must declare a target-date (timing.on-date.date)")
+            }
         }
     }
 
-    func test_poam_closedItemsCiteClosureEvidence() throws {
+    func test_poam_openRisksAllHaveAtLeastOneTask() throws {
+        // The auto-opened chain-break risk is open-like and exempt from
+        // the "milestone" requirement above, but it must still carry a
+        // remediation task (action or milestone) so an assessor can see
+        // what response is planned.
         let doc = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
-        for item in doc.planOfActionAndMilestones.poamItems where item.status == "closed" {
-            let remarks = (item.remarks ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            XCTAssertFalse(remarks.isEmpty, "Closed POA&M item \(item.uuid) must carry closure evidence in remarks")
-            XCTAssertTrue(remarks.lowercased().contains("story") || remarks.lowercased().contains("commit"),
-                          "Closed POA&M item \(item.uuid) remarks must cite the story or commit that closed it")
+        for risk in doc.risks where PoamCoverageChecker.openLikeStatuses.contains(risk.status) {
+            let taskCount = (risk.remediations ?? []).reduce(0) { acc, r in acc + (r.tasks?.count ?? 0) }
+            XCTAssertGreaterThan(taskCount, 0, "Open-like Risk \(risk.uuid) (\(risk.title)) must declare at least one remediation task")
         }
     }
 
-    func test_poam_eachItemRelatedControlIdsExistInComponentDefinition() throws {
+    func test_poam_closedRisksCiteClosureEvidenceInRiskLog() throws {
+        let doc = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
+        for risk in doc.risks where risk.status == "closed" {
+            let entries = risk.riskLog?.entries ?? []
+            XCTAssertFalse(entries.isEmpty, "Closed Risk \(risk.uuid) must carry at least one risk-log entry")
+            let lowered = entries.compactMap { $0.description?.lowercased() }.joined(separator: " ")
+            XCTAssertTrue(lowered.contains("story") || lowered.contains("commit") || lowered.contains("evidence"),
+                          "Closed Risk \(risk.uuid) risk-log must cite the story / commit / evidence that closed it")
+        }
+    }
+
+    func test_poam_eachRiskRelatedControlLinkExistsInComponentDefinition() throws {
         let poam = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
         let checker = OscalCoverageChecker(
             componentDefinitionPath: repoRoot().appendingPathComponent("oscal/component-definition.json").path,
             securityMdPath: repoRoot().appendingPathComponent("docs/SECURITY.md").path
         )
         let report = try checker.report()
-        for item in poam.planOfActionAndMilestones.poamItems {
-            for ref in item.relatedControls ?? [] {
-                XCTAssertTrue(report.implementedControls.contains(ref.controlId.lowercased()),
-                              "POA&M item \(item.uuid) references control \(ref.controlId) not in component-definition.json")
+        for risk in poam.risks {
+            for link in (risk.links ?? []) where link.rel == "related" && link.href.hasPrefix("#") {
+                let controlId = String(link.href.dropFirst()).lowercased()
+                XCTAssertTrue(report.implementedControls.contains(controlId),
+                              "Risk \(risk.uuid) links to control \(controlId) not in component-definition.json")
             }
         }
     }
 
-    func test_poam_idAllocationsFileExistsAndCoversEveryUuid() throws {
+    func test_poam_idAllocationsFileExistsAndCoversEveryRiskAndPoamItemUuid() throws {
         let poam = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
         let registry = try String(contentsOf: repoRoot().appendingPathComponent("oscal/poam-id-allocations.md"), encoding: .utf8)
-        for item in poam.planOfActionAndMilestones.poamItems {
-            XCTAssertTrue(registry.contains(item.uuid),
-                          "poam-id-allocations.md is missing item \(item.uuid) — add a row when introducing a new POA&M item")
+        for risk in poam.risks {
+            XCTAssertTrue(registry.contains(risk.uuid),
+                          "poam-id-allocations.md is missing risk \(risk.uuid) — add a row when introducing a new risk")
+        }
+        for item in poam.poamItems {
+            if let uuid = item.uuid {
+                XCTAssertTrue(registry.contains(uuid),
+                              "poam-id-allocations.md is missing poam-item \(uuid) — add a row when introducing a new poam-item")
+            }
+        }
+    }
+
+    func test_poam_poamItemsReferenceExistingRiskUuids() throws {
+        let poam = try OscalPoamDocument.load(from: repoRoot().appendingPathComponent("oscal/plan-of-action-and-milestones.json"))
+        let riskUuids = Set(poam.risks.map { $0.uuid.lowercased() })
+        for item in poam.poamItems {
+            for ref in item.relatedRisks ?? [] {
+                XCTAssertTrue(riskUuids.contains(ref.riskUuid.lowercased()),
+                              "POA&M item \(item.uuid ?? item.title) references risk \(ref.riskUuid) which is not in risks[]")
+            }
         }
     }
 

@@ -54,12 +54,17 @@ final class OscalObservationEmitterTests: XCTestCase {
         XCTAssertTrue(subjectTitles.contains("runner-37b6"))
     }
 
-    func test_chainBreak_producesElevatedSeverityWithRelatedRisk() throws {
+    func test_chainBreak_producesElevatedSeverityWithRelatedRiskProp() throws {
         let record = AuditRecord.fixture(eventType: .chainVerificationFailure)
         guard let obs = OscalObservationEmitter().observations(from: [record]).first else { return XCTFail() }
         XCTAssertEqual(obs.methods, ["TEST"])
-        XCTAssertEqual(obs.relatedRisks?.first?.riskUuid, OscalObservationEmitter.chainBreakRiskUuid,
-                       "Chain-break observation must reference the chain-break risk UUID")
+        // OSCAL places risk → observation edges on the risk side; the
+        // observation side carries an `elevated-severity` prop the
+        // emitter uses to drive autoOpenChainBreakItems.
+        XCTAssertTrue(obs.isElevated, "Chain-break observation must carry elevated-severity prop")
+        let relatedRiskUuid = (obs.props ?? []).first { $0.name == "related-risk-uuid" }?.value
+        XCTAssertEqual(relatedRiskUuid, OscalObservationEmitter.chainBreakRiskUuid,
+                       "Chain-break observation prop must point at the chain-break risk UUID for cross-reference")
         XCTAssertTrue((obs.remarks ?? "").contains("ELEVATED"), "Chain-break remarks should mark severity")
     }
 
@@ -76,13 +81,13 @@ final class OscalObservationEmitterTests: XCTestCase {
         XCTAssertTrue(remarks.contains("prev_hash mismatch"), "Chain-break remarks must surface the mismatch detail; got: \(remarks)")
     }
 
-    func test_chainBreakRiskUuid_matchesCommittedPoamItem() throws {
+    func test_chainBreakRiskUuid_matchesCommittedPoamRisk() throws {
         let url = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
             .appendingPathComponent("oscal/plan-of-action-and-milestones.json")
         let doc = try OscalPoamDocument.load(from: url)
-        let uuids = doc.planOfActionAndMilestones.poamItems.map { $0.uuid.lowercased() }
+        let uuids = doc.risks.map { $0.uuid.lowercased() }
         XCTAssertTrue(uuids.contains(OscalObservationEmitter.chainBreakRiskUuid.lowercased()),
-                      "Committed POA&M must contain an item with UUID == OscalObservationEmitter.chainBreakRiskUuid; otherwise auto-opened chain-break observations would dangle.")
+                      "Committed POA&M must contain a risk with UUID == OscalObservationEmitter.chainBreakRiskUuid; otherwise auto-opened chain-break observations would dangle.")
     }
 
     func test_emitter_uuidsAreDeterministicAcrossRuns() throws {
@@ -135,7 +140,7 @@ final class OscalObservationEmitterTests: XCTestCase {
 
     // MARK: - POA&M ↔ AR cross-reference (auto-open on chain-break)
 
-    func test_autoOpenChainBreakItems_appendsObservationUuidsToChainBreakItem() throws {
+    func test_autoOpenChainBreakItems_appendsObservationUuidsToChainBreakRisk() throws {
         let record = AuditRecord.fixture(eventType: .chainVerificationFailure)
         let emitter = OscalObservationEmitter()
         let obs = emitter.observations(from: [record])
@@ -147,12 +152,12 @@ final class OscalObservationEmitterTests: XCTestCase {
         let prior = try OscalPoamDocument.load(from: poamUrl)
         let updated = emitter.autoOpenChainBreakItems(in: prior, forElevatedObservations: elevated)
 
-        guard let updatedItem = updated.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() }) else {
-            return XCTFail("Chain-break POA&M item must exist for auto-open to land")
+        guard let risk = updated.risks.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() }) else {
+            return XCTFail("Chain-break Risk must exist for auto-open to land")
         }
-        let refs = updatedItem.relatedObservations ?? []
+        let refs = risk.relatedObservations ?? []
         XCTAssertTrue(refs.contains { $0.observationUuid == elevated[0].uuid },
-                      "Chain-break POA&M item's related-observations must reference the new elevated observation")
+                      "Chain-break Risk's related-observations must reference the new elevated observation")
     }
 
     func test_autoOpenChainBreakItems_isIdempotent() throws {
@@ -166,8 +171,9 @@ final class OscalObservationEmitterTests: XCTestCase {
         let first = emitter.autoOpenChainBreakItems(in: prior, forElevatedObservations: elevated)
         let second = emitter.autoOpenChainBreakItems(in: first, forElevatedObservations: elevated)
 
-        let firstRefs = first.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
-        let secondRefs = second.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
+        let target = OscalObservationEmitter.chainBreakRiskUuid.lowercased()
+        let firstRefs = first.risks.first(where: { $0.uuid.lowercased() == target })?.relatedObservations?.count ?? 0
+        let secondRefs = second.risks.first(where: { $0.uuid.lowercased() == target })?.relatedObservations?.count ?? 0
         XCTAssertEqual(firstRefs, secondRefs, "Re-running auto-open must not duplicate related-observations")
     }
 

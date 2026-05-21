@@ -161,10 +161,10 @@ func emit(_ opts: OscalEmitOptions) -> Int32 {
             let updated = emitter.autoOpenChainBreakItems(in: priorPoam, forElevatedObservations: elevated, now: now)
             if updated != priorPoam {
                 try updated.write(to: poamURL)
-                if let item = updated.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() }) {
-                    let before = priorPoam.planOfActionAndMilestones.poamItems.first(where: { $0.uuid.lowercased() == OscalObservationEmitter.chainBreakRiskUuid.lowercased() })?.relatedObservations?.count ?? 0
-                    poamLinkCount = (item.relatedObservations?.count ?? 0) - before
-                }
+                let target = OscalObservationEmitter.chainBreakRiskUuid.lowercased()
+                let after = updated.risks.first(where: { $0.uuid.lowercased() == target })?.relatedObservations?.count ?? 0
+                let before = priorPoam.risks.first(where: { $0.uuid.lowercased() == target })?.relatedObservations?.count ?? 0
+                poamLinkCount = after - before
             }
         } catch {
             FileHandle.standardError.write("oscal-emit: warning — could not update POA&M at \(poamPath): \(error)\n".data(using: .utf8)!)

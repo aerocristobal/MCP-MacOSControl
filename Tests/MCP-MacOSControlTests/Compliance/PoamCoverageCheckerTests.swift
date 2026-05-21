@@ -26,47 +26,60 @@ final class PoamCoverageCheckerTests: XCTestCase {
         )
         XCTAssertTrue(
             report.missingSections.isEmpty,
-            "section4_poam_drift — accepted-risk statements without a matching open POA&M item: \(report.missingSections.sorted())"
+            "section4_poam_drift — accepted-risk statements without a matching open-like risk: \(report.missingSections.sorted())"
         )
         XCTAssertTrue(
             report.extraSections.isEmpty,
-            "section4_poam_drift — POA&M items reference §4 subsections that don't exist in SECURITY.md: \(report.extraSections.sorted())"
+            "section4_poam_drift — risks reference §4 subsections that don't exist in SECURITY.md: \(report.extraSections.sorted())"
         )
         XCTAssertTrue(
-            report.openItemsForClosedSections.isEmpty,
-            "section4_poam_drift — POA&M items still open after their §4 statement was removed: \(report.openItemsForClosedSections)"
+            report.openRisksForClosedSections.isEmpty,
+            "section4_poam_drift — risks still open-like after their §4 statement was removed: \(report.openRisksForClosedSections)"
         )
         XCTAssertTrue(
-            report.closedItemsLackingEvidence.isEmpty,
-            "section4_poam_drift — closed items must carry remarks with closure evidence: \(report.closedItemsLackingEvidence)"
+            report.closedRisksLackingEvidence.isEmpty,
+            "section4_poam_drift — closed risks must cite closure evidence in risk-log: \(report.closedRisksLackingEvidence)"
         )
     }
 
     // MARK: - Synthetic-fixture cases
 
-    private func makeItem(uuid: String, section: String?, status: String, remarks: String? = nil) -> OscalPoamItem {
-        var props: [OscalProp] = [OscalProp(name: "status", value: status)]
+    private func makeRisk(uuid: String, section: String?, status: String, riskLogDescription: String? = nil) -> OscalRisk {
+        var props: [OscalProp] = [OscalProp(name: "poam-owner", value: "security-owner")]
         if let s = section { props.append(OscalProp(name: "security-md-section", value: s)) }
-        return OscalPoamItem(
+        let log: OscalRiskLog?
+        if let d = riskLogDescription {
+            log = OscalRiskLog(entries: [
+                OscalRiskLogEntry(uuid: uuid + "-log", title: "log", description: d, start: "2026-05-21T00:00:00.000Z", statusChange: status)
+            ])
+        } else {
+            log = nil
+        }
+        return OscalRisk(
             uuid: uuid,
-            title: "test item",
+            title: "test risk",
             description: "test",
+            statement: "test",
+            status: status,
             props: props,
-            remarks: remarks
+            riskLog: log
         )
     }
 
-    private func makePoam(items: [OscalPoamItem]) -> OscalPoamDocument {
+    private func makePoam(risks: [OscalRisk]) -> OscalPoamDocument {
         OscalPoamDocument(planOfActionAndMilestones: OscalPoamBody(
-            uuid: "00000000-0000-0000-0000-0000000000aa",
+            uuid: "55555555-0000-4000-8000-0000000000aa",
             metadata: OscalMetadata(title: "T", lastModified: "2026-01-01T00:00:00.000Z", version: "1.0.0", oscalVersion: "1.1.2"),
             importSsp: nil,
             systemId: OscalPoamSystemId(id: "mcp-macos-control", identifierType: "https://ietf.org/rfc/rfc4122"),
-            poamItems: items
+            risks: risks,
+            poamItems: risks.map { r in
+                OscalPoamItem(title: "track " + r.uuid, description: "track", relatedRisks: [OscalPoamRelatedRisk(riskUuid: r.uuid)])
+            }
         ))
     }
 
-    func test_coverage_passesWhenEverySection4StatementHasOpenPoamItem() {
+    func test_coverage_passesWhenEverySection4StatementHasOpenLikeRisk() {
         let md = """
         ## 4. Threat Catalog
         ### 4.1 regex bypass
@@ -74,9 +87,9 @@ final class PoamCoverageCheckerTests: XCTestCase {
         ### 4.4 sink
         **Acknowledged residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            makeItem(uuid: "u-44", section: "4.4", status: "risk-accepted")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            makeRisk(uuid: "u-44", section: "4.4", status: "deviation-approved")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
         XCTAssertTrue(r.missingSections.isEmpty)
@@ -92,8 +105,8 @@ final class PoamCoverageCheckerTests: XCTestCase {
         ### 4.5 a new risk added today
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
         XCTAssertEqual(r.missingSections, Set(["4.5"]))
@@ -105,61 +118,59 @@ final class PoamCoverageCheckerTests: XCTestCase {
         ### 4.1 regex bypass
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            makeItem(uuid: "u-99", section: "4.99", status: "risk-accepted")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            makeRisk(uuid: "u-99", section: "4.99", status: "deviation-approved")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
         XCTAssertEqual(r.extraSections, Set(["4.99"]))
     }
 
-    func test_coverage_failsWhenSection4RemovedButItemStillOpen() {
+    func test_coverage_failsWhenSection4RemovedButRiskStillOpen() {
         let md = """
         ## 4. Threat Catalog
         ### 4.1 regex bypass
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            // §4.4 was removed from SECURITY.md, but this item is still open — must flip.
-            makeItem(uuid: "u-44", section: "4.4", status: "open")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            // §4.4 was removed from SECURITY.md, but this risk is still open — must flip.
+            makeRisk(uuid: "u-44", section: "4.4", status: "open")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
-        XCTAssertTrue(r.openItemsForClosedSections.contains("u-44"))
+        XCTAssertTrue(r.openRisksForClosedSections.contains("u-44"))
     }
 
-    func test_coverage_closedItemSatisfiesCoverageOnlyWithEvidenceRemarks() {
-        // A closed item without remarks → flagged.
+    func test_coverage_closedRiskWithoutLogEvidenceIsFlagged() {
         let md = """
         ## 4. Threat Catalog
         ### 4.1 regex bypass
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            makeItem(uuid: "u-historical", section: nil, status: "closed", remarks: "  ")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            // Closed but no log entry → must be flagged.
+            makeRisk(uuid: "u-historical", section: nil, status: "closed", riskLogDescription: nil)
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
-        XCTAssertTrue(r.closedItemsLackingEvidence.contains("u-historical"))
+        XCTAssertTrue(r.closedRisksLackingEvidence.contains("u-historical"))
     }
 
-    func test_coverage_closedItemWithEvidenceRemarksPasses() {
+    func test_coverage_closedRiskWithEvidenceLogPasses() {
         let md = """
         ## 4. Threat Catalog
         ### 4.1 regex bypass
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            makeItem(uuid: "u-historical", section: nil, status: "closed", remarks: "Closed by STORY-024 — evidence in docs/AUDIT-LOG-OPERATIONS.md.")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            makeRisk(uuid: "u-historical", section: nil, status: "closed", riskLogDescription: "Closed by STORY-024 — evidence in docs/AUDIT-LOG-OPERATIONS.md.")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
-        XCTAssertTrue(r.closedItemsLackingEvidence.isEmpty)
+        XCTAssertTrue(r.closedRisksLackingEvidence.isEmpty)
     }
 
-    func test_coverage_closedItemDoesNotSatisfyOpenCoverageRequirement() {
-        // §4.5 has only a closed item — closure doesn't satisfy "open coverage"
-        // because the §4 statement still claims an accepted risk.
+    func test_coverage_closedRiskDoesNotSatisfyOpenCoverageRequirement() {
         let md = """
         ## 4. Threat Catalog
         ### 4.1 regex bypass
@@ -167,12 +178,12 @@ final class PoamCoverageCheckerTests: XCTestCase {
         ### 4.5 another active risk
         **Accepted residual risk.** Detail.
         """
-        let poam = makePoam(items: [
-            makeItem(uuid: "u-41", section: "4.1", status: "risk-accepted"),
-            makeItem(uuid: "u-45", section: "4.5", status: "closed", remarks: "Closed by ...")
+        let poam = makePoam(risks: [
+            makeRisk(uuid: "u-41", section: "4.1", status: "deviation-approved"),
+            makeRisk(uuid: "u-45", section: "4.5", status: "closed", riskLogDescription: "Closed by ...")
         ])
         let r = PoamCoverageChecker.report(securityMd: md, poam: poam)
         XCTAssertTrue(r.missingSections.contains("4.5"),
-                      "A closed item must not satisfy coverage while §4 still declares the risk accepted")
+                      "A closed risk must not satisfy coverage while §4 still declares the risk accepted")
     }
 }

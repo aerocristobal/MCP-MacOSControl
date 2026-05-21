@@ -1,49 +1,111 @@
 // STORY-037 — OSCAL Plan of Action and Milestones (POA&M) Codable view.
 //
-// Only the fields the emitter and drift checker actually read/write are
-// modeled — the NIST OSCAL CLI is the authority for full schema
-// validation. Round-trip preservation of unknown keys is intentionally
-// NOT attempted here; this writer always re-emits the canonical shape
-// we control, which is exactly what `oscal-cli validate` checks.
-//
-// Schema target: OSCAL POA&M 1.1.2.
+// Strict OSCAL POA&M 1.1.2 places the substantive content on `risk`
+// entries — status, links to controls, risk-log, remediations (tasks /
+// milestones), related-observations — while `poam-items` are short
+// tracking handles that reference risks via `related-risks`. We model
+// only the fields we read or write; OSCAL CLI is the schema authority.
 
 import Foundation
 
-public struct OscalPoamMilestone: Codable, Equatable {
-    public let uuid: String
-    public let title: String
-    public let description: String
-    public let targetDate: String?     // ISO 8601 yyyy-mm-dd or sprint label
+// MARK: - Task / Timing
 
-    public init(uuid: String, title: String, description: String, targetDate: String? = nil) {
+public struct OscalTimingOnDate: Codable, Equatable {
+    public let date: String
+
+    public init(date: String) {
+        self.date = date
+    }
+}
+
+public struct OscalTaskTiming: Codable, Equatable {
+    public let onDate: OscalTimingOnDate?
+
+    public init(onDate: OscalTimingOnDate? = nil) {
+        self.onDate = onDate
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case onDate = "on-date"
+    }
+}
+
+public struct OscalTask: Codable, Equatable {
+    public let uuid: String
+    public let type: String        // "milestone" | "action"
+    public let title: String
+    public let description: String?
+    public let timing: OscalTaskTiming?
+
+    public init(uuid: String, type: String, title: String, description: String? = nil, timing: OscalTaskTiming? = nil) {
+        self.uuid = uuid
+        self.type = type
+        self.title = title
+        self.description = description
+        self.timing = timing
+    }
+
+    /// Target date string (yyyy-mm-dd or ISO-8601) when one is declared
+    /// via `timing.on-date.date`. Used by tests.
+    public var targetDate: String? { timing?.onDate?.date }
+}
+
+// MARK: - Remediation (response)
+
+public struct OscalRemediation: Codable, Equatable {
+    public let uuid: String
+    public let lifecycle: String    // "recommendation" | "planned" | "completed"
+    public let title: String
+    public let description: String?
+    public let tasks: [OscalTask]?
+
+    public init(uuid: String, lifecycle: String, title: String, description: String? = nil, tasks: [OscalTask]? = nil) {
+        self.uuid = uuid
+        self.lifecycle = lifecycle
+        self.title = title
+        self.description = description
+        self.tasks = tasks
+    }
+
+    public var milestones: [OscalTask] {
+        (tasks ?? []).filter { $0.type == "milestone" }
+    }
+}
+
+// MARK: - Risk log
+
+public struct OscalRiskLogEntry: Codable, Equatable {
+    public let uuid: String
+    public let title: String?
+    public let description: String?
+    public let start: String
+    public let statusChange: String?
+
+    public init(uuid: String, title: String? = nil, description: String? = nil, start: String, statusChange: String? = nil) {
         self.uuid = uuid
         self.title = title
         self.description = description
-        self.targetDate = targetDate
+        self.start = start
+        self.statusChange = statusChange
     }
 
     enum CodingKeys: String, CodingKey {
-        case uuid
-        case title
-        case description
-        case targetDate = "target-date"
+        case uuid, title, description, start
+        case statusChange = "status-change"
     }
 }
 
-public struct OscalPoamRelatedControl: Codable, Equatable {
-    public let controlId: String
+public struct OscalRiskLog: Codable, Equatable {
+    public let entries: [OscalRiskLogEntry]
 
-    public init(controlId: String) {
-        self.controlId = controlId
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case controlId = "control-id"
+    public init(entries: [OscalRiskLogEntry]) {
+        self.entries = entries
     }
 }
 
-public struct OscalPoamRelatedObservation: Codable, Equatable {
+// MARK: - Risk
+
+public struct OscalRiskRelatedObservation: Codable, Equatable {
     public let observationUuid: String
 
     public init(observationUuid: String) {
@@ -55,30 +117,102 @@ public struct OscalPoamRelatedObservation: Codable, Equatable {
     }
 }
 
-/// One row in the POA&M. `status` and structured risk metadata are
-/// surfaced via `props` so downstream OSCAL consumers can read them
-/// without inspecting `remarks` prose — but `remarks` keeps the human
-/// narrative for assessors who do read it.
-public struct OscalPoamItem: Codable, Equatable {
+public struct OscalRisk: Codable, Equatable {
     public let uuid: String
     public let title: String
     public let description: String
+    public let statement: String
+    public let status: String       // open | investigating | remediating | deviation-requested | deviation-approved | closed
     public let props: [OscalProp]?
     public let links: [OscalLink]?
-    public let relatedControls: [OscalPoamRelatedControl]?
-    public let relatedObservations: [OscalPoamRelatedObservation]?
-    public let milestones: [OscalPoamMilestone]?
-    public let remarks: String?
+    public let riskLog: OscalRiskLog?
+    public let remediations: [OscalRemediation]?
+    public let relatedObservations: [OscalRiskRelatedObservation]?
 
     public init(
         uuid: String,
         title: String,
         description: String,
+        statement: String,
+        status: String,
         props: [OscalProp]? = nil,
         links: [OscalLink]? = nil,
-        relatedControls: [OscalPoamRelatedControl]? = nil,
-        relatedObservations: [OscalPoamRelatedObservation]? = nil,
-        milestones: [OscalPoamMilestone]? = nil,
+        riskLog: OscalRiskLog? = nil,
+        remediations: [OscalRemediation]? = nil,
+        relatedObservations: [OscalRiskRelatedObservation]? = nil
+    ) {
+        self.uuid = uuid
+        self.title = title
+        self.description = description
+        self.statement = statement
+        self.status = status
+        self.props = props
+        self.links = links
+        self.riskLog = riskLog
+        self.remediations = remediations
+        self.relatedObservations = relatedObservations
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case uuid, title, description, statement, status, props, links
+        case riskLog = "risk-log"
+        case remediations
+        case relatedObservations = "related-observations"
+    }
+
+    // MARK: - Convenience prop accessors
+
+    /// Status surfaced as `props[name=poam-owner]`.
+    public var owner: String? {
+        props?.first(where: { $0.name == "poam-owner" })?.value
+    }
+
+    /// Reference back to the SECURITY.md subsection that authored this
+    /// risk — surfaced as `props[name=security-md-section]` with values
+    /// like "4.1", "4.2". Used by drift detection.
+    public var securityMdSection: String? {
+        props?.first(where: { $0.name == "security-md-section" })?.value
+    }
+
+    /// All milestone tasks across all remediations. Convenience for
+    /// reporting and tests.
+    public var milestones: [OscalTask] {
+        (remediations ?? []).flatMap { $0.milestones }
+    }
+}
+
+// MARK: - POA&M item
+
+public struct OscalPoamRelatedRisk: Codable, Equatable {
+    public let riskUuid: String
+
+    public init(riskUuid: String) {
+        self.riskUuid = riskUuid
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case riskUuid = "risk-uuid"
+    }
+}
+
+/// A POA&M item is a short action-tracking handle. The substantive
+/// state (status, owner, milestones) lives on the linked risk.
+public struct OscalPoamItem: Codable, Equatable {
+    public let uuid: String?       // optional per OSCAL POA&M schema
+    public let title: String
+    public let description: String
+    public let props: [OscalProp]?
+    public let links: [OscalLink]?
+    public let relatedRisks: [OscalPoamRelatedRisk]?
+    public let remarks: String?
+
+    public init(
+        uuid: String? = nil,
+        title: String,
+        description: String,
+        props: [OscalProp]? = nil,
+        links: [OscalLink]? = nil,
+        relatedRisks: [OscalPoamRelatedRisk]? = nil,
         remarks: String? = nil
     ) {
         self.uuid = uuid
@@ -86,9 +220,7 @@ public struct OscalPoamItem: Codable, Equatable {
         self.description = description
         self.props = props
         self.links = links
-        self.relatedControls = relatedControls
-        self.relatedObservations = relatedObservations
-        self.milestones = milestones
+        self.relatedRisks = relatedRisks
         self.remarks = remarks
     }
 
@@ -98,33 +230,12 @@ public struct OscalPoamItem: Codable, Equatable {
         case description
         case props
         case links
-        case relatedControls = "related-controls"
-        case relatedObservations = "related-observations"
-        case milestones
+        case relatedRisks = "related-risks"
         case remarks
     }
-
-    // MARK: - Property accessors
-
-    /// Status surfaced as `props[name=status]`. The convention used by
-    /// downstream OSCAL tooling: "risk-accepted", "open", "closed",
-    /// "ongoing", "investigating".
-    public var status: String? {
-        props?.first(where: { $0.name == "status" })?.value
-    }
-
-    /// Owner surfaced as `props[name=poam-owner]`.
-    public var owner: String? {
-        props?.first(where: { $0.name == "poam-owner" })?.value
-    }
-
-    /// Reference back to the SECURITY.md subsection that authored this
-    /// item — surfaced as `props[name=security-md-section]` with values
-    /// like "4.1", "4.2". Used by drift detection.
-    public var securityMdSection: String? {
-        props?.first(where: { $0.name == "security-md-section" })?.value
-    }
 }
+
+// MARK: - System identification
 
 public struct OscalPoamSystemId: Codable, Equatable {
     public let id: String
@@ -149,11 +260,14 @@ public struct OscalImportSsp: Codable, Equatable {
     }
 }
 
+// MARK: - Document body
+
 public struct OscalPoamBody: Codable, Equatable {
     public var uuid: String
     public var metadata: OscalMetadata
     public var importSsp: OscalImportSsp?
     public var systemId: OscalPoamSystemId
+    public var risks: [OscalRisk]?
     public var poamItems: [OscalPoamItem]
     public var observations: [OscalObservation]?
 
@@ -162,6 +276,7 @@ public struct OscalPoamBody: Codable, Equatable {
         metadata: OscalMetadata,
         importSsp: OscalImportSsp?,
         systemId: OscalPoamSystemId,
+        risks: [OscalRisk]? = nil,
         poamItems: [OscalPoamItem],
         observations: [OscalObservation]? = nil
     ) {
@@ -169,6 +284,7 @@ public struct OscalPoamBody: Codable, Equatable {
         self.metadata = metadata
         self.importSsp = importSsp
         self.systemId = systemId
+        self.risks = risks
         self.poamItems = poamItems
         self.observations = observations
     }
@@ -178,6 +294,7 @@ public struct OscalPoamBody: Codable, Equatable {
         case metadata
         case importSsp = "import-ssp"
         case systemId = "system-id"
+        case risks
         case poamItems = "poam-items"
         case observations
     }
@@ -192,6 +309,16 @@ public struct OscalPoamDocument: Codable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case planOfActionAndMilestones = "plan-of-action-and-milestones"
+    }
+
+    // MARK: - Convenience accessors
+
+    public var risks: [OscalRisk] {
+        planOfActionAndMilestones.risks ?? []
+    }
+
+    public var poamItems: [OscalPoamItem] {
+        planOfActionAndMilestones.poamItems
     }
 
     // MARK: - Disk I/O

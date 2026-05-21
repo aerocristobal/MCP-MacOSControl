@@ -104,16 +104,16 @@ func checkSection4Poam(paths: DriftPaths) -> Int32 {
             "oscal-drift: section4_poam_drift — POA&M items reference SECURITY.md §4 subsections that no longer exist: \(sorted.joined(separator: ", "))\n"
                 .data(using: .utf8)!)
     }
-    if !report.openItemsForClosedSections.isEmpty {
+    if !report.openRisksForClosedSections.isEmpty {
         failed = true
         FileHandle.standardError.write(
-            "oscal-drift: section4_poam_drift — POA&M items still open/risk-accepted after their §4 statement was removed: \(report.openItemsForClosedSections.joined(separator: ", "))\n"
+            "oscal-drift: section4_poam_drift — risks still open-like after their §4 statement was removed: \(report.openRisksForClosedSections.joined(separator: ", "))\n"
                 .data(using: .utf8)!)
     }
-    if !report.closedItemsLackingEvidence.isEmpty {
+    if !report.closedRisksLackingEvidence.isEmpty {
         failed = true
         FileHandle.standardError.write(
-            "oscal-drift: section4_poam_drift — POA&M items with status=closed but empty remarks (need closure evidence): \(report.closedItemsLackingEvidence.joined(separator: ", "))\n"
+            "oscal-drift: section4_poam_drift — risks with status=closed but no closure evidence in risk-log (need story or commit reference): \(report.closedRisksLackingEvidence.joined(separator: ", "))\n"
                 .data(using: .utf8)!)
     }
     if !failed {

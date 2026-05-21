@@ -18,190 +18,390 @@
     },
     "poam-items" : [
       {
-        "description" : "Accepted residual risk: the AppleScriptSecurityFilter is a regex denylist applied after comment and string-literal stripping. Four documented bypass classes (string-concat reconstruction, Unicode normalization, dynamic run script with tell-application return value, comment-split that re-forms the keyword) are not statically detectable. Risk is accepted on the basis of compensating controls: STORY-024 audit hook (every invocation including filter-passes is logged with a tamper-evident chain), macOS TCC per-app automation gates, MCP host destructiveHint user-confirmation gate.",
-        "milestones" : [
+        "description" : "POA&M tracking entry for risk 11111111-1111-4111-8111-1111111111a1. Status, owner, milestones, and re-evaluation criterion live on the linked risk entry; this poam-item is the action-tracking handle the assessor reads.",
+        "related-risks" : [
           {
-            "description" : "Measured bypass-class coverage from the AppleScript fuzz harness reaches ≥80% of documented bypass classes; results published as a CI artifact and reviewed by the security owner.",
-            "target-date" : "2026-07-31",
-            "title" : "STORY-025 fuzz harness operational",
-            "uuid" : "11111111-1111-4111-8111-1111111111b1"
+            "risk-uuid" : "11111111-1111-4111-8111-1111111111a1"
+          }
+        ],
+        "title" : "Track accepted risk: AppleScript regex filter bypass (SECURITY.md §4.1)",
+        "uuid" : "11111111-1111-4111-8111-1111111111e1"
+      },
+      {
+        "description" : "POA&M tracking entry for risk 22222222-2222-4222-8222-2222222222a1.",
+        "related-risks" : [
+          {
+            "risk-uuid" : "22222222-2222-4222-8222-2222222222a1"
+          }
+        ],
+        "title" : "Track accepted risk: Single-secret exfiltration via stdout (SECURITY.md §4.2)",
+        "uuid" : "22222222-2222-4222-8222-2222222222e1"
+      },
+      {
+        "description" : "POA&M tracking entry for risk 33333333-3333-4333-8333-3333333333a1.",
+        "related-risks" : [
+          {
+            "risk-uuid" : "33333333-3333-4333-8333-3333333333a1"
+          }
+        ],
+        "title" : "Track accepted risk: Dynamic-name TCC prompts in CI (SECURITY.md §4.3)",
+        "uuid" : "33333333-3333-4333-8333-3333333333e1"
+      },
+      {
+        "description" : "POA&M tracking entry for risk 44444444-4444-4444-8444-4444444444a1.",
+        "related-risks" : [
+          {
+            "risk-uuid" : "44444444-4444-4444-8444-4444444444a1"
+          }
+        ],
+        "title" : "Track accepted risk: Audit log no per-record HSM signing (SECURITY.md §4.4)",
+        "uuid" : "44444444-4444-4444-8444-4444444444e1"
+      },
+      {
+        "description" : "POA&M tracking entry for the historical closed risk 44444444-4444-4444-8444-4444444444c0.",
+        "related-risks" : [
+          {
+            "risk-uuid" : "44444444-4444-4444-8444-4444444444c0"
+          }
+        ],
+        "title" : "Track closed risk: Deferred production audit sink (SECURITY.md §4.4 historical, closed by STORY-024)",
+        "uuid" : "44444444-4444-4444-8444-4444444444c3"
+      },
+      {
+        "description" : "POA&M tracking entry for risk f17c8b39-6f53-4bd1-93d6-c44e1aac9b91 (the auto-opened chain-break risk).",
+        "related-risks" : [
+          {
+            "risk-uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b91"
+          }
+        ],
+        "title" : "Track open risk: Audit hash-chain integrity failure (auto-opened)",
+        "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b95"
+      }
+    ],
+    "risks" : [
+      {
+        "description" : "Accepted residual risk: the AppleScriptSecurityFilter is a regex denylist applied after comment and string-literal stripping. Four documented bypass classes (string-concat reconstruction, Unicode normalization, dynamic run script with tell-application return value, comment-split that re-forms the keyword) are not statically detectable.",
+        "links" : [
+          {
+            "href" : "#si-10",
+            "rel" : "related",
+            "text" : "SI-10"
           },
           {
-            "description" : "Security owner reviews docs/SECURITY.md §4.1 bypass class list against published AppleScript research and incident reports; new classes are added or the item closes if all four are addressed.",
-            "target-date" : "2026-08-31",
-            "title" : "Quarterly re-review of bypass class catalog",
-            "uuid" : "11111111-1111-4111-8111-1111111111b2"
+            "href" : "#cm-7",
+            "rel" : "related",
+            "text" : "CM-7"
+          },
+          {
+            "href" : "../docs/SECURITY.md",
+            "rel" : "reference",
+            "text" : "§4.1 Arbitrary code execution via AppleScript"
           }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "risk-accepted"
-          },
-          {
-            "name" : "poam-owner",
-            "value" : "security-owner"
-          },
           {
             "name" : "security-md-section",
             "value" : "4.1"
           },
           {
-            "name" : "re-evaluation-criterion",
-            "value" : "A credible Swift AST parser for AppleScript becomes available, or a post-incident review identifies an exploited bypass in this class."
-          }
-        ],
-        "related-controls" : [
-          {
-            "control-id" : "si-10"
+            "name" : "poam-owner",
+            "value" : "security-owner"
           },
           {
-            "control-id" : "cm-7"
+            "name" : "re-evaluation-criterion",
+            "value" : "Swift AST parser availability or observed in-the-wild bypass"
           }
         ],
-        "related-observations" : [
-
+        "remediations" : [
+          {
+            "description" : "Continue to rely on the audit hook + TCC + MCP host gates; revisit when fuzz coverage data exists.",
+            "lifecycle" : "planned",
+            "tasks" : [
+              {
+                "description" : "Measured bypass-class coverage from the AppleScript fuzz harness reaches ≥80% of documented bypass classes; results published as a CI artifact and reviewed by the security owner.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-07-31T00:00:00.000Z"
+                  }
+                },
+                "title" : "STORY-025 fuzz harness operational",
+                "type" : "milestone",
+                "uuid" : "11111111-1111-4111-8111-1111111111b1"
+              },
+              {
+                "description" : "Security owner reviews docs/SECURITY.md §4.1 bypass class list against published AppleScript research and incident reports; new classes are added or the item closes if all four are addressed.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-08-31T00:00:00.000Z"
+                  }
+                },
+                "title" : "Quarterly re-review of bypass class catalog",
+                "type" : "milestone",
+                "uuid" : "11111111-1111-4111-8111-1111111111b2"
+              }
+            ],
+            "title" : "Compensating monitoring plan (§4.1)",
+            "uuid" : "11111111-1111-4111-8111-1111111111d1"
+          }
         ],
-        "remarks" : "status: risk-accepted. Owner: security-owner. Re-evaluation criterion: STORY-025 fuzz harness coverage ≥80% OR exploited bypass observed in the wild. Cross-references: oscal/component-definition.json si-10 statements si-10_smt.bypass-{string-concat,unicode,dynamic-run-script,comment-split}.",
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Risk documented in SECURITY.md §4.1 with full justification; the four bypass classes are tracked individually as si-10_smt.bypass-* statements in oscal/component-definition.json.",
+              "start" : "2026-05-21T00:00:00.000Z",
+              "status-change" : "deviation-approved",
+              "title" : "Risk accepted by security owner",
+              "uuid" : "11111111-1111-4111-8111-1111111111c1"
+            }
+          ]
+        },
+        "statement" : "Risk is accepted on the basis of compensating controls: STORY-024 audit hook (every invocation including filter-passes is logged with a tamper-evident chain), macOS TCC per-app automation gates, MCP host destructiveHint user-confirmation gate. Re-evaluation criterion: a credible Swift AST parser for AppleScript becomes available, or a post-incident review identifies an exploited bypass in this class.",
+        "status" : "deviation-approved",
         "title" : "AppleScript security filter regex bypass class (SECURITY.md §4.1)",
         "uuid" : "11111111-1111-4111-8111-1111111111a1"
       },
       {
-        "description" : "Accepted residual risk: the 1 MB output truncation cap bounds bulk exfiltration but does not prevent a single targeted read (e.g. one password from Notes, one API key from a clipboard manager). Justified because AI agents have legitimate reasons to read user data on the user's behalf; the user's choice to launch the server combined with the MCP host's confirmation gate is the consent model. The AuditRecorder captures the invocation (script SHA-256, timestamp, target apps), providing forensics for incident response.",
-        "milestones" : [
+        "description" : "Accepted residual risk: the 1 MB output truncation cap bounds bulk exfiltration but does not prevent a single targeted read (e.g. one password from Notes, one API key from a clipboard manager).",
+        "links" : [
           {
-            "description" : "Security owner publishes a short feasibility note on whether intent classification of agent-issued tool calls is tractable given current model capabilities and the project's threat model. Outcome either adds milestones to this item or formalizes long-term acceptance.",
-            "target-date" : "2026-09-30",
-            "title" : "Intent-classification feasibility review",
-            "uuid" : "22222222-2222-4222-8222-2222222222b1"
+            "href" : "#ac-4",
+            "rel" : "related",
+            "text" : "AC-4"
+          },
+          {
+            "href" : "#au-2",
+            "rel" : "related",
+            "text" : "AU-2"
+          },
+          {
+            "href" : "../docs/SECURITY.md",
+            "rel" : "reference",
+            "text" : "§4.2 Exfiltration via stdout"
           }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "risk-accepted"
-          },
-          {
-            "name" : "poam-owner",
-            "value" : "security-owner"
-          },
           {
             "name" : "security-md-section",
             "value" : "4.2"
           },
           {
-            "name" : "re-evaluation-criterion",
-            "value" : "A practical intent-classification approach to AI tool calls becomes available, or a deployer engagement requires per-tool data-classification gates."
-          }
-        ],
-        "related-controls" : [
-          {
-            "control-id" : "ac-4"
+            "name" : "poam-owner",
+            "value" : "security-owner"
           },
           {
-            "control-id" : "au-2"
+            "name" : "re-evaluation-criterion",
+            "value" : "Practical intent-classification approach to AI tool calls becomes available, or a deployer engagement requires per-tool data-classification gates"
           }
         ],
-        "related-observations" : [
-
+        "remediations" : [
+          {
+            "description" : "Watch for advances in agent intent classification that could enable per-tool data-classification gates.",
+            "lifecycle" : "planned",
+            "tasks" : [
+              {
+                "description" : "Security owner publishes a short feasibility note on whether intent classification of agent-issued tool calls is tractable given current model capabilities and the project's threat model.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-09-30T00:00:00.000Z"
+                  }
+                },
+                "title" : "Intent-classification feasibility review",
+                "type" : "milestone",
+                "uuid" : "22222222-2222-4222-8222-2222222222b1"
+              }
+            ],
+            "title" : "Intent-classification feasibility track (§4.2)",
+            "uuid" : "22222222-2222-4222-8222-2222222222d1"
+          }
         ],
-        "remarks" : "status: risk-accepted. Owner: security-owner. Cross-reference: oscal/component-definition.json ac-4 implementation statement (1 MB truncation cap).",
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Risk documented in SECURITY.md §4.2. Compensating control: 1 MB truncation cap with truncated:true flag; audit trail captures every invocation.",
+              "start" : "2026-05-21T00:00:00.000Z",
+              "status-change" : "deviation-approved",
+              "title" : "Risk accepted by security owner",
+              "uuid" : "22222222-2222-4222-8222-2222222222c1"
+            }
+          ]
+        },
+        "statement" : "Justified because AI agents have legitimate reasons to read user data on the user's behalf; the user's choice to launch the server combined with the MCP host's confirmation gate is the consent model. The AuditRecorder captures the invocation (script SHA-256, timestamp, target apps), providing forensics for incident response.",
+        "status" : "deviation-approved",
         "title" : "Single-secret exfiltration via stdout (SECURITY.md §4.2)",
         "uuid" : "22222222-2222-4222-8222-2222222222a1"
       },
       {
-        "description" : "Accepted residual risk: AppleScript scripts that build target app names dynamically (e.g. `tell application name1 & \" \" & name2`) cannot be statically extracted by AutomationPermissionChecker. The pre-flight check returns .skipped for these and the runtime TCC prompt becomes the gate. In CI this can manifest as a hung process waiting on a modal. Mitigation: pre-grant automation permission for fixture apps used in integration tests; treat TCC prompts in production as an expected user touchpoint.",
-        "milestones" : [
+        "description" : "Accepted residual risk: AppleScript scripts that build target app names dynamically (e.g. `tell application name1 & \" \" & name2`) cannot be statically extracted by AutomationPermissionChecker. The pre-flight check returns .skipped for these and the runtime TCC prompt becomes the gate; in CI this can manifest as a hung process waiting on a modal.",
+        "links" : [
           {
-            "description" : "docs/INTEGRATION-CI-SETUP.md documents the signed-helper TCC grant path; verify the helper is provisioned on all CI runners and that the integration suite exits non-zero (not hang) on a missing grant.",
-            "target-date" : "2026-06-30",
-            "title" : "Integration-suite TCC pre-grant verification",
-            "uuid" : "33333333-3333-4333-8333-3333333333b1"
+            "href" : "#ac-3",
+            "rel" : "related",
+            "text" : "AC-3"
+          },
+          {
+            "href" : "#si-10",
+            "rel" : "related",
+            "text" : "SI-10"
+          },
+          {
+            "href" : "../docs/SECURITY.md",
+            "rel" : "reference",
+            "text" : "§4.3 TCC bypass attempts"
+          },
+          {
+            "href" : "../docs/INTEGRATION-CI-SETUP.md",
+            "rel" : "reference",
+            "text" : "TCC pre-grant in integration runners"
           }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "risk-accepted"
-          },
-          {
-            "name" : "poam-owner",
-            "value" : "security-owner"
-          },
           {
             "name" : "security-md-section",
             "value" : "4.3"
           },
           {
-            "name" : "re-evaluation-criterion",
-            "value" : "A reliable AppleScript identifier-resolution approach for dynamic names ships, or a CI hang attributable to this class is observed in the integration suite."
+            "name" : "poam-owner",
+            "value" : "security-owner"
           }
         ],
-        "related-controls" : [
+        "remediations" : [
           {
-            "control-id" : "ac-3"
-          },
-          {
-            "control-id" : "si-10"
+            "description" : "Verify the signed TCC grant helper is provisioned on all CI runners and that the integration suite exits non-zero (not hang) on a missing grant.",
+            "lifecycle" : "planned",
+            "tasks" : [
+              {
+                "description" : "docs/INTEGRATION-CI-SETUP.md documents the signed-helper path; verify the helper is provisioned and the suite fails-fast on a missing grant rather than hanging.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-06-30T00:00:00.000Z"
+                  }
+                },
+                "title" : "TCC pre-grant verification on CI runners",
+                "type" : "milestone",
+                "uuid" : "33333333-3333-4333-8333-3333333333b1"
+              }
+            ],
+            "title" : "Integration-suite TCC pre-grant verification (§4.3)",
+            "uuid" : "33333333-3333-4333-8333-3333333333d1"
           }
         ],
-        "related-observations" : [
-
-        ],
-        "remarks" : "status: risk-accepted. Owner: security-owner. Cross-reference: docs/INTEGRATION-CI-SETUP.md.",
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Risk documented in SECURITY.md §4.3. Compensating control: pre-grant of automation permission to fixture apps in CI runners; runtime TCC is the production gate.",
+              "start" : "2026-05-21T00:00:00.000Z",
+              "status-change" : "deviation-approved",
+              "title" : "Risk accepted by security owner",
+              "uuid" : "33333333-3333-4333-8333-3333333333c1"
+            }
+          ]
+        },
+        "statement" : "Mitigation: pre-grant automation permission for fixture apps used in integration tests; treat TCC prompts in production as an expected user touchpoint. Re-evaluation criterion: a reliable AppleScript identifier-resolution approach for dynamic names ships, or a CI hang attributable to this class is observed in the integration suite.",
+        "status" : "deviation-approved",
         "title" : "Dynamic-name TCC prompts in CI (SECURITY.md §4.3)",
         "uuid" : "33333333-3333-4333-8333-3333333333a1"
       },
       {
-        "description" : "Acknowledged residual risk: per-record digital signatures would be stronger than the hash chain but signing requires key management; a stored key on the host is no harder to compromise than the host itself. STORY-024 chain + off-host shipping pair provides two independent corroborations (on-disk chain + remote sink's collected copy). Re-evaluation criterion is an HSM-backed signing path becoming available or a post-incident review identifying a class of tampering the chain misses.",
-        "milestones" : [
+        "description" : "Acknowledged residual risk: per-record digital signatures would be stronger than the hash chain but signing requires key management; a stored key on the host is no harder to compromise than the host itself.",
+        "links" : [
           {
-            "description" : "Security owner publishes a short feasibility note on local HSM availability (Secure Enclave, smartcard, YubiKey) for per-record AuditRecord signing. Outcome either adds milestones or formalizes long-term acceptance.",
-            "target-date" : "2026-10-31",
-            "title" : "HSM-signing feasibility review",
-            "uuid" : "44444444-4444-4444-8444-4444444444b1"
+            "href" : "#au-9",
+            "rel" : "related",
+            "text" : "AU-9"
+          },
+          {
+            "href" : "../docs/SECURITY.md",
+            "rel" : "reference",
+            "text" : "§4.4 Audit log tampering"
+          },
+          {
+            "href" : "../docs/AUDIT-LOG-OPERATIONS.md",
+            "rel" : "reference",
+            "text" : "Audit log operational playbook"
           }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "risk-accepted"
-          },
-          {
-            "name" : "poam-owner",
-            "value" : "security-owner"
-          },
           {
             "name" : "security-md-section",
             "value" : "4.4"
           },
           {
-            "name" : "re-evaluation-criterion",
-            "value" : "Credible HSM-backed signing path becomes available, or post-incident review identifies tampering class the chain misses."
+            "name" : "poam-owner",
+            "value" : "security-owner"
           }
         ],
-        "related-controls" : [
+        "remediations" : [
           {
-            "control-id" : "au-9"
+            "description" : "Watch for local HSM availability (Secure Enclave, smartcard, YubiKey) that could enable per-record AuditRecord signing.",
+            "lifecycle" : "planned",
+            "tasks" : [
+              {
+                "description" : "Security owner publishes a short feasibility note on local HSM availability for per-record AuditRecord signing. Outcome either adds milestones or formalizes long-term acceptance.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-10-31T00:00:00.000Z"
+                  }
+                },
+                "title" : "HSM-signing feasibility review",
+                "type" : "milestone",
+                "uuid" : "44444444-4444-4444-8444-4444444444b1"
+              }
+            ],
+            "title" : "HSM-signing feasibility track (§4.4)",
+            "uuid" : "44444444-4444-4444-8444-4444444444d1"
           }
         ],
-        "related-observations" : [
-
-        ],
-        "remarks" : "status: risk-accepted. Owner: security-owner. Cross-reference: oscal/component-definition.json au-9 statement au-9_smt.no-hsm-signing.",
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Risk documented in SECURITY.md §4.4. STORY-024 audit subsystem (chain + retention + off-host shipping) is the primary control; absence of HSM-backed signing is the residual.",
+              "start" : "2026-05-21T00:00:00.000Z",
+              "status-change" : "deviation-approved",
+              "title" : "Risk accepted by security owner",
+              "uuid" : "44444444-4444-4444-8444-4444444444c1"
+            }
+          ]
+        },
+        "statement" : "STORY-024 chain + off-host shipping pair provides two independent corroborations (on-disk chain + remote sink's collected copy). Re-evaluation criterion: an HSM-backed signing path becoming available or a post-incident review identifying a class of tampering the chain misses.",
+        "status" : "deviation-approved",
         "title" : "Audit log: no per-record HSM signing (SECURITY.md §4.4)",
         "uuid" : "44444444-4444-4444-8444-4444444444a1"
       },
       {
-        "description" : "Historical accepted risk: prior to Sprint 6, the AuditRecorder was an in-memory protocol seam suitable for development and CI but not for production. Closed by STORY-024, which shipped a hash-chained, retained, off-host-shipping production sink (OSLog default, HTTP/syslog optional). The on-disk JSONL stream is append-only at the storage layer; AuditChainVerifier runs on server start, on every retention sweep, and on operator demand.",
-        "milestones" : [
-
+        "description" : "Historical accepted risk: prior to Sprint 6, the AuditRecorder was an in-memory protocol seam suitable for development and CI but not for production.",
+        "links" : [
+          {
+            "href" : "#au-9",
+            "rel" : "related",
+            "text" : "AU-9"
+          },
+          {
+            "href" : "#au-11",
+            "rel" : "related",
+            "text" : "AU-11"
+          },
+          {
+            "href" : "../Sources/MacOSControlLib/AppleScript/Audit/AuditStorage.swift",
+            "rel" : "reference",
+            "text" : "Append-only audit store"
+          },
+          {
+            "href" : "../Sources/MacOSControlLib/AppleScript/Audit/AuditChainVerifier.swift",
+            "rel" : "reference",
+            "text" : "Hash-chain verifier"
+          },
+          {
+            "href" : "../Sources/MacOSControlLib/AppleScript/Audit/AuditRemoteSink.swift",
+            "rel" : "reference",
+            "text" : "Off-host shipping (OSLog/HTTP/syslog)"
+          },
+          {
+            "href" : "../Tests/MCP-MacOSControlTests/AppleScript/Audit/AuditChainTests.swift",
+            "rel" : "reference",
+            "text" : "Chain-break / tamper-detection tests"
+          }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "closed"
-          },
           {
             "name" : "poam-owner",
             "value" : "security-owner"
@@ -211,36 +411,37 @@
             "value" : "STORY-024"
           }
         ],
-        "related-controls" : [
-          {
-            "control-id" : "au-9"
-          },
-          {
-            "control-id" : "au-11"
-          }
-        ],
-        "related-observations" : [
-
-        ],
-        "remarks" : "status: closed. Closed-by: STORY-024 (hash-chained, retained, off-host audit log). Closure evidence: Sources/MacOSControlLib/AppleScript/Audit/{AuditStorage,AuditChainVerifier,AuditRemoteSink,AuditRetentionSweeper}.swift; Tests/MCP-MacOSControlTests/AppleScript/Audit/{AuditChainTests,AuditChainPropertyTests,FileAuditStorageTests,AuditRetentionTests}.swift; docs/AUDIT-LOG-OPERATIONS.md.",
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Closure evidence: Sources/MacOSControlLib/AppleScript/Audit/{AuditStorage,AuditChainVerifier,AuditRemoteSink,AuditRetentionSweeper}.swift; Tests/MCP-MacOSControlTests/AppleScript/Audit/{AuditChainTests,AuditChainPropertyTests,FileAuditStorageTests,AuditRetentionTests}.swift; docs/AUDIT-LOG-OPERATIONS.md.",
+              "start" : "2026-05-20T00:00:00.000Z",
+              "status-change" : "closed",
+              "title" : "Risk closed: STORY-024 shipped",
+              "uuid" : "44444444-4444-4444-8444-4444444444c2"
+            }
+          ]
+        },
+        "statement" : "Closed by STORY-024, which shipped a hash-chained, retained, off-host-shipping production sink (OSLog default, HTTP/syslog optional). The on-disk JSONL stream is append-only at the storage layer; AuditChainVerifier runs on server start, on every retention sweep, and on operator demand.",
+        "status" : "closed",
         "title" : "Deferred production audit sink (SECURITY.md §4.4, closed by STORY-024)",
         "uuid" : "44444444-4444-4444-8444-4444444444c0"
       },
       {
         "description" : "Auto-opened by oscal-emit whenever the AuditRecord stream contains a chain_verification_failure event. Each occurrence elevates the corresponding observation and adds a related-observation reference here so an assessor can pivot from the AR to the affected operational incident.",
-        "milestones" : [
+        "links" : [
           {
-            "description" : "Operator runs verify_audit_chain, identifies the first-break record id, examines the chain offset, and either confirms benign cause (clock skew during archive rotation) or escalates per docs/AUDIT-LOG-OPERATIONS.md incident-response checklist.",
-            "target-date" : "2026-06-30",
-            "title" : "Incident response: investigate latest chain break",
-            "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b92"
+            "href" : "#au-9",
+            "rel" : "related",
+            "text" : "AU-9"
+          },
+          {
+            "href" : "../docs/AUDIT-LOG-OPERATIONS.md",
+            "rel" : "reference",
+            "text" : "Chain-verification incident response"
           }
         ],
         "props" : [
-          {
-            "name" : "status",
-            "value" : "open"
-          },
           {
             "name" : "poam-owner",
             "value" : "security-owner"
@@ -250,17 +451,45 @@
             "value" : "oscal-emit"
           }
         ],
-        "related-controls" : [
-          {
-            "control-id" : "au-9"
-          }
-        ],
         "related-observations" : [
           {
             "observation-uuid" : "5c02f3be-4722-422a-a1fd-ec62fdb477f5"
           }
         ],
-        "remarks" : "status: open. Owner: security-owner. UUID is the deterministic chain-break risk UUID emitted by OscalObservationEmitter. Cross-reference: docs/AUDIT-LOG-OPERATIONS.md.",
+        "remediations" : [
+          {
+            "description" : "Operator runs verify_audit_chain, identifies the first-break record id, examines the chain offset, and either confirms benign cause or escalates per the playbook.",
+            "lifecycle" : "planned",
+            "tasks" : [
+              {
+                "description" : "Operator runs verify_audit_chain, identifies the first-break record id, examines the chain offset, and either confirms benign cause (clock skew during archive rotation) or escalates per docs/AUDIT-LOG-OPERATIONS.md incident-response checklist.",
+                "timing" : {
+                  "on-date" : {
+                    "date" : "2026-06-30T00:00:00.000Z"
+                  }
+                },
+                "title" : "Incident response: investigate latest chain break",
+                "type" : "action",
+                "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b92"
+              }
+            ],
+            "title" : "Operator incident response on chain break",
+            "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b94"
+          }
+        ],
+        "risk-log" : {
+          "entries" : [
+            {
+              "description" : "Risk entry pre-allocated so oscal-emit can append related-observation references without synthesizing a new risk on every chain-break event. The status flips to closed once an operator clears the chain break.",
+              "start" : "2026-05-21T00:00:00.000Z",
+              "status-change" : "open",
+              "title" : "Risk opened (template)",
+              "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b93"
+            }
+          ]
+        },
+        "statement" : "Open until the operator verifies the chain break is benign (e.g. clock skew during archive rotation) or escalates per docs/AUDIT-LOG-OPERATIONS.md incident-response checklist. UUID matches OscalObservationEmitter.chainBreakRiskUuid so the emitter does not need runtime coordination to find this risk.",
+        "status" : "open",
         "title" : "Audit hash-chain integrity failure (auto-opened by oscal-emit)",
         "uuid" : "f17c8b39-6f53-4bd1-93d6-c44e1aac9b91"
       }
@@ -269,6 +498,6 @@
       "id" : "mcp-macos-control",
       "identifier-type" : "https://ietf.org/rfc/rfc4122"
     },
-    "uuid" : "00000000-0000-0000-0000-0000000000aa"
+    "uuid" : "11111111-0000-4000-8000-0000000000aa"
   }
 }

@@ -139,14 +139,15 @@ public struct OscalObservationEmitter {
             )
         ]
 
-        var relatedRisks: [OscalObservationRelatedRisk] = []
         if entry.elevated {
-            // Stable risk UUID — every chain-break observation references the
-            // same logical risk record. The POA&M item carrying this
-            // riskUuid is the AU-9 / chain-break item.
-            relatedRisks.append(OscalObservationRelatedRisk(
-                riskUuid: "f17c8b39-6f53-4bd1-93d6-c44e1aac9b91"
-            ))
+            // OSCAL puts the risk ↔ observation linkage on the Risk
+            // side (`risk.related-observations`), not on the
+            // Observation. We tag elevated observations with a prop so
+            // the emitter (and assessor tooling) can identify them
+            // without re-deriving from the event type; the actual
+            // graph edge is created by autoOpenChainBreakItems(...).
+            props.append(OscalProp(name: "elevated-severity", value: "true"))
+            props.append(OscalProp(name: "related-risk-uuid", value: Self.chainBreakRiskUuid))
         }
 
         let remarks = remarksFor(record: record, entry: entry)
@@ -162,7 +163,6 @@ public struct OscalObservationEmitter {
             collected: record.timestampIso8601,
             props: props,
             links: links,
-            relatedRisks: relatedRisks.isEmpty ? nil : relatedRisks,
             remarks: remarks
         )
     }
@@ -225,22 +225,21 @@ public struct OscalObservationEmitter {
         return parts.joined(separator: " ")
     }
 
-    /// Returns the subset of observations that are elevated (i.e. chain-
-    /// break observations carrying the chain-break risk UUID in
-    /// related-risks). Callers use this to wire the POA&M ↔ AR
-    /// cross-reference.
+    /// Returns the subset of observations the emitter marked elevated
+    /// (chain-break observations). Detected via the `elevated-severity`
+    /// prop the emitter sets — the observation side of the OSCAL graph
+    /// does not carry the risk UUID directly.
     public func elevatedObservations(in observations: [OscalObservation]) -> [OscalObservation] {
-        observations.filter { obs in
-            (obs.relatedRisks ?? []).contains { $0.riskUuid == Self.chainBreakRiskUuid }
-        }
+        observations.filter { $0.isElevated }
     }
 
-    /// Updates the chain-break POA&M item with related-observation
+    /// Updates the chain-break Risk in the POA&M with related-observation
     /// references for any new elevated observations. Idempotent —
     /// existing observation UUIDs are not duplicated. If the POA&M does
-    /// NOT contain the chain-break item, no-op (caller is responsible for
-    /// pre-allocating the item; this method does not synthesize one
-    /// because the UUID, owner, and milestones are author-curated).
+    /// NOT contain a risk with UUID == chainBreakRiskUuid, no-op
+    /// (the caller is responsible for pre-allocating the risk; this
+    /// method does not synthesize one because the metadata is
+    /// author-curated).
     public func autoOpenChainBreakItems(
         in poam: OscalPoamDocument,
         forElevatedObservations elevatedObs: [OscalObservation],
@@ -248,27 +247,30 @@ public struct OscalObservationEmitter {
     ) -> OscalPoamDocument {
         guard !elevatedObs.isEmpty else { return poam }
         var body = poam.planOfActionAndMilestones
-        guard let chainBreakIdx = body.poamItems.firstIndex(where: { $0.uuid.lowercased() == Self.chainBreakRiskUuid.lowercased() }) else {
+        var risks = body.risks ?? []
+        guard let chainBreakIdx = risks.firstIndex(where: { $0.uuid.lowercased() == Self.chainBreakRiskUuid.lowercased() }) else {
             return poam
         }
-        var item = body.poamItems[chainBreakIdx]
-        let existing = Set((item.relatedObservations ?? []).map { $0.observationUuid.lowercased() })
-        var refs = item.relatedObservations ?? []
+        var risk = risks[chainBreakIdx]
+        let existing = Set((risk.relatedObservations ?? []).map { $0.observationUuid.lowercased() })
+        var refs = risk.relatedObservations ?? []
         for obs in elevatedObs where !existing.contains(obs.uuid.lowercased()) {
-            refs.append(OscalPoamRelatedObservation(observationUuid: obs.uuid))
+            refs.append(OscalRiskRelatedObservation(observationUuid: obs.uuid))
         }
-        item = OscalPoamItem(
-            uuid: item.uuid,
-            title: item.title,
-            description: item.description,
-            props: item.props,
-            links: item.links,
-            relatedControls: item.relatedControls,
-            relatedObservations: refs,
-            milestones: item.milestones,
-            remarks: item.remarks
+        risk = OscalRisk(
+            uuid: risk.uuid,
+            title: risk.title,
+            description: risk.description,
+            statement: risk.statement,
+            status: risk.status,
+            props: risk.props,
+            links: risk.links,
+            riskLog: risk.riskLog,
+            remediations: risk.remediations,
+            relatedObservations: refs
         )
-        body.poamItems[chainBreakIdx] = item
+        risks[chainBreakIdx] = risk
+        body.risks = risks
         body.metadata = OscalMetadata(
             title: body.metadata.title,
             lastModified: OscalAssessmentResultsDocument.iso8601(now),

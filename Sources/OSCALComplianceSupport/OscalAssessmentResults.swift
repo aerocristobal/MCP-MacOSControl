@@ -48,18 +48,6 @@ public struct OscalObservationRelevantEvidence: Codable, Equatable {
     }
 }
 
-public struct OscalObservationRelatedRisk: Codable, Equatable {
-    public let riskUuid: String
-
-    public init(riskUuid: String) {
-        self.riskUuid = riskUuid
-    }
-
-    enum CodingKeys: String, CodingKey {
-        case riskUuid = "risk-uuid"
-    }
-}
-
 public struct OscalObservation: Codable, Equatable {
     public let uuid: String
     public let title: String
@@ -71,7 +59,6 @@ public struct OscalObservation: Codable, Equatable {
     public let collected: String
     public let props: [OscalProp]?
     public let links: [OscalLink]?
-    public let relatedRisks: [OscalObservationRelatedRisk]?
     public let remarks: String?
 
     public init(
@@ -85,7 +72,6 @@ public struct OscalObservation: Codable, Equatable {
         collected: String,
         props: [OscalProp]? = nil,
         links: [OscalLink]? = nil,
-        relatedRisks: [OscalObservationRelatedRisk]? = nil,
         remarks: String? = nil
     ) {
         self.uuid = uuid
@@ -98,8 +84,15 @@ public struct OscalObservation: Codable, Equatable {
         self.collected = collected
         self.props = props
         self.links = links
-        self.relatedRisks = relatedRisks
         self.remarks = remarks
+    }
+
+    // Convenience: was this observation tagged as elevated by the
+    // emitter? Detected via a known prop name. Used in lieu of the
+    // observation-side `related-risks` field which OSCAL puts on the
+    // risk side of the graph (risk.related-observations).
+    public var isElevated: Bool {
+        (props ?? []).contains { $0.name == "elevated-severity" && $0.value == "true" }
     }
 
     enum CodingKeys: String, CodingKey {
@@ -113,8 +106,42 @@ public struct OscalObservation: Codable, Equatable {
         case collected
         case props
         case links
-        case relatedRisks = "related-risks"
         case remarks
+    }
+}
+
+/// `reviewed-controls` is required at every Assessment Result by OSCAL.
+/// We declare "include-all" because the AR is generated from the
+/// AuditRecord stream, which transitively covers every control mapped
+/// in oscal/component-definition.json — there's no per-result subset.
+public struct OscalControlSelection: Codable, Equatable {
+    public let includeAll: OscalIncludeAll?
+
+    public init(includeAll: OscalIncludeAll? = OscalIncludeAll()) {
+        self.includeAll = includeAll
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case includeAll = "include-all"
+    }
+}
+
+public struct OscalIncludeAll: Codable, Equatable {
+    public init() {}
+}
+
+public struct OscalReviewedControls: Codable, Equatable {
+    public let description: String?
+    public let controlSelections: [OscalControlSelection]
+
+    public init(description: String? = nil, controlSelections: [OscalControlSelection]) {
+        self.description = description
+        self.controlSelections = controlSelections
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case description
+        case controlSelections = "control-selections"
     }
 }
 
@@ -124,6 +151,7 @@ public struct OscalAssessmentResult: Codable, Equatable {
     public var description: String
     public var start: String
     public var end: String?
+    public var reviewedControls: OscalReviewedControls
     public var observations: [OscalObservation]
 
     public init(
@@ -132,6 +160,10 @@ public struct OscalAssessmentResult: Codable, Equatable {
         description: String,
         start: String,
         end: String? = nil,
+        reviewedControls: OscalReviewedControls = OscalReviewedControls(
+            description: "All controls implemented by MCP-MacOSControl (see oscal/component-definition.json). The AR is generated from the STORY-024 AuditRecord stream, which transitively covers every control mapped there; the include-all selection reflects this scope.",
+            controlSelections: [OscalControlSelection()]
+        ),
         observations: [OscalObservation]
     ) {
         self.uuid = uuid
@@ -139,7 +171,14 @@ public struct OscalAssessmentResult: Codable, Equatable {
         self.description = description
         self.start = start
         self.end = end
+        self.reviewedControls = reviewedControls
         self.observations = observations
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case uuid, title, description, start, end
+        case reviewedControls = "reviewed-controls"
+        case observations
     }
 }
 
@@ -206,8 +245,8 @@ public struct OscalAssessmentResultsDocument: Codable, Equatable {
     public static func loadOrCreate(
         at url: URL,
         metadataTitle: String = "MCP-MacOSControl Continuous Monitoring Assessment Results",
-        documentUuid: String = "00000000-0000-0000-0000-0000000000ab",
-        resultUuid: String = "00000000-0000-0000-0000-0000000000ac",
+        documentUuid: String = "22222222-0000-4000-8000-0000000000ab",
+        resultUuid: String = "33333333-0000-4000-8000-0000000000ac",
         now: Date = Date()
     ) throws -> OscalAssessmentResultsDocument {
         if FileManager.default.fileExists(atPath: url.path) {
@@ -297,7 +336,7 @@ extension OscalAssessmentResultsDocument {
         let ts = "2026-01-01T00:00:00.000Z"
         return OscalAssessmentResultsDocument(
             assessmentResults: OscalAssessmentResultsBody(
-                uuid: "00000000-0000-0000-0000-0000000000ab",
+                uuid: "22222222-0000-4000-8000-0000000000ab",
                 metadata: OscalMetadata(
                     title: "MCP-MacOSControl Continuous Monitoring Assessment Results",
                     lastModified: ts,
@@ -308,7 +347,7 @@ extension OscalAssessmentResultsDocument {
                 importAp: OscalImportAp(href: "tbd-by-assessor.json", remarks: "Assessor-authored."),
                 results: [
                     OscalAssessmentResult(
-                        uuid: "00000000-0000-0000-0000-0000000000ac",
+                        uuid: "33333333-0000-4000-8000-0000000000ac",
                         title: "Continuous monitoring observations from the AuditRecord stream",
                         description: "Test seed.",
                         start: ts,
