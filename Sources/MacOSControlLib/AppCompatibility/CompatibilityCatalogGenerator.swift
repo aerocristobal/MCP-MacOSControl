@@ -61,7 +61,13 @@ public final class CompatibilityCatalogGenerator: @unchecked Sendable {
         var md = ""
         md += "# App Compatibility Catalog\n\n"
         md += "_Generated artifact — do not edit by hand. Source data: `docs/compatibility-observations.json`._\n\n"
-        md += "- Last regenerated: \(iso8601Date(clock.now()))\n"
+        // Data-as-of, not wall-clock: derived from the newest observation so the
+        // catalog is a pure function of (observations + registry). A wall-clock
+        // stamp here made every nightly regeneration diff against the committed
+        // copy even when zero observations changed.
+        let dataAsOf = observations.compactMap { parseISO8601($0.timestamp) }.max()
+            .map(iso8601Date) ?? "(no observations yet)"
+        md += "- Data as-of: \(dataAsOf)\n"
         md += "- Total apps: \(active.count + archived.count)\n"
         md += "- Active apps: \(active.count)\n"
         md += "- Archived apps: \(archived.count)\n"
