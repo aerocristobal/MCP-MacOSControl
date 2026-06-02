@@ -236,6 +236,39 @@ final class CompatibilityCatalogGeneratorTests: XCTestCase {
         XCTAssertTrue(section.contains("ax_semantic"))
     }
 
+    // MARK: - Data-as-of (determinism)
+
+    func test_dataAsOf_reflectsLatestObservation_notWallClock() throws {
+        // Observations dated well before the fakeClock's anchor (2024-05-18).
+        // The summary "Data as-of" line must be derived from the newest
+        // observation, NOT the wall-clock, so the catalog is a pure function of
+        // its inputs and regenerating it on a later date produces no diff.
+        let older = Date(timeIntervalSince1970: 1_700_000_000)   // 2023-11-14
+        let newer = Date(timeIntervalSince1970: 1_705_000_000)   // 2024-01-11
+        let observations = [
+            obs(bundle: "com.apple.TextEdit", method: "ax_semantic", at: older),
+            obs(bundle: "com.apple.calculator", method: "ax_semantic", at: newer),
+        ]
+
+        let markdown = try generator.generate(
+            observations: observations, registry: FakeAppCapabilityRegistry()
+        )
+
+        XCTAssertTrue(markdown.contains("- Data as-of: 2024-01-11"),
+                      "summary must report the newest observation date")
+        XCTAssertFalse(markdown.contains("2024-05-18"),
+                       "summary must not stamp the wall-clock run date")
+    }
+
+    func test_dataAsOf_fallback_whenNoObservations() throws {
+        let markdown = try generator.generate(
+            observations: [], registry: FakeAppCapabilityRegistry()
+        )
+
+        XCTAssertTrue(markdown.contains("- Data as-of: (no observations yet)"),
+                      "empty observations must yield the explicit fallback")
+    }
+
     // MARK: - Helpers
 
     private func obs(

@@ -96,18 +96,14 @@ jobs:
       # STORY-020 — fail the job if the integration run produced observations
       # that have not been committed, or if the regenerated catalog Markdown
       # differs from the committed version. The maintainer's job is to commit
-      # the diff (auto-PR is deferred to a follow-on story).
-      #
-      # The catalog stamps the generator's wall-clock run date into its
-      # "Last regenerated" line, which is metadata — not data derived from the
-      # observations. On a nightly schedule that line always advances to "today"
-      # even when zero observations changed, which would fail this gate every
-      # run. Ignore that one line so the gate fires only on real catalog/data
-      # changes. (`-I` ignores a hunk when all its changed lines match.)
+      # the diff (auto-PR is deferred to a follow-on story). The catalog is a
+      # pure function of (observations + registry) — its "Data as-of" line is
+      # derived from the newest observation, not wall-clock — so this is a true
+      # exact-equality check that fires only on real catalog/data changes.
       - name: Verify catalog & observations are committed
         if: always()
         run: |
-          if ! git diff --exit-code -I '^- Last regenerated:' -- docs/APP-COMPATIBILITY.md docs/compatibility-observations.json; then
+          if ! git diff --exit-code -- docs/APP-COMPATIBILITY.md docs/compatibility-observations.json; then
             echo "::error::Integration run produced uncommitted catalog changes. \
             Run \`swift run mcp-macos-control-catalog --observations docs/compatibility-observations.json \
             --registry Sources/MacOSControlLib/Router/Defaults/default-app-capabilities.json \

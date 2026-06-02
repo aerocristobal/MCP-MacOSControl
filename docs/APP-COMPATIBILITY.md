@@ -2,7 +2,7 @@
 
 _Generated artifact — do not edit by hand. Source data: `docs/compatibility-observations.json`._
 
-- Last regenerated: 2026-05-19
+- Data as-of: (no observations yet)
 - Total apps: 0
 - Active apps: 0
 - Archived apps: 0
