@@ -16,7 +16,7 @@ jobs:
   publish-sbom:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Cache Swift build
         uses: actions/cache@v5
